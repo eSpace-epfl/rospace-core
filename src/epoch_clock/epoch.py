@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 class Epoch:
 
     def __init__(self):
-        self.epoch_string = rospy.get_param('epoch')
+        self.epoch_string = rospy.get_param('/epoch')
         self.epoch_datetime = datetime.strptime(self.epoch_string, "%Y-%m-%d %H:%M:%S")
 
     def now(self):

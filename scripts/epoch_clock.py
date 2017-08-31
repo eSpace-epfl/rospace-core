@@ -17,8 +17,8 @@ if __name__ == '__main__':
     realtime_factor = []
     frequency = []
 
-    if rospy.has_param("~epoch"):
-        epoch = str(rospy.get_param("~epoch"))
+    if rospy.has_param("~init_epoch"):
+        epoch = str(rospy.get_param("~init_epoch"))
         datetime_epoch = datetime.strptime(epoch, "%Y%m%dT%H:%M:%S")
     else:
         datetime_epoch = datetime.utcnow()
@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
     datetime_startup = datetime.utcnow() # this is considered time 0
 
-    rospy.set_param('epoch', datetime_epoch.strftime("%Y-%m-%d %H:%M:%S"))
+    rospy.set_param('/epoch', datetime_epoch.strftime("%Y-%m-%d %H:%M:%S"))
     rospy.set_param('use_sim_time', True)
 
     # Init publisher and rate limiter
