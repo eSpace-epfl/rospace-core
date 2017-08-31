@@ -80,6 +80,6 @@ class Converter:
 		target.epochJD = source.epochJD
 
 	@staticmethod
-	def ConvertITRFtoSpherical(source, target):
+	def convertITRFtoSpherical(source, target):
 		target.lat = np.arctan(source.R[2] / np.sqrt(source.R[1] ** 2 + source.R[0] ** 2))[0,0]
 		target.lon = np.arctan2(source.R[1], source.R[0])[0,0]
