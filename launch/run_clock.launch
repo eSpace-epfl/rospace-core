@@ -1,0 +1,6 @@
+<launch>
+ <node pkg="sgp4_node" name="sgp4_node_galileo" type="sgp4_node.py" output="screen">
+        <param name="tle_line1" value="1 40129U 14050B   17236.78225822 -.00000096  00000-0  00000-0 0  9997" />
+        <param name="tle_line2" value="2 40129  50.3979  41.4620 1630822  66.9205 309.4488  1.85519606 20771" />
+  </node>
+</launch>
