@@ -1,0 +1,18 @@
+<launch>
+    <!-- Load simulation world -->
+	<param name="robot_description" textfile="$(find cso_gnc_sim)/res/models/world.urdf" />
+
+    <!-- Include CSO base definition -->
+    <include file="$(find cso_gnc_sim)/launch/cso_base.launch" />
+
+    <!-- start rviz-->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find cso_gnc_sim)/res/rviz/cso_centered.rviz" required="true" />
+
+
+     <!-- Launch Visualizer -->
+    <node pkg="orbit_visualizer" name="visualizer" type="orbit_visualizer_node.py" output="screen">
+        <remap from="oe" to="/cso/oe" />
+        <remap from="oe2" to="/tisat1/oe" />
+    </node>
+
+</launch>

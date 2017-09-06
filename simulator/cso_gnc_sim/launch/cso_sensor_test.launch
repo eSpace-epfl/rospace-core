@@ -12,9 +12,12 @@
      <param name="tle_line2" value="2 35932  98.5062  22.7182 0008099  30.5945 329.5723 14.56041441421185" />
     </node>
 
+
+
     <node pkg="space_sim_radar" name="radar" type="sim_radar_node.py" output="screen">
       <remap from="chaser_oe" to="/swisscube/oe" />
       <remap from="target_oe" to="/tisat1/oe" />
+      <param name="transform" value ="0.40 0 0 0 0 0 1" />
     </node>
 
 

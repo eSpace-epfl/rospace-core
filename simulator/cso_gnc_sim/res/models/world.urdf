@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<robot name="cso_visualization">
+
+    <link name="teme">
+        <visual>
+          <geometry>
+            <mesh filename="package://cso_gnc_sim/res/meshes/earth2.dae" scale="1000 1000 1000">
+            </mesh>
+          </geometry>
+        </visual>
+    </link>
+
+    <link name="cso">
+        <visual>
+          <geometry>
+            <mesh filename="package://cso_gnc_sim/res/meshes/simple_cso.dae" scale="0.001 0.001 0.001">
+            </mesh>
+          </geometry>
+          <origin rpy="0 0 0" xyz="0 0 0"/>
+        </visual>
+    </link>
+
+    <link name="target">
+        <visual>
+            <geometry>
+                <box size="0.1 0.1 0.1"/>
+            </geometry>
+            <material name="blue" />
+            <origin rpy="0 1.57075 0" xyz="0 0 0"/>
+        </visual>
+    </link>
+
+
+    <joint name="target2teme" type="fixed">
+        <parent link="teme"/>
+        <child link="target"/>
+        <origin xyz="7000000 0 0 "/>
+    </joint>
+
+    <joint name="cso2teme" type="fixed">
+        <parent link="teme"/>
+        <child link="cso"/>
+        <origin xyz="0 0 0 "/>
+    </joint>
+ </robot>
+

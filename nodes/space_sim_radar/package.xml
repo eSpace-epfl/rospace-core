@@ -22,6 +22,7 @@
   <depend>std_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>space_msgs</depend>
+  <depend>space_tf</depend>
 
 
 </package>
