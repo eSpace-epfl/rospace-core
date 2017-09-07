@@ -20,3 +20,9 @@ class Epoch:
         time_delta = timedelta(0, time_since_epoch.secs, time_since_epoch.nsecs/1e3)
         return self.epoch_datetime + time_delta
 
+    def now_jd(self):
+        now_utc = self.now()
+        J2000 = 2451545.0
+        J2000_date = datetime(2000, 1, 1, 12, 00, 00)  # UTC time of J2000
+        delta = now_utc - J2000_date
+        return J2000 + delta.total_seconds() / (60.0 * 60 * 24)
