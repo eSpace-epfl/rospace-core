@@ -88,12 +88,12 @@ class Converter:
     def fromOEMessage(msg):
         tf_obj = OrbitalElements()
 
-        tf_obj.i = np.deg2rad(msg.orbit.inclination)
-        tf_obj.w = np.deg2rad(msg.orbit.arg_perigee)
-        tf_obj.omega = np.deg2rad(msg.orbit.raan)
-        tf_obj.t = np.deg2rad(msg.orbit.true_anomaly)
-        tf_obj.a = msg.orbit.semimajoraxis
-        tf_obj.e = msg.orbit.eccentricity
+        tf_obj.i = np.deg2rad(msg.inclination)
+        tf_obj.w = np.deg2rad(msg.arg_perigee)
+        tf_obj.omega = np.deg2rad(msg.raan)
+        tf_obj.t = np.deg2rad(msg.true_anomaly)
+        tf_obj.a = msg.semimajoraxis
+        tf_obj.e = msg.eccentricity
         return tf_obj
 
 
