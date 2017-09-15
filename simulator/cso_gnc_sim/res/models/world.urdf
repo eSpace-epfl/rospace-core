@@ -13,7 +13,7 @@
     <link name="cso">
         <visual>
           <geometry>
-            <mesh filename="package://cso_gnc_sim/res/meshes/simple_cso.dae" scale="0.001 0.001 0.001">
+            <mesh filename="package://cso_gnc_sim/res/meshes/cso-mesh.stl" scale="0.001 0.001 0.001">
             </mesh>
           </geometry>
           <origin rpy="0 0 0" xyz="0 0 0"/>

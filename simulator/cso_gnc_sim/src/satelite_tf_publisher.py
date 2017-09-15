@@ -7,12 +7,14 @@ from geometry_msgs.msg import PoseStamped
 sensor_cfg = 0
 no_position = 0
 body_frame = 0
+frame_cfg = 0
 
 
 def handle_pose(msg):
     global sensor_cfg
     global no_position
     global body_frame
+    global frame_cfg
 
     if no_position:
         msg.pose.position.x = 0
@@ -27,21 +29,29 @@ def handle_pose(msg):
                      body_frame,
                      msg.header.frame_id)
 
+    for k in frame_cfg:
+        br.sendTransform(np.array([float(x) for x in frame_cfg[k]["position"].split(" ")]),
+                         np.array([float(x) for x in frame_cfg[k]["pose"].split(" ")]),
+                         rospy.Time.now(),
+                         k,
+                         body_frame)
+
 
     for k in sensor_cfg:
         br.sendTransform(np.array([float(x) for x in sensor_cfg[k]["position"].split(" ")]),
                          np.array([float(x) for x in sensor_cfg[k]["pose"].split(" ")]),
                      rospy.Time.now(),
                      k,
-                     body_frame)
+                     sensor_cfg[k]["frame"])
+
 
 if __name__ == '__main__':
 
     rospy.init_node('satelite_tf_publisher')
     sensor_cfg =  rospy.get_param("~sensors", "")
+    frame_cfg = rospy.get_param("~frames", "")
     body_frame = rospy.get_param("~body_frame", "cso")
     no_position = bool(rospy.get_param("~no_position", True))
-
 
     rospy.Subscriber('pose',
                      PoseStamped,
