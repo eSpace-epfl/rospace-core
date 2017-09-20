@@ -2,7 +2,7 @@
 
 <!-- Launch Epoch Clock without params (=realtime, start from now) -->
     <node pkg="epoch_clock" name="epoch_clock_sim" type="epoch_clock.py" output="screen">
-        <param name="realtime_factor" value="50" />
+        <param name="realtime_factor" value="1" />
         <param name="init_epoch" value="20170915T13:45:00" />
     </node>
 
@@ -14,18 +14,10 @@
         <node pkg="sgp4_node" name="sgp4_node_cso" type="sgp4_node.py" output="screen">
             <param name="tle_line1" value="1 35932U 09051B   17242.83495672  .00000195  00000-0  55221-4 0  9991" />
             <param name="tle_line2" value="2 35932  98.5062  22.7182 0008099  30.5945 272.9750 14.57041441421185" />
-            <param name="spin_rate"  value="20" /> <!-- 5 rev per orbit approx (360/(98.97*60)*5) for tests-->
+            <param name="spin_rate"  value="50" /> <!-- 5 rev per orbit approx (360/(98.97*60)*5) for tests-->
             <param name="spin_axis"  value="0 1 0" />
         </node>
 
-        <!-- Launch TF publisher for visualizations -->
-        <node pkg="cso_gnc_sim" name="tf_pub" type="satelite_tf_publisher.py" output="screen">
-            <remap from="pose" to="/cso/pose" />
-            <remap from="~sensors" to="/cso/sensors" />
-            <remap from="~frames" to="/cso/frames" />
-            <param name="body_frame" value="cso" />
-            <param name="no_position" value="0" />
-        </node>
 
         <!-- Launch Radar Sensor -->
         <node pkg="space_sim_radar" name="node_radar1" type="sim_radar_node.py" output="screen">
@@ -43,13 +35,6 @@
         <param name="tle_line2" value="2 35932  98.5062  22.7182 0008099  30.5945 329.5723 14.56041441421185" />
         <param name="spin_rate"  value="1" /> <!-- 1 deg/s-->
         <param name="spin_axis"  value="1 1 0" />
-    </node>
-
-    <!-- Launch TF publisher for visualizations -->
-    <node pkg="cso_gnc_sim" name="tf_pub_target" type="satelite_tf_publisher.py" output="screen">
-        <remap from="pose" to="/target/pose" />
-        <param name="body_frame" value="target" />
-        <param name="no_position" value="0" />
     </node>
 
     </group>

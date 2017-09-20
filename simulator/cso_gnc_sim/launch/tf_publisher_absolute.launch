@@ -1,0 +1,26 @@
+<launch>
+
+    <group ns="cso">
+        <!-- Launch TF publisher for visualizations -->
+        <node pkg="cso_gnc_sim" name="tf_pub" type="satelite_tf_publisher.py" output="screen">
+            <remap from="pose" to="/cso/pose" />
+            <remap from="~sensors" to="/cso/sensors" />
+            <remap from="~frames" to="/cso/frames" />
+            <param name="body_frame" value="cso" />
+            <param name="mode" value="absolute" />
+        </node>
+    </group>
+
+  <group ns="target">
+
+    <!-- Launch TF publisher for visualizations -->
+    <node pkg="cso_gnc_sim" name="tf_pub_target" type="satelite_tf_publisher.py" output="screen">
+        <remap from="pose" to="/target/pose" />
+        <remap from="relative_parent" to="/cso/pose" />
+        <param name="body_frame" value="target" />
+        <param name="mode" value="absolute" />
+    </node>
+
+    </group>
+
+</launch>
