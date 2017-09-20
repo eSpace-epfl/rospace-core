@@ -76,12 +76,11 @@ class OrbitalElements:
 
 		# Position in perifocal frame, then rotate to proper orbital plane
 		R_per = np.array([p*np.cos(self.t), p*np.sin(self.t), 0]) / (1.0+self.e*np.cos(self.t))
-		cart.R = R_z(self.omega)*R_x(self.i)*R_z(self.w)*R_per.reshape(3,1)
+		cart.R = R_z(self.omega).dot(R_x(self.i)).dot(R_z(self.w)).dot(R_per)
 
 		# speed in perifocal frame, then rotate
 		V_per = np.array([-np.sin(self.t), self.e+np.cos(self.t), 0]) * np.sqrt(Constants.mu_earth/p)
-
-		cart.V = R_z(self.omega)*R_x(self.i)*R_z(self.w)*V_per.reshape(3,1)
+		cart.V = R_z(self.omega).dot(R_x(self.i)).dot(R_z(self.w)).dot(V_per)
 
 
 	def fromCartesian(self, cart):

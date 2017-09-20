@@ -1,8 +1,8 @@
 import numpy as np
 
-def R_x(q): return np.matrix([[1, 0, 0],[0, np.cos(q), -np.sin(q)],[0, np.sin(q), np.cos(q)]])
-def R_y(q): return np.matrix([[np.cos(q), 0, np.sin(q)],[0, 1, 0],[-np.sin(q), 0, np.cos(q)]])
-def R_z(q): return np.matrix([[np.cos(q), -np.sin(q), 0],[np.sin(q), np.cos(q), 0],[0, 0, 1]])
+def R_x(q): return np.array([[1, 0, 0],[0, np.cos(q), -np.sin(q)],[0, np.sin(q), np.cos(q)]])
+def R_y(q): return np.array([[np.cos(q), 0, np.sin(q)],[0, 1, 0],[-np.sin(q), 0, np.cos(q)]])
+def R_z(q): return np.array([[np.cos(q), -np.sin(q), 0],[np.sin(q), np.cos(q), 0],[0, 0, 1]])
 
 
 class Constants:
