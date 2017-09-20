@@ -23,6 +23,7 @@
   <depend>geometry_msgs</depend>
   <depend>space_msgs</depend>
   <depend>space_tf</depend>
+  <depend>space_sensor_model</depend>
 
 
 </package>
