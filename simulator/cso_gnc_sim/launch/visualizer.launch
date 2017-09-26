@@ -13,15 +13,9 @@
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find cso_gnc_sim)/res/rviz/tf_large.rviz" required="true" />
 
 
-    <!-- Launch LOF node -->
-    <node name="lof_pub" pkg="lof_node" type="lof_node.py" output="screen" >
-        <remap from="target_oe" to="/target/oe" />
-        <remap from="chaser_oe" to="/cso/oe" />
-    </node>
-     <!-- Launch Visualizer
+     <!-- Launch Visualizer -->
     <node pkg="orbit_visualizer" name="visualizer" type="orbit_visualizer_node.py" output="screen">
-        <remap from="oe" to="/cso/oe" />
-        <remap from="oe2" to="/target/oe" />
-    </node> -->
+        <remap from="lvlh" to="/target/lvlh" />
+    </node>
 
 </launch>

@@ -3,7 +3,7 @@
 <!-- Launch Epoch Clock without params (=realtime, start from now) -->
     <node pkg="epoch_clock" name="epoch_clock_sim" type="epoch_clock.py" output="screen">
         <param name="realtime_factor" value="60" />
-        <param name="init_epoch" value="20170915T13:45:00" />
+        <param name="init_epoch" value="20170915T13:20:00" />
     </node>
 
     <group ns="cso">
@@ -42,6 +42,12 @@
         <param name="tle_line2" value="2 35932  98.5062  22.7182 0008099  30.5945 329.5723 14.56041441421185" />
         <param name="spin_rate"  value="1" /> <!-- 1 deg/s-->
         <param name="spin_axis"  value="1 1 0" />
+    </node>
+
+    <!-- Launch LVLH node -->
+    <node name="lvlh_pub" pkg="lvlh_node" type="lvlh_node.py" output="screen" >
+        <remap from="target_oe" to="/target/oe" />
+        <remap from="chaser_oe" to="/cso/oe" />
     </node>
 
     </group>

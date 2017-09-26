@@ -74,17 +74,17 @@ def handle_target_oe(msg):
     i = tf_target_teme.R / np.linalg.norm(tf_target_teme.R)
 
     j = tf_target_teme.V / np.linalg.norm(tf_target_teme.V)
-    k = np.cross(i,j)
+    k = np.cross(i, j)
     R_ref = np.identity(4)
     R_ref[0, 0:3] = i
     R_ref[1, 0:3] = j
     R_ref[2, 0:3] = k
-    R_ref[0:3,0:3] = R_ref[0:3,0:3].T
+    R_ref[0:3, 0:3] = R_ref[0:3, 0:3].T
 
     q_ref = tf.transformations.quaternion_from_matrix(R_ref)
-    #publish
+
+    # publish
     br = tf.TransformBroadcaster()
-    print tf_target_teme.R*1000
 
     br.sendTransform(tf_target_teme.R*1000,
                      q_ref,

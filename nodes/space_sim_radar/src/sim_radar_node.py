@@ -15,7 +15,6 @@ sensor_obj = SimpleRangeFOVSensor()
 
 def callback(target_oe, chaser_oe):
 
-    print "C"
     # calculate baseline
     tf_target_oe = space_tf.Converter.fromOEMessage(target_oe.position)
     tf_chaser_oe = space_tf.Converter.fromOEMessage(chaser_oe.position)
