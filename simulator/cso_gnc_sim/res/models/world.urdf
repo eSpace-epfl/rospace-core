@@ -33,7 +33,6 @@
         </visual>
     </link>
 
-
     <joint name="target2teme" type="fixed">
         <parent link="teme"/>
         <child link="target"/>

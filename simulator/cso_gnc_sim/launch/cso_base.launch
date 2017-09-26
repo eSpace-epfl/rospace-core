@@ -2,7 +2,7 @@
 
 <!-- Launch Epoch Clock without params (=realtime, start from now) -->
     <node pkg="epoch_clock" name="epoch_clock_sim" type="epoch_clock.py" output="screen">
-        <param name="realtime_factor" value="1" />
+        <param name="realtime_factor" value="60" />
         <param name="init_epoch" value="20170915T13:45:00" />
     </node>
 
@@ -14,14 +14,21 @@
         <node pkg="sgp4_node" name="sgp4_node_cso" type="sgp4_node.py" output="screen">
             <param name="tle_line1" value="1 35932U 09051B   17242.83495672  .00000195  00000-0  55221-4 0  9991" />
             <param name="tle_line2" value="2 35932  98.5062  22.7182 0008099  30.5945 272.9750 14.57041441421185" />
-            <param name="spin_rate"  value="50" /> <!-- 5 rev per orbit approx (360/(98.97*60)*5) for tests-->
-            <param name="spin_axis"  value="0 1 0" />
+            <param name="spin_rate"  value="0.303122158" /> <!-- 5 rev per orbit approx (360/(98.97*60)*5) for tests-->
+            <param name="spin_axis"  value="0 0 1" /> <!-- some random spin axis -->
         </node>
 
 
         <!-- Launch Radar Sensor -->
         <node pkg="space_sim_radar" name="node_radar1" type="sim_radar_node.py" output="screen">
             <remap from="~sensor" to="/cso/sensors/Radar" />
+            <remap from="chaser_oe" to="oe" />
+            <remap from="target_oe" to="/target/oe" />
+        </node>
+
+         <!-- Launch AON Sensor -->
+        <node pkg="space_sim_aon" name="node_aon" type="sim_aon_node.py" output="screen">
+            <remap from="~sensor" to="/cso/sensors/AON" />
             <remap from="chaser_oe" to="oe" />
             <remap from="target_oe" to="/target/oe" />
         </node>

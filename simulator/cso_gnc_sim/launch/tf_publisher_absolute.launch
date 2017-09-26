@@ -16,6 +16,7 @@
     <!-- Launch TF publisher for visualizations -->
     <node pkg="cso_gnc_sim" name="tf_pub_target" type="satelite_tf_publisher.py" output="screen">
         <remap from="pose" to="/target/pose" />
+        <remap from="target_oe" to="/target/oe" />
         <remap from="relative_parent" to="/cso/pose" />
         <param name="body_frame" value="target" />
         <param name="mode" value="absolute" />

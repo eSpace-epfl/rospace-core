@@ -24,9 +24,14 @@ sensors:
     position: 0.355 0.25 -0.075
     pose: -0.707 0 -0.707 0.0
 
-  WAC:
+  AON:
     position: 0.355 -0.02 0.08
     pose: -0.707 0 -0.707 0.0
+    fov_x: 1.5
+    fov_y: 1.5
+    max_range: 10000
+    mu: 0
+    sigma: 0.01
 
   NAC:
     position: 0.355 -0.01 -0.095

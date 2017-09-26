@@ -3,6 +3,8 @@ import rospy
 import tf
 import numpy as np
 import message_filters
+import space_tf
+from space_msgs.msg import SatelitePose
 from geometry_msgs.msg import PoseStamped
 
 sensor_cfg = 0
@@ -39,7 +41,7 @@ def handle_pose(msg):
 
     br.sendTransform(pos,
                      quat,
-                     rospy.Time.now(),
+                     msg.header.stamp,
                      body_frame,
                      msg.header.frame_id)
 
@@ -59,6 +61,38 @@ def handle_pose(msg):
                      body_frame)
 
 
+def handle_target_oe(msg):
+    global body_frame
+    # convert to R/V
+    target_oe = space_tf.Converter.fromOEMessage(msg.position)
+
+    # convert to TEME
+    tf_target_teme = space_tf.CartesianTEME()
+    space_tf.Converter.convert(target_oe, tf_target_teme)
+
+    # calculate reference frame
+    i = tf_target_teme.R / np.linalg.norm(tf_target_teme.R)
+
+    j = tf_target_teme.V / np.linalg.norm(tf_target_teme.V)
+    k = np.cross(i,j)
+    R_ref = np.identity(4)
+    R_ref[0, 0:3] = i
+    R_ref[1, 0:3] = j
+    R_ref[2, 0:3] = k
+    R_ref[0:3,0:3] = R_ref[0:3,0:3].T
+
+    q_ref = tf.transformations.quaternion_from_matrix(R_ref)
+    #publish
+    br = tf.TransformBroadcaster()
+    print tf_target_teme.R*1000
+
+    br.sendTransform(tf_target_teme.R*1000,
+                     q_ref,
+                     msg.header.stamp,
+                     body_frame+"_ref",
+                     "teme")
+
+
 if __name__ == '__main__':
 
     rospy.init_node('satelite_tf_publisher')
@@ -75,6 +109,10 @@ if __name__ == '__main__':
         rospy.Subscriber('pose',
                          PoseStamped,
                          handle_pose)
+
+        rospy.Subscriber('target_oe',
+                         SatelitePose,
+                         handle_target_oe)
 
     elif position_mode == "relative":
         pose_sub = message_filters.Subscriber('pose', PoseStamped)

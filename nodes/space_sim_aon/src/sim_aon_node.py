@@ -4,18 +4,17 @@ import sys
 import time
 import message_filters
 from geometry_msgs.msg import PointStamped
-from space_msgs.msg import SatelitePose, RangeStamped
+from space_msgs.msg import SatelitePose, AzimutElevationStamped
 import space_tf
 from tf import transformations
 import numpy as np
-from space_sensor_model import SimpleRangeFOVSensor
+from space_sensor_model import SimpleAnglesFOVSensor
 
-pub = rospy.Publisher('radar', RangeStamped, queue_size=10)
-sensor_obj = SimpleRangeFOVSensor()
+pub = rospy.Publisher('aon', AzimutElevationStamped, queue_size=10)
+sensor_obj = SimpleAnglesFOVSensor()
 
 def callback(target_oe, chaser_oe):
 
-    print "C"
     # calculate baseline
     tf_target_oe = space_tf.Converter.fromOEMessage(target_oe.position)
     tf_chaser_oe = space_tf.Converter.fromOEMessage(chaser_oe.position)
@@ -40,16 +39,18 @@ def callback(target_oe, chaser_oe):
     # check if visible and augment sensor value
     visible, value = sensor_obj.get_measurement(p_body)
 
+
     if visible:
-        msg = RangeStamped()
+        msg = AzimutElevationStamped()
         msg.header.stamp = rospy.Time.now()
-        msg.value.range = np.linalg.norm(tf_target_teme.R -tf_chaser_teme.R)*1000
+        msg.value.azimut = value[0]
+        msg.value.elevation = value[1]
         pub.publish(msg)
 
 
 if __name__ == '__main__':
-    rospy.init_node('RADAR_SIM', anonymous=True)
-    rospy.loginfo("Radar sim started")
+    rospy.init_node('AON_SIM', anonymous=True)
+    rospy.loginfo("AoN sim started")
     target_oe_sub = message_filters.Subscriber('target_oe', SatelitePose)
     chaser_oe_sub = message_filters.Subscriber('chaser_oe', SatelitePose)
 
