@@ -32,6 +32,12 @@
             <remap from="chaser_oe" to="oe" />
             <remap from="target_oe" to="/target/oe" />
         </node>
+
+          <!-- Launch Filter -->
+        <node pkg="cso_gnc_target_estimator" name="target_estimator" type="cso_gnc_target_estimator_node.py" output="screen">
+            <remap from="chaser_oe" to="oe" />
+            <remap from="target_oe" to="/target/oe" />
+        </node>
     </group>
 
   <group ns="target">
