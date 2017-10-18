@@ -72,11 +72,11 @@ class Converter:
         R_gmst = R_z(gmst1982)
 
         # Calculation rotation of polar motion (not in used at the moment)
-        W = R_x(-yp)*R_y(-xp)
+        W = R_x(-yp).dot(R_y(-xp))
 
         # Do rotations
-        target.R = R_gmst.T * W.T * source.R.reshape(3,1)
-        target.V = R_gmst.T * W.T * source.V.reshape(3,1)
+        target.R = R_gmst.T.dot(W.T).dot(source.R.reshape(3,1))
+        target.V = R_gmst.T.dot(W.T).dot(source.V.reshape(3,1))
         target.epochJD = source.epochJD
 
     @staticmethod
