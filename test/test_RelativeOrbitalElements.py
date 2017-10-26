@@ -4,10 +4,9 @@ import unittest
 import sys
 import os
 from copy import deepcopy
-from space_tf import *
 import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__))+"/../src/") #hack...
-
+from space_tf import *
 
 class RelativeOrbitalElementsTest(unittest.TestCase):
 
