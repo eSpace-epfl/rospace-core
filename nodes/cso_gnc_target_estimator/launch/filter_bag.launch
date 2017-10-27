@@ -1,0 +1,19 @@
+<launch>
+    <param name="use_sim_time" value="true" />
+     <param name="epoch" value="2017-09-15 13:20:00" />
+
+    <group ns="cso">
+        <!-- Load Configuration File for sensors etc -->
+        <rosparam command="load" file="$(find cso_gnc_sim)/cfg/cso.yaml" />
+
+          <!-- Launch Filter -->
+        <node pkg="cso_gnc_target_estimator" name="target_estimator" type="cso_gnc_target_estimator_node.py" output="screen">
+            <remap from="chaser_oe" to="oe" />
+            <remap from="target_oe" to="/target/oe" />
+        </node>
+    </group>
+
+  <!-- Launch bag file with data -->
+  <node pkg="rosbag" type="play" name="player" output="screen" args=" -q --pause /home/pantic/2017-10-20-16-18-15.bag" />
+
+</launch>
