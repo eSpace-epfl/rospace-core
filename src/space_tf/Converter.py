@@ -1,17 +1,16 @@
 #   Converter between various earth centered coordinats
 #   Author: Michael Pantic, michael.pantic@gmail.com
-#    Author: Jean Noel Pittet  (Conversion Function ITRF-TEME)
+#   Author: Jean Noel Pittet  (Conversion Function ITRF-TEME)
 #   Author: Christophe Paccolat (original oe-tools)
 #   License: TBD
 
-import numpy as np
-import datetime
-import copy
 from sgp4.propagation import _gstime as greenwichSiderealTime
+
 from Cartesian import *
 from OrbitalElements import *
 from SphericalEarth import *
 from Constants import *
+
 
 class Converter:
     # Generic main convert method
@@ -23,7 +22,7 @@ class Converter:
         elif isinstance(source, Cartesian) and isinstance(target, SphericalEarth):
             # create itrf
             itrf = CartesianITRF()
-            #convert whatever cartesian frame to ITRF
+            # convert whatever cartesian frame to ITRF
             Converter.convert(source, itrf)
             Converter.convertITRFtoSpherical(itrf, target)
 
@@ -32,7 +31,7 @@ class Converter:
             target.frame = CartesianFrame.TEME
 
         elif isinstance(source, Cartesian) and isinstance(target, OrbitalElements):
-            # crate TEME Cartesian
+            # create TEME Cartesian
             teme = CartesianTEME()
 
             # Convert whatever cartesian frame to TEME

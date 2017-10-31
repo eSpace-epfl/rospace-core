@@ -16,8 +16,10 @@
 #         EXCEPT: Target is in equatorial orbit (target.i=0)
 #
 import sys
-from space_tf import OrbitalElements
+
 from Constants import *
+from space_tf import OrbitalElements
+
 
 class QNSRelOrbElements:
     def __init__(self):

@@ -2,10 +2,12 @@
 #   Author: Michael Pantic, michael.pantic@gmail.com
 #   License: TBD
 #     Sources/Literature: [1] Orbital Mechanics for Engineering Students by Howard Curtis
+
 import numpy as np
-import datetime
+
 from Constants import *
-from decimal import *
+
+
 class OrbitalElements:
     def __init__(self):
         self.i = 0 # inclination
@@ -43,7 +45,7 @@ class OrbitalElements:
         cur_int = 0
 
         while True:
-            fE = self.E - self.e*np.sin(self.E) - self.m
+            fE = self.E - self.e * np.sin(self.E) - self.m
             fpE = 1.0 - self.e * np.cos(self.E)
             ratio = fE/fpE
             if abs(ratio) > 1e-15 and cur_int < max_int:
@@ -51,8 +53,6 @@ class OrbitalElements:
                 cur_int = cur_int+1
             else:
                 break
-
-
 
     def update_t(self):
         # Calculates true anomaly
@@ -63,7 +63,6 @@ class OrbitalElements:
     def update_a(self):
         # Calculates semimajor axis based on period
         self.a = np.power(self.period**2*Constants.mu_earth / (4*np.pi**2),1/3.0)
-
 
     def fromTLE(self, i_tle, omega_tle, e_tle, m_tle, w_tle, mean_motion_tle):
         #assign known data
@@ -106,7 +105,6 @@ class OrbitalElements:
         # 1. Calc distance
         r = np.linalg.norm(cart.R,ord=2)
 
-
         # 2. Calc  speed
         v = np.linalg.norm(cart.V,ord=2)
 
@@ -115,7 +113,6 @@ class OrbitalElements:
 
         # 4. Calc specific angular momentum
         H = np.cross(cart.R.flat, cart.V.flat)
-
 
         # 5. Calc magnitude of specific angular momentum
         h = np.linalg.norm(H,ord=2)
@@ -136,9 +133,9 @@ class OrbitalElements:
 
         # 10. calculate eccentricity vector  / 11. Calc eccentricity
         E = 1/Constants.mu_earth*((v**2-Constants.mu_earth/r)*cart.R.flat-r*v_r*cart.V.flat)
-        #e = np.linalg.norm(E,ord=2)
+        # e = np.linalg.norm(E,ord=2)
 
-        #direct form:
+        # direct form:
         self.e = 1/Constants.mu_earth*np.sqrt( (2*Constants.mu_earth-r*v**2)*r*v_r**2+(Constants.mu_earth-r*v**2)**2)
 
         # 11. Calculate arg. of perigee
@@ -150,7 +147,6 @@ class OrbitalElements:
         self.t = np.arccos(np.dot(E,cart.R.flat)/(self.e*r))
         if v_r < 0:
             self.t = 2*np.pi-self.t
-
 
         # 13. Calculate semimajor axis
         rp = h**2/Constants.mu_earth * 1/(1+self.e)

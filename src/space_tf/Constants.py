@@ -1,3 +1,6 @@
+#   Often used constants
+#   Author: Michael Pantic, michael.pantic@gmail.com
+#   License: TBD
 import numpy as np
 
 def R_x(q): return np.array([[1, 0, 0],[0, np.cos(q), -np.sin(q)],[0, np.sin(q), np.cos(q)]])
