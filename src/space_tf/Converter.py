@@ -1,29 +1,28 @@
 #   Converter between various earth centered coordinats
 #   Author: Michael Pantic, michael.pantic@gmail.com
-#    Author: Jean Noel Pittet  (Conversion Function ITRF-TEME)
+#   Author: Jean Noel Pittet  (Conversion Function ITRF-TEME)
 #   Author: Christophe Paccolat (original oe-tools)
 #   License: TBD
 
-import numpy as np
-import datetime
-import copy
 from sgp4.propagation import _gstime as greenwichSiderealTime
+
 from Cartesian import *
 from OrbitalElements import *
 from SphericalEarth import *
 from Constants import *
+
 
 class Converter:
     # Generic main convert method
     @staticmethod
     def convert(source, target):
         if isinstance(source, Cartesian) and isinstance(target, Cartesian):
-            Converter.convertCartesianToCartesian(source,target)
+            Converter.convertCartesianToCartesian(source, target)
 
         elif isinstance(source, Cartesian) and isinstance(target, SphericalEarth):
             # create itrf
             itrf = CartesianITRF()
-            #convert whatever cartesian frame to ITRF
+            # convert whatever cartesian frame to ITRF
             Converter.convert(source, itrf)
             Converter.convertITRFtoSpherical(itrf, target)
 
@@ -32,7 +31,7 @@ class Converter:
             target.frame = CartesianFrame.TEME
 
         elif isinstance(source, Cartesian) and isinstance(target, OrbitalElements):
-            # crate TEME Cartesian
+            # create TEME Cartesian
             teme = CartesianTEME()
 
             # Convert whatever cartesian frame to TEME
@@ -44,19 +43,17 @@ class Converter:
         else:
             raise Exception("Not implemented conversion")
 
-
     @staticmethod
-    def convertCartesianToCartesian(source,target):
-        if(source.frame == target.frame):
+    def convertCartesianToCartesian(source, target):
+        if (source.frame == target.frame):
             # copy all data to target object
             target.__dict__.update(source.__dict__)
 
-        elif(source.frame == CartesianFrame.TEME and
-        target.frame == CartesianFrame.ITRF):
+        elif (source.frame == CartesianFrame.TEME and
+                      target.frame == CartesianFrame.ITRF):
             Converter.convertTEMEtoITRF(source, target)
         else:
             raise Exception("Not implemented cartesian conversion")
-
 
     @staticmethod
     def convertTEMEtoITRF(source, target):
@@ -75,15 +72,15 @@ class Converter:
         W = R_x(-yp).dot(R_y(-xp))
 
         # Do rotations
-        target.R = R_gmst.T.dot(W.T).dot(source.R.reshape(3,1))
-        target.V = R_gmst.T.dot(W.T).dot(source.V.reshape(3,1))
+        target.R = R_gmst.T.dot(W.T).dot(source.R.reshape(3, 1))
+        target.V = R_gmst.T.dot(W.T).dot(source.V.reshape(3, 1))
         target.epochJD = source.epochJD
 
     @staticmethod
     def convertITRFtoSpherical(source, target):
-        target.lat = np.arctan(source.R[2] / np.sqrt(source.R[1] ** 2 + source.R[0] ** 2))[0,0]
-        target.lon = np.arctan2(source.R[1], source.R[0])[0,0]
-        
+        target.lat = np.arctan(source.R[2] / np.sqrt(source.R[1] ** 2 + source.R[0] ** 2))[0, 0]
+        target.lon = np.arctan2(source.R[1], source.R[0])[0, 0]
+
     @staticmethod
     def fromOEMessage(msg):
         tf_obj = OrbitalElements()
@@ -95,5 +92,3 @@ class Converter:
         tf_obj.a = msg.semimajoraxis
         tf_obj.e = msg.eccentricity
         return tf_obj
-
-
