@@ -9,52 +9,51 @@ from time import sleep
 
 
 class EpochClockGUI(threading.Thread):
-        def __init__(self):
-            threading.Thread.__init__(self)
-            self.start()
-            self.paused = False
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.start()
+        self.paused = False
 
-        def callback_quit(self):
-            self.root.quit()
+    def callback_quit(self):
+        self.root.quit()
 
-        def update_current_time(self, epoch, elapsed, curr_time):
-            if hasattr(self, 'time_label') and \
-               hasattr(self, "epoch_label") and \
-               hasattr(self, "elapsed_time_label"):
-                self.epoch_label.config(text="Epoch0: " + str(epoch))
-                self.elapsed_time_label.config(text="Elapsed: " + str(elapsed))
-                self.time_label.config(text="Epoch: " + str(curr_time))
+    def update_current_time(self, epoch, elapsed, curr_time):
+        if hasattr(self, 'time_label') and \
+                hasattr(self, "epoch_label") and \
+                hasattr(self, "elapsed_time_label"):
+            self.epoch_label.config(text="Epoch0: " + str(epoch))
+            self.elapsed_time_label.config(text="Elapsed: " + str(elapsed))
+            self.time_label.config(text="Epoch: " + str(curr_time))
 
+    def toggle_pause(self):
+        self.paused = not self.paused
+        if self.paused:
+            self.pause_button.config(text="Resume")
+            rospy.logwarn("Clock paused")
+        else:
+            self.pause_button.config(text="Pause")
+            rospy.logwarn("Clock resumed")
 
-        def toggle_pause(self):
-            self.paused = not self.paused
-            if self.paused:
-                self.pause_button.config(text = "Resume")
-                rospy.logwarn("Clock paused")
-            else:
-                self.pause_button.config(text="Pause")
-                rospy.logwarn("Clock resumed")
-
-        def run(self):
-            self.root = Tk()
-            self.root.title("Epoch Clock")
-            self.epoch_label = Label(self.root, text="")
-            self.epoch_label.pack()
-            self.elapsed_time_label = Label(self.root, text="")
-            self.elapsed_time_label.pack()
-            self.time_label = Label(self.root, text="")
-            self.time_label.pack()
-            self.pause_button = Button(self.root, text="Pause", command=self.toggle_pause)
-            self.pause_button.pack()
-            self.root.wm_attributes("-topmost", 1)
-            self.root.mainloop()
+    def run(self):
+        self.root = Tk()
+        self.root.title("Epoch Clock")
+        self.epoch_label = Label(self.root, text="")
+        self.epoch_label.pack()
+        self.elapsed_time_label = Label(self.root, text="")
+        self.elapsed_time_label.pack()
+        self.time_label = Label(self.root, text="")
+        self.time_label.pack()
+        self.pause_button = Button(self.root, text="Pause", command=self.toggle_pause)
+        self.pause_button.pack()
+        self.root.wm_attributes("-topmost", 1)
+        self.root.mainloop()
 
 
 if __name__ == '__main__':
     rospy.init_node('epoch_clock', anonymous=True)
     rospy.loginfo("Starting Epoch Clock with settings:")
 
-    epoch =""
+    epoch = ""
     datetime_epoch = []
     realtime_factor = []
     frequency = []
@@ -76,12 +75,12 @@ if __name__ == '__main__':
     else:
         frequency = 20.0
 
-    rate = float(1)/float(frequency)
+    rate = float(1) / float(frequency)
 
     rospy.loginfo("Epoch = " + datetime_epoch.strftime("%Y-%m-%d %H:%M:%S"))
     rospy.loginfo("Realtime Factor = " + str(realtime_factor))
 
-    datetime_startup = datetime.utcnow() # this is considered time 0
+    datetime_startup = datetime.utcnow()  # this is considered time 0
 
     rospy.set_param('/epoch', datetime_epoch.strftime("%Y-%m-%d %H:%M:%S"))
     rospy.set_param('use_sim_time', True)
@@ -98,7 +97,7 @@ if __name__ == '__main__':
 
             # check if we are returning from a pause
             if pause_start is not None:
-                #correct startup time by pause time
+                # correct startup time by pause time
                 datetime_startup = datetime_startup + (datetime.utcnow() - pause_start)
                 pause_start = None
 
@@ -106,13 +105,13 @@ if __name__ == '__main__':
             sim_elapsed_time = (elapsed_time * realtime_factor)
 
             msg = Clock()
-            msg.clock.secs = int(sim_elapsed_time.seconds + sim_elapsed_time.days*(24*3600))
+            msg.clock.secs = int(sim_elapsed_time.seconds + sim_elapsed_time.days * (24 * 3600))
             msg.clock.nsecs = sim_elapsed_time.microseconds * 1e3
             pub.publish(msg)
 
             gui.update_current_time(datetime_epoch,
                                     sim_elapsed_time,
-                                    datetime_epoch+sim_elapsed_time)
+                                    datetime_epoch + sim_elapsed_time)
         if gui.paused:
             # if we just got into a pause, store time
             if pause_start is None:
@@ -121,4 +120,3 @@ if __name__ == '__main__':
         sleep(rate)
 
     gui.callback_quit()
-
