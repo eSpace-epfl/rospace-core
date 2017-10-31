@@ -25,11 +25,11 @@ sensors:
     pose: -0.707 0 -0.707 0.0
 
   AON:
-    position: 0.355 -0.02 0.08
-    pose: -0.707 0 -0.707 0.0
-    fov_x: 1.5
-    fov_y: 1.5
-    max_range: 10000
+    position: 0 0 0
+    pose: 0 0 0 1.0
+    fov_x: 6
+    fov_y: 6
+    max_range: 50000
     mu: 0
     sigma: 0.01
 

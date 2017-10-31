@@ -2,7 +2,7 @@
 
 <!-- Launch Epoch Clock without params (=realtime, start from now) -->
     <node pkg="epoch_clock" name="epoch_clock_sim" type="epoch_clock.py" output="screen">
-        <param name="realtime_factor" value="60" />
+        <param name="realtime_factor" value="1" />
         <param name="init_epoch" value="20170915T13:20:00" />
     </node>
 
@@ -14,8 +14,7 @@
         <node pkg="sgp4_node" name="sgp4_node_cso" type="sgp4_node.py" output="screen">
             <param name="tle_line1" value="1 35932U 09051B   17242.83495672  .00000195  00000-0  55221-4 0  9991" />
             <param name="tle_line2" value="2 35932  98.5062  22.7182 0008099  30.5945 272.9750 14.57041441421185" />
-            <param name="spin_rate"  value="0.303122158" /> <!-- 5 rev per orbit approx (360/(98.97*60)*5) for tests-->
-            <param name="spin_axis"  value="0 0 1" /> <!-- some random spin axis -->
+            <param name="attitude_mode" value="lof" />
         </node>
 
 
@@ -46,12 +45,19 @@
     <node pkg="sgp4_node" name="sgp4_node_target" type="sgp4_node.py" output="screen">
         <param name="tle_line1" value="1 35932U 09051B   17242.83495672  .00000195  00000-0  55221-4 0  9991" />
         <param name="tle_line2" value="2 35932  98.5062  22.7182 0008099  30.5945 329.5723 14.56041441421185" />
+        <param name="attitude_mode" value="spin" />
         <param name="spin_rate"  value="1" /> <!-- 1 deg/s-->
         <param name="spin_axis"  value="1 1 0" />
     </node>
 
     <!-- Launch LVLH node -->
     <node name="lvlh_pub" pkg="lvlh_node" type="lvlh_node.py" output="screen" >
+        <remap from="target_oe" to="/target/oe" />
+        <remap from="chaser_oe" to="/cso/oe" />
+    </node>
+
+    <!-- Launch REL node -->
+    <node name="rel_pub" pkg="rel_node" type="rel_node.py" output="screen" >
         <remap from="target_oe" to="/target/oe" />
         <remap from="chaser_oe" to="/cso/oe" />
     </node>
