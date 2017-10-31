@@ -16,14 +16,15 @@
 #         EXCEPT: Target is in equatorial orbit (target.i=0)
 #
 import sys
+import numpy as np
 
-from Constants import *
-from space_tf import OrbitalElements
+from . import Constants
+from . import OrbitalElements
 
 
 class QNSRelOrbElements:
     def __init__(self):
-        self.dA = 0
+        self.dA = 0  #
         self.dL = 0
         self.dEx = 0
         self.dEy = 0
@@ -46,7 +47,7 @@ class QNSRelOrbElements:
             raise ValueError("Target in equitorial orbit. QNS not well-defined.")
 
         # calculate values
-        self.dA = (float(t.a) - c.a) / c.a # a_t sometimes happens to be a int
+        self.dA = (float(t.a) - c.a) / c.a  # a_t sometimes happens to be a int
         self.dL = (t.m + t.w) - (c.m + c.w) + (t.omega - c.omega) * np.cos(c.i)
         self.dEx = t.e * np.cos(t.w) - c.e * np.cos(c.w)
         self.dEy = t.e * np.sin(t.w) - c.e * np.sin(c.w)

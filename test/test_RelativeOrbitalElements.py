@@ -5,11 +5,12 @@ import sys
 import os
 from copy import deepcopy
 import numpy as np
-sys.path.insert(0, os.path.dirname(os.path.realpath(__file__))+"/../src/") #hack...
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + "/../src/")  # hack...
 from space_tf import *
 
-class RelativeOrbitalElementsTest(unittest.TestCase):
 
+class RelativeOrbitalElementsTest(unittest.TestCase):
     def test_identity(self):
         target = OrbitalElements()
         target.e = 0.0007281
