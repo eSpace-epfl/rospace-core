@@ -2,7 +2,7 @@
 
 <!-- Launch Epoch Clock without params (=realtime, start from now) -->
     <node pkg="epoch_clock" name="epoch_clock_sim" type="epoch_clock.py" output="screen">
-        <param name="realtime_factor" value="1" />
+        <param name="realtime_factor" value="100" />
         <param name="init_epoch" value="20170915T13:20:00" />
     </node>
 
@@ -27,6 +27,7 @@
 
          <!-- Launch AON Sensor -->
         <node pkg="space_sim_aon" name="node_aon" type="sim_aon_node.py" output="screen">
+            <param name="publish_rate" value="0.0033" />
             <remap from="~sensor" to="/cso/sensors/AON" />
             <remap from="chaser_oe" to="oe" />
             <remap from="target_oe" to="/target/oe" />
