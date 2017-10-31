@@ -1,9 +1,8 @@
 import numpy as np
 import rospy
+
 from tf import transformations
-def R_x(q): return np.array([[1, 0, 0],[0, np.cos(q), -np.sin(q)],[0, np.sin(q), np.cos(q)]])
-def R_y(q): return np.array([[np.cos(q), 0, np.sin(q)],[0, 1, 0],[-np.sin(q), 0, np.cos(q)]])
-def R_z(q): return np.array([[np.cos(q), -np.sin(q), 0],[np.sin(q), np.cos(q), 0],[0, 0, 1]])
+import space_tf as stf
 
 class BaseRelativeOrbitalFilter:
     # used references:
@@ -22,6 +21,13 @@ class BaseRelativeOrbitalFilter:
         self.R = np.array([[0.01, 0.01],[-0.01, 0.01]])
         print self.R
         self.t = rospy.Time(0, 0)
+
+        self.time_c = rospy.Time(0, 0)
+
+        # constant term
+        self.J2_term = (3.0 / 4.0) * (stf.Constants.J_2 * (stf.Constants.R_earth ** 2) * np.sqrt(stf.Constants.mu_earth))
+
+        
 
     #calculates target orbital elements based on
     # current filter state and current position of chaser
@@ -89,11 +95,11 @@ class BaseRelativeOrbitalFilter:
         # convert to chaser cartesian and get vector
         p_c = a_c * (1 - e_c ** 2)
         R_c_per = np.array([p_c * np.cos(T_c), p_c * np.sin(T_c), 0]) / (1.0 + e_c * np.cos(T_c))
-        R_c = R_z(O_c).dot(R_x(i_c)).dot(R_z(w_c)).dot(R_c_per)
+        R_c = stf.R_z(O_c).dot(stf.R_x(i_c)).dot(stf.R_z(w_c)).dot(R_c_per)
         # convert to TARGET cartesian and get vector
         p_t = a_t * (1 - e_t ** 2)
         R_t_per = np.array([p_t * np.cos(T), p_t * np.sin(T), 0]) / (1.0 + e_t * np.cos(T))
-        R_t = R_z(O_t).dot(R_x(i_t)).dot(R_z(w_t)).dot(R_t_per)
+        R_t = stf.R_z(O_t).dot(stf.R_x(i_t)).dot(stf.R_z(w_t)).dot(R_t_per)
 
         p_teme = (R_t - R_c) * 1000
         p_body = np.dot(self.R_body[0:3, 0:3].T, p_teme)
@@ -171,17 +177,14 @@ class BaseRelativeOrbitalFilter:
         A_kep = self.get_A_kep_qns(alpha_c)
         A_j2 = self.get_A_j2_qns(alpha_c)
 
-        mu = 3.986004418 * 10 ** (14 - 9)  # [km^3 * s^-2]
         a = alpha_c[0]
         e = alpha_c[2]
         i = alpha_c[4]
 
         # substitutions
         eta = np.sqrt(1.0 - e ** 2.0)
-        R_E = 6378.137
-        J_2 = 1.08262668 * 10 ** (-3.0)
 
-        kappa = (3.0 / 4.0) * (J_2 * (R_E ** 2) * np.sqrt(mu)) / (np.power(a, 3.5) * np.power(eta, 4))
+        kappa = self.J2_term / (np.power(a, 3.5) * np.power(eta, 4))
         w_dot = np.array([[0, 0, 0, -kappa * 5.0 * (np.cos(i) ** 2 - 1.0), 0, 0]]).T
         J_qns_t2 = self.get_J_qns(alpha_c + w_dot * t)
         phi_j2 = J_qns_t2.T.dot(np.eye(6) + (A_kep + A_j2) * t).dot(J_qns)
@@ -190,11 +193,6 @@ class BaseRelativeOrbitalFilter:
     def get_Dx(self, alpha_c, x):
         # Implementation of Equation 10 of [2]
         # variables
-        mu = 3.986004418 * 10 ** (14 - 9)  # [km^3 * s^-2]
-        R_E = 6378.137
-        J_2 = 1.08262668 * 10 ** (-3)
-        y = 0.75 * J_2 * R_E**2 * np.sqrt(mu)
-
         # chaser variables
         a_s = alpha_c[0]
         e_s = alpha_c[2]
@@ -225,7 +223,7 @@ class BaseRelativeOrbitalFilter:
         p1[2] = -e_t_s_wt * Q_t
         p1[3] = e_t_c_wt * Q_t
         p1[5] = -2.0 * c_it * s_is
-        m_p1 = (y*np.power(a_t, -3.5))/((1-e_t**2)**2)
+        m_p1 = (self.J2_term * np.power(a_t, -3.5))/((1-e_t**2)**2)
 
         # part2
         p2 = np.zeros([6, 1])
@@ -233,12 +231,12 @@ class BaseRelativeOrbitalFilter:
         p2[2] = -e_s * s_ws * Q_s
         p2[3] =  e_s * c_ws * Q_s
         p2[5] = -2 * c_it * s_is
-        m_p2 = (y*np.power(a_s, -3.5))/((1-e_s**2)**2)
+        m_p2 = (self.J2_term * np.power(a_s, -3.5))/((1-e_s**2)**2)
 
         # part 3
         p3 = np.zeros([6, 1])
         p3[1] = np.power(a_t, -1.5) - np.power(a_s, -1.5)
-        m_p3 = np.sqrt(mu)
+        m_p3 = np.sqrt(stf.Constants.mu_earth)
 
         d_x = m_p1 * p1 - m_p2 * p2 + m_p3 * p3
 
@@ -356,14 +354,12 @@ class BaseRelativeOrbitalFilter:
 
     # Methods for STM calculation
     def get_A_kep_qns(self, alpha_c):
-        mu = 3.986004418 * 10 ** (14 - 9)  # [km^3 * s^-2]
-        n = np.sqrt(mu) / np.power(alpha_c[0], 1.5)
+        n = np.sqrt(stf.Constants.mu_earth) / np.power(alpha_c[0], 1.5)
         A_kep_qns = np.zeros([6, 6])
         A_kep_qns[1, 0] = -1.5 * n
         return A_kep_qns
 
     def get_A_j2_qns(self, alpha_c):
-        mu = 3.986004418 * 10 ** (14 - 9)  # [km^3 * s^-2]
 
         a = alpha_c[0]
         e = alpha_c[2]
@@ -371,10 +367,8 @@ class BaseRelativeOrbitalFilter:
 
         # substitutions
         eta = np.sqrt(1.0 - e ** 2.0)
-        R_E = 6378.137
-        J_2 = 1.08262668 * 10 ** (-3)
 
-        kappa = (3.0 / 4.0) * (J_2 * (R_E ** 2) * np.sqrt(mu)) / (np.power(a, 3.5) * np.power(eta, 4))
+        kappa = self.J2_term / (np.power(a, 3.5) * np.power(eta, 4))
         E = 1.0 + eta
         F = 4.0 + 3.0 * eta
         G = 1.0 / eta ** 2.0
