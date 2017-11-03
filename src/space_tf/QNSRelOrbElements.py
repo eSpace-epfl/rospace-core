@@ -19,11 +19,12 @@ import sys
 import numpy as np
 
 from . import Constants
-from . import OrbitalElements
+from BaseState import *
 
 
-class QNSRelOrbElements:
+class QNSRelOrbElements(BaseState):
     def __init__(self):
+        super(QNSRelOrbElements, self).__init__()
         self.dA = 0  #
         self.dL = 0
         self.dEx = 0
@@ -31,13 +32,26 @@ class QNSRelOrbElements:
         self.dIx = 0
         self.dIy = 0
 
-    def from_absolute(self, target, chaser):
+    def from_vector(self, vector):
+        self.dA = vector[0]
+        self.dL = vector[1]
+        self.dEx = vector[2]
+        self.dEy = vector[3]
+        self.dIx = vector[4]
+        self.dIy = vector[5]
+
+    def as_vector(self):
+        vector = np.zeros([6, 1])
+        vector[0] = self.dA
+        vector[1] = self.dL
+        vector[2] = self.dEx
+        vector[3] = self.dEy
+        vector[4] = self.dIx
+        vector[5] = self.dIy
+
+    def from_keporb(self, target, chaser):
         # Calculate relative coordinates based on
         # target and chaser orbital elements
-
-        # make sure mean anomaly is populated
-        target.update_m()
-        chaser.update_m()
 
         # shorter writing
         t = target
@@ -46,35 +60,15 @@ class QNSRelOrbElements:
         if abs(t.i) < sys.float_info.epsilon:
             raise ValueError("Target in equitorial orbit. QNS not well-defined.")
 
+        if target.frame != chaser.frame:
+            raise ValueError("Chaser and Target must be in same frame")
+
         # calculate values
+        self.time = target.time
+        self.frame = target.frame
         self.dA = (float(t.a) - c.a) / c.a  # a_t sometimes happens to be a int
-        self.dL = (t.m + t.w) - (c.m + c.w) + (t.omega - c.omega) * np.cos(c.i)
+        self.dL = (t.m + t.w) - (c.m + c.w) + (t.O - c.O) * np.cos(c.i)
         self.dEx = t.e * np.cos(t.w) - c.e * np.cos(c.w)
         self.dEy = t.e * np.sin(t.w) - c.e * np.sin(c.w)
         self.dIx = t.i - c.i
-        self.dIy = (t.omega - c.omega) * np.sin(c.i)
-
-    def to_absolute(self, chaser):
-        # calculate target absolute orbital elements
-        # based on state and chaser absolute orbital elements
-
-        target = OrbitalElements()
-        chaser.update_m()
-        u_c = chaser.m + chaser.w
-
-        # calculate absolute orbital elements.
-        target.a = chaser.a * (1.0 + self.dA)
-        e_c_c_wc = chaser.e * np.cos(chaser.w) + self.dEx
-        e_c_s_wc = chaser.e * np.sin(chaser.w) + self.dEy
-        target.i = chaser.i + self.dIx
-        target.omega = self.dIy * np.sin(chaser.i) + chaser.omega
-
-        target.e = np.sqrt(e_c_c_wc ** 2 + e_c_s_wc ** 2)
-        target.w = np.arctan2(e_c_s_wc, e_c_c_wc)
-
-        u_t = u_c + (self.dL - np.cos(chaser.i) * (target.omega - chaser.omega))
-        target.m = u_t - target.w
-        target.update_E()  # calculate Eccentric Anomaly
-        target.update_t()  # calculate true anomaly
-
-        return target
+        self.dIy = (t.O - c.O) * np.sin(c.i)

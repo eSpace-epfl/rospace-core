@@ -15,3 +15,5 @@ def R_z(q): return np.array([[np.cos(q), -np.sin(q), 0], [np.sin(q), np.cos(q), 
 
 class Constants:
     mu_earth = 3.986004418e14 / 1e9  # [km^3]/[s^2], thus divided by 1e9
+    R_earth = 6378.137  # [km]
+    J_2 = 1.08262668 * 10 ** (-3.0)

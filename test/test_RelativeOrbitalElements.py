@@ -12,18 +12,18 @@ from space_tf import *
 
 class RelativeOrbitalElementsTest(unittest.TestCase):
     def test_identity(self):
-        target = OrbitalElements()
+        target = KepOrbElem()
         target.e = 0.0007281
         target.i = 1.72
         target.w = 2.45
-        target.t = 0.2
-        target.omega = 1.39
+        target.v = 0.2
+        target.O = 1.39
         target.a = 7084
 
         chaser = target
 
         target_rel = QNSRelOrbElements()
-        target_rel.from_absolute(target, chaser)
+        target_rel.from_keporb(target, chaser)
 
         # all relative elements should be 0 (same orbit)
         self.assertAlmostEqual(target_rel.dA, 0, places=10)
@@ -34,32 +34,34 @@ class RelativeOrbitalElementsTest(unittest.TestCase):
         self.assertAlmostEqual(target_rel.dIy, 0, places=10)
 
         # convert back
-        target_2 = target_rel.to_absolute(chaser)
+        target_2 = KepOrbElem()
+        target_2.from_qns_relative(target_rel, chaser)
         self.assertAlmostEqual(target.a, target_2.a, places=10)
         self.assertAlmostEqual(target.e, target_2.e, places=10)
         self.assertAlmostEqual(target.i, target_2.i, places=10)
-        self.assertAlmostEqual(target.omega, target_2.omega, places=10)
+        self.assertAlmostEqual(target.O, target_2.O, places=10)
         self.assertAlmostEqual(target.w, target_2.w, places=10)
         self.assertAlmostEqual(target.m, target_2.m, places=10)
-        self.assertAlmostEqual(target.t, target_2.t, places=10)
+        self.assertAlmostEqual(target.v, target_2.v, places=10)
+        self.assertAlmostEqual(target.E, target_2.E, places=10)
 
     def test_deltaL(self):
-        target = OrbitalElements()
+        target = KepOrbElem()
         target.e = 0.0007281
         target.i = 1.72
         target.w = 2.45
-        target.t = 0.2
+        target.v = 0.2
         target.omega = 1.39
         target.a = 7084
 
         chaser = deepcopy(target)
         chaser.a = 7085
-        chaser.t = 0.1
+        chaser.v = 0.1
 
         target_rel = QNSRelOrbElements()
-        target_rel.from_absolute(target, chaser)
+        target_rel.from_keporb(target, chaser)
 
-        # all relative elements should be 0 (same orbit)
+        # dA an dL are different, rest same
         # todo: get testcase where ROE are known
         self.assertNotAlmostEqual(target_rel.dA, 0, places=10)
         self.assertNotAlmostEqual(target_rel.dL, 0, places=10)
@@ -69,15 +71,18 @@ class RelativeOrbitalElementsTest(unittest.TestCase):
         self.assertAlmostEqual(target_rel.dIy, 0, places=10)
 
         # convert back
-        target_2 = target_rel.to_absolute(chaser)
+        target_2 = KepOrbElem()
+
+        target_2.from_qns_relative(target_rel, chaser)
 
         self.assertAlmostEqual(target.a, target_2.a, places=10)
         self.assertAlmostEqual(target.e, target_2.e, places=10)
         self.assertAlmostEqual(target.i, target_2.i, places=10)
-        self.assertAlmostEqual(target.omega, target_2.omega, places=10)
+        self.assertAlmostEqual(target.O, target_2.O, places=10)
         self.assertAlmostEqual(target.w, target_2.w, places=10)
         self.assertAlmostEqual(target.m, target_2.m, places=10)
-        self.assertAlmostEqual(target.t, target_2.t, places=10)
+        self.assertAlmostEqual(target.v, target_2.v, places=10)
+        self.assertAlmostEqual(target.E, target_2.E, places=10)
 
 
 if __name__ == '__main__':

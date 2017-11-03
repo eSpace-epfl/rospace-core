@@ -3,7 +3,8 @@
 #   License: TBD
 import datetime
 import numpy as np
-
+from BaseState import *
+from Constants import *
 
 class CartesianFrame:
     UNDEF = 0
@@ -11,8 +12,10 @@ class CartesianFrame:
     ITRF = 2
 
 
-class Cartesian(object):
+class Cartesian(BaseState):
     def __init__(self):
+        super(Cartesian, self).__init__()
+
         self.R = np.array([0, 0, 0])  # position
         self.V = np.array([0, 0, 0])  # velocity
         self.epochJD = 0  # julian date epoch
@@ -23,6 +26,18 @@ class Cartesian(object):
         J2000_date = datetime.datetime(2000, 1, 1, 11, 59, 0)  # UTC time of J2000
         delta = date - J2000_date
         self.epochJD = J2000 + delta.total_seconds() / (60.0 * 60 * 24)
+
+    def from_keporb(self, keporb):
+        # Calculates cartesian coordinates based on current orbital elements
+        p = keporb.a * (1 - keporb.e ** 2)
+
+        # Position in perifocal frame, then rotate to proper orbital plane
+        R_per = np.array([p * np.cos(keporb.v), p * np.sin(keporb.v), 0]) / (1.0 + keporb.e * np.cos(keporb.v))
+        self.R = R_z(keporb.O).dot(R_x(keporb.i)).dot(R_z(keporb.w)).dot(R_per)
+
+        # speed in perifocal frame, then rotate
+        V_per = np.array([-np.sin(keporb.v), keporb.e + np.cos(keporb.v), 0]) * np.sqrt(Constants.mu_earth / p)
+        self.V = R_z(keporb.O).dot(R_x(keporb.i)).dot(R_z(keporb.w)).dot(V_per)
 
 
 class CartesianTEME(Cartesian):

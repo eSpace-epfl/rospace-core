@@ -10,6 +10,7 @@ from Cartesian import *
 from OrbitalElements import *
 from SphericalEarth import *
 from Constants import *
+from KepOrbElem import *
 
 
 class Converter:
