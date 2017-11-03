@@ -64,11 +64,12 @@ def handle_pose(msg):
 def handle_target_oe(msg):
     global body_frame
     # convert to R/V
-    target_oe = space_tf.Converter.fromOEMessage(msg.position)
+    target_oe = space_tf.KepOrbElem()
+    target_oe.from_message(msg.position)
 
     # convert to TEME
     tf_target_teme = space_tf.CartesianTEME()
-    space_tf.Converter.convert(target_oe, tf_target_teme)
+    tf_target_teme.from_keporb(target_oe)
 
     # calculate reference frame
     i = tf_target_teme.R / np.linalg.norm(tf_target_teme.R)

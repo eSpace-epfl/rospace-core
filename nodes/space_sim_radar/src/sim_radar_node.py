@@ -13,20 +13,23 @@ from space_sensor_model import SimpleRangeFOVSensor
 pub = rospy.Publisher('radar', RangeStamped, queue_size=10)
 sensor_obj = SimpleRangeFOVSensor()
 
+
 def callback(target_oe, chaser_oe):
 
     # calculate baseline
-    tf_target_oe = space_tf.Converter.fromOEMessage(target_oe.position)
-    tf_chaser_oe = space_tf.Converter.fromOEMessage(chaser_oe.position)
+    tf_target_oe = space_tf.KepOrbElem()
+    tf_chaser_oe = space_tf.KepOrbElem()
+
+    tf_target_oe.from_message(target_oe.position)
+    tf_chaser_oe.from_message(chaser_oe.position)
 
     # convert to TEME
     tf_target_teme = space_tf.CartesianTEME()
     tf_chaser_teme = space_tf.CartesianTEME()
-    space_tf.Converter.convert(tf_target_oe, tf_target_teme)
-    space_tf.Converter.convert(tf_chaser_oe, tf_chaser_teme)
+    tf_target_teme.from_keporb(tf_target_oe)
+    tf_chaser_teme.from_keporb(tf_chaser_oe)
 
     # vector from chaser to target in chaser body frame in [m]
-
     ## get current rotation of body
     R_body = transformations.quaternion_matrix([chaser_oe.orientation.x,
                                                 chaser_oe.orientation.y,

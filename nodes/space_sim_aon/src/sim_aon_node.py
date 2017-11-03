@@ -4,6 +4,8 @@ import rospy
 
 import message_filters
 from tf import transformations
+from visualization_msgs.msg import Marker
+from geometry_msgs.msg import Point
 
 import space_tf
 from space_msgs.msg import SatelitePose, AzimutElevationStamped
@@ -17,17 +19,22 @@ class AONSensorNode:
         self.sensor = sensor
         self.pub = rospy.Publisher('aon', AzimutElevationStamped, queue_size=10)
 
+        self.pub_m = rospy.Publisher("aon_observation", Marker, queue_size=10)
+
     def callback(self, target_oe, chaser_oe):
         # calculate baseline
-        tf_target_oe = space_tf.Converter.fromOEMessage(target_oe.position)
-        tf_chaser_oe = space_tf.Converter.fromOEMessage(chaser_oe.position)
+        tf_target_oe = space_tf.KepOrbElem()
+        tf_chaser_oe = space_tf.KepOrbElem()
+
+        tf_target_oe.from_message(target_oe.position)
+        tf_chaser_oe.from_message(chaser_oe.position)
 
         # convert to TEME
         tf_target_teme = space_tf.CartesianTEME()
         tf_chaser_teme = space_tf.CartesianTEME()
-        space_tf.Converter.convert(tf_target_oe, tf_target_teme)
-        space_tf.Converter.convert(tf_chaser_oe, tf_chaser_teme)
 
+        tf_target_teme.from_keporb(tf_target_oe)
+        tf_chaser_teme.from_keporb(tf_chaser_oe)
         # vector from chaser to target in chaser body frame in [m]
 
         ## get current rotation of body
@@ -38,6 +45,20 @@ class AONSensorNode:
 
         p_teme = (tf_target_teme.R -tf_chaser_teme.R)*1000
         p_body = np.dot(R_body[0:3,0:3].T, p_teme)
+
+        # publish observation
+        msg = Marker()
+        msg.header.frame_id = "cso"
+        msg.type = Marker.ARROW
+        msg.action = Marker.ADD
+        msg.points.append(Point(0, 0, 0))
+        msg.points.append(Point(p_body[0], p_body[1], p_body[2]))
+        msg.scale.x = 100
+        msg.scale.y = 200
+        msg.color.a = 1.0
+        msg.color.r = 1.0
+        self.pub_m.publish(msg)
+
 
         # check if visible and augment sensor value
         visible, value = sensor_obj.get_measurement(p_body)
