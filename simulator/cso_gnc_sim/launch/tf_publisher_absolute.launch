@@ -6,6 +6,7 @@
             <remap from="pose" to="/cso/pose" />
             <remap from="~sensors" to="/cso/sensors" />
             <remap from="~frames" to="/cso/frames" />
+            <remap from="~frames" to="/cso/thrusters" />
             <param name="body_frame" value="cso" />
             <param name="mode" value="absolute" />
         </node>
