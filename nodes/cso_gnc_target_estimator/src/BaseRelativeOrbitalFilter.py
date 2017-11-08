@@ -16,10 +16,11 @@ class BaseRelativeOrbitalFilter:
 
     def __init__(self):
         #00138646026702
-        self.x = np.array([[0.0046, 0.001, -2.68790078041e-06, -1.991228213279e-06, -1.4998766832e-07, -0.000442743021758]]).T
-        self.P = np.diag([0.001,0.01,0.00001,0.00001,0.00001,0.00001])
-        self.Q = np.diag([0.001, 0.01, 0.0001, 0.0001, 0.001, 0.0001])
-        self.R = np.array([[0.00001, 0],[0, 0.00001]])
+        #self.x = np.array([[0.002, 0.007, 7.0e-7, 1.90e-5, 3.225e-6, -0.0052202]]).T
+        self.x = np.array([[0.002, 0.007,1.7e-5, 2.29e-5, 0.0052, 0.0096]]).T
+        self.P = np.diag([0.01,0.01,0.01,0.01,0.01,0.01])
+        self.Q = np.diag([0.01, 0.01, 0.001, 0.001, 0.001, 0.001])
+        self.R = np.array([[0.0001, 0],[0, 0.0001]])
 
         self.t = rospy.Time(0, 0)
 
@@ -42,20 +43,36 @@ class BaseRelativeOrbitalFilter:
     # current filter state and current position of chaser
     def update_target_oe(self):
 
+        print "============"
+        print self.x.T
+        print self.oe_c.a,self.oe_c.e,self.oe_c.w,self.oe_c.O,self.oe_c.v,self.oe_c.m,self.oe_c.i
+
+
+
         rel_elem = stf.QNSRelOrbElements()
         rel_elem.from_vector(self.x)
 
         self.oe_t.from_qns_relative(rel_elem, self.oe_c)
+        print self.oe_t.a,self.oe_t.e,self.oe_t.w,self.oe_t.O,self.oe_t.v,self.oe_t.m,self.oe_t.i
+
         self.has_oe = True
 
+    print "============"
 
     def get_H_of_x(self):
         # get cartesian locations of both
+
+
+
+
+        target_osc_oe = stf.OscKepOrbElem()
+        target_osc_oe.from_mean_elems(self.oe_t)
+
         cart_c = stf.Cartesian()
         cart_c.from_keporb(self.oe_c)
 
         cart_t = stf.Cartesian()
-        cart_t.from_keporb(self.oe_t)
+        cart_t.from_keporb(target_osc_oe)
 
         p_teme = (cart_t.R - cart_c.R) * 1000
         p_body = np.dot(self.R_body[0:3, 0:3].T, p_teme)
@@ -221,6 +238,7 @@ class BaseRelativeOrbitalFilter:
             return
 
         self.update_lock.acquire()
+        self.oe_c = stf.KepOrbElem()
         self.oe_c.from_message(chaser_oe.position)
 
         self.time_c = chaser_oe.header.stamp
@@ -258,7 +276,7 @@ class BaseRelativeOrbitalFilter:
         delta_t = (meas_msg.header.stamp - self.t).to_sec()
         self.t = meas_msg.header.stamp
 
-       # self.advance_state(delta_t)
+        self.advance_state(delta_t)
 
         # get angles
         z_k = np.zeros([2, 1])

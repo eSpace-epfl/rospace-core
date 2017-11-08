@@ -17,7 +17,7 @@ if __name__ == '__main__':
     pub = rospy.Publisher("state", RelOrbElemWithCovarianceStamped, queue_size=10)
     pub_res = rospy.Publisher("residual", PointStamped, queue_size=10)
     pub_point = rospy.Publisher("state_pos", PointStamped, queue_size=10)
-
+    pub_tar_oe = rospy.Publisher("state_oe", SatelitePose, queue_size=10)
     # get first state before subscribers start
     [x, P] = filter.get_state()
     res = filter.residual
@@ -59,9 +59,12 @@ if __name__ == '__main__':
         if filter.has_oe:
             # publish absolute target position as seen by filter
             target_oe = filter.get_target_oe()
+
+            target_osc_oe = stf.OscKepOrbElem()
+            target_osc_oe.from_mean_elems(target_oe)
             # convert to cartesian
             cart_c = stf.Cartesian()
-            cart_c.from_keporb(target_oe)
+            cart_c.from_keporb(target_osc_oe)
 
 
 
@@ -70,6 +73,19 @@ if __name__ == '__main__':
                             filter.t,
                              "filter_state",
                              "teme")
+
+            msg_tar = SatelitePose()
+
+            msg_tar.header.stamp = filter.t
+            msg_tar.header.frame_id = "teme"
+
+            msg_tar.position.semimajoraxis = target_oe.a
+            msg_tar.position.eccentricity = target_oe.e
+            msg_tar.position.inclination = np.rad2deg(target_oe.i)
+            msg_tar.position.arg_perigee = np.rad2deg(target_oe.w)
+            msg_tar.position.raan = np.rad2deg(target_oe.O)
+            msg_tar.position.true_anomaly = np.rad2deg(target_oe.v)
+            pub_tar_oe.publish(msg_tar)
 
         [x, P] = filter.get_state()
         res = filter.residual
