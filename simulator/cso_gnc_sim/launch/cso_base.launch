@@ -2,7 +2,7 @@
 
 <!-- Launch Epoch Clock without params (=realtime, start from now) -->
     <node pkg="epoch_clock" name="epoch_clock_sim" type="epoch_clock.py" output="screen">
-        <param name="realtime_factor" value="100" />
+        <param name="realtime_factor" value="250" />
         <param name="init_epoch" value="20170915T12:20:00" />
     </node>
 
@@ -13,7 +13,7 @@
         <!-- Launch SGP4 node with TLE (cheating here and using a changed swisscube TLE) -->
         <node pkg="sgp4_node" name="sgp4_node_cso" type="sgp4_node.py" output="screen">
             <param name="tle_line1" value="1 35932U 09051B   17242.83495672  .00000195  00000-0  55221-4 0  9991" />
-            <param name="tle_line2" value="2 35932  98.5062  22.7182 0008099  30.5945 300.9750 14.56541441421185" />
+            <param name="tle_line2" value="2 35932  98.2062  22.7182 0008099  30.5945 324.2750 14.561341441421185" />
             <param name="attitude_mode" value="lof" />
         </node>
 
@@ -27,8 +27,9 @@
 
          <!-- Launch AON Sensor -->
         <node pkg="space_sim_aon" name="node_aon" type="sim_aon_node.py" output="screen">
-            <param name="publish_rate" value="0.033" />
+            <param name="publish_rate" value="0.33" />
             <remap from="~sensor" to="/cso/sensors/AON" />
+            <remap from="~thrusters" to="/cso/thrusters" />
             <remap from="chaser_oe" to="oe" />
             <remap from="target_oe" to="/target/oe" />
         </node>
