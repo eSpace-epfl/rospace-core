@@ -12,7 +12,7 @@
 from BaseState import *
 from Constants import *
 import numpy as np
-from threading import Lock
+from threading import RLock
 
 
 # Base without anomaly
@@ -26,16 +26,17 @@ class KepOrbElem(BaseState):
         self.i = 0
         self.period = 0
 
-        self.lock = Lock()
+        self.lock = RLock()
         self._E = None  # eccentric anomaly
         self._m = None  # mean anomaly
         self._v = None  # true anomaly
 
     @property
     def E(self):
-
+        self.lock.acquire()
         if self._E is None:
             self.sync_anomalies()
+        self.lock.release()
         return self._E
 
     @E.setter
@@ -44,13 +45,15 @@ class KepOrbElem(BaseState):
         self._E = value
         self._m = None
         self._v = None
+        self.sync_anomalies()
         self.lock.release()
 
     @property
     def m(self):
+        self.lock.acquire()
         if self._m is None:
             self.sync_anomalies()
-
+        self.lock.release()
         return self._m
 
     @m.setter
@@ -59,13 +62,15 @@ class KepOrbElem(BaseState):
         self._E = None
         self._m = value
         self._v = None
+        self.sync_anomalies()
         self.lock.release()
 
     @property
     def v(self):
+        self.lock.acquire()
         if self._v is None:
             self.sync_anomalies()
-
+        self.lock.release()
         return self._v
 
     @v.setter
@@ -74,22 +79,17 @@ class KepOrbElem(BaseState):
         self._E = None
         self._m = None
         self._v = value
+        self.sync_anomalies()
         self.lock.release()
 
     def sync_anomalies(self):
-
-        self.lock.acquire()
         if self._E is None and self._m is None and self._v is None:
-            self.lock.release()
             raise ValueError("No anomaly set. Cannot sync.")
-
 
         if self._E is not None and \
                 self._m is not None \
                 and self._v is not None:
-            self.lock.release()
             return
-
 
         if self._v is None and self._E is not None:
             self.calc_v_from_E()
@@ -99,10 +99,9 @@ class KepOrbElem(BaseState):
 
         if self._m is None and self._v is not None:
             self.calc_m_from_v()
-        self.lock.release()
+
         # recursively run until everything is set
         self.sync_anomalies()
-
 
     def calc_v_from_E(self):
         # Calculates v
@@ -240,7 +239,16 @@ class KepOrbElem(BaseState):
         self.w = np.arctan2(e_c_s_wc, e_c_c_wc)
 
         u_t = u_c + (qns.dL - np.cos(chaser.i) * (self.O - chaser.O))
-        self.m = u_t - self.w
+        m = u_t - self.w
+
+        # correct angles!
+        if m > 2*np.pi:
+            self.m = m - 2*np.pi
+        elif m<0:
+            self.m = m + 2*np.pi
+        else:
+            self.m = m
+
 
     def as_array_true(self):
         return np.array([[self.a, self.v, self.e, self.w, self.i, self.O]]).T
@@ -249,7 +257,96 @@ class KepOrbElem(BaseState):
         return np.array([[self.a, self.m, self.e, self.w, self.i, self.O]]).T
 
     def from_osc_elems(self, osc):
-        pass
+        self.osc_elems_transformation(osc, True)
+
+
+    def osc_elems_transformation(self, other, dir):
+        # if dir == True =>  osc to mean
+        # if dir == False => mean to osc
+        # Reference:
+        # Appendix G in [2]
+        eta = np.sqrt(1.0 - other.e ** 2)
+        gma_2 = Constants.J_2 / 2.0 * (Constants.R_earth / other.a) ** 2  # G.296
+
+        if dir: # if we are mapping osc to mean, switch sign of gma_2
+            gma_2 = -gma_2  # G.297
+
+        gma_2_p = gma_2 / eta ** 4  # G.298
+        c_i = np.cos(other.i)
+        c_v = np.cos(other.v)
+        a_r = (1.0 + other.e * np.cos(other.v)) / (eta ** 2)  # G.301
+
+        # calculate osculating semi-major axis based on series expansion
+        a_1 = (3.0 * c_i ** 2 - 1) * (a_r ** 3 - 1.0 / eta ** 3)
+        a_2 = 3.0 * (1 - c_i ** 2) * a_r ** 3 * np.cos(2.0 * other.w + 2.0 * other.v)
+        self.a = other.a + other.a * gma_2 * (a_1 + a_2)  # G.302
+
+        # calculate intermediate for d_e
+        d_e1 = gma_2_p / 8.0 * other.e * eta ** 2 * (
+        1.0 - 11 * c_i ** 2 - 40.0 * ((c_i ** 4) / (1.0 - 5.0 * c_i ** 2))) * np.cos(2.0 * other.w)  # G.303
+        fe_1 = (3.0 * c_i ** 2 - 1.0) / eta ** 6
+        e_1 = other.e * eta + other.e / (1.0 + eta) + 3 * c_v + 3 * other.e * c_v ** 2 + other.e ** 2 * c_v ** 3
+        fe_2 = 3.0 * (1.0 - c_i ** 2) / eta ** 6
+        fe_3 = gma_2_p * (1.0 - c_i ** 2)
+        e_2 = (other.e + 3 * c_v + 3 * other.e * c_v ** 2 + other.e ** 2 * c_v ** 3)*np.cos(2*other.w+2*other.v)
+        e_3 = 3 * np.cos(2.0 * other.w + other.v) + np.cos(2.0 * other.w + 3.0 * other.v)
+
+        d_e = d_e1 + (eta ** 2 / 2.0) * (gma_2 * (fe_1 * e_1 + fe_2 * e_2) - fe_3 * e_3)  # G.304
+
+        fi_1 = gma_2_p / 2.0 * c_i * np.sqrt(1.0 - c_i ** 2)
+        i_1 = 3.0 * np.cos(2.0 * other.w + 2.0 * other.v) + 3.0 * other.e * np.cos(
+            2.0 * other.w + other.v) + other.e * np.cos(2.0 * other.w + 3.0 * other.v)
+        d_i = (other.e * d_e1) / (eta ** 2 * np.tan(other.i)) + fi_1 * i_1
+
+        # formula G.306
+        MwO = other.m + other.w + other.O + \
+              gma_2_p / 8.0 * eta ** 3 * (1.0 - 11.0 * c_i ** 2 - 40.0 * (c_i ** 4 / (1.0 - 5.0 * c_i ** 2))) \
+              - gma_2_p / 16.0 * (2.0 + other.e ** 2 - 11 * (2.0 + 3.0 * other.e ** 2) * c_i ** 2 \
+                                  - 40.0 * (2.0 + 5.0 * other.e ** 2) * (
+                                  c_i ** 4 / (1.0 - 5.0 * c_i ** 2)) - 400.0 * other.e * (
+                                  c_i ** 6 / (1.0 - 5.0 * c_i ** 2) ** 2)) \
+              + gma_2_p / 4.0 * (-6.0 * (1.0 - 5.0 * c_i ** 2) * (other.v - other.m + other.e * np.sin(other.v)) \
+                                 + (3.0 - 5.0 * c_i ** 2) * (
+                                 3.0 * np.sin(2.0 * other.w + 2.0 * other.v) + 3.0 * other.e * np.sin(
+                                     2.0 * other.w + other.v) \
+                                 + other.e * np.sin(2 * other.w + 3 * other.v))) \
+              - gma_2_p / 8.0 * other.e ** 2 * c_i * (
+        11.0 + 80.0 * (c_i ** 2 / (1.0 - 5.0 * c_i ** 2)) + 200 * (c_i ** 4 / (1.0 - 5.0 * c_i ** 2) ** 2)) \
+              - gma_2_p / 2.0 * c_i * (6.0 * (other.v - other.m + other.e * np.sin(other.v)) \
+                                       - 3.0 * np.sin(2.0 * other.w + 2.0 * other.v) - 3.0 * other.e * np.sin(
+            2.0 * other.w + other.v) - other.e * np.sin(2.0 * other.w + 3.0 * other.v))
+
+        # formula G.307
+        edM = gma_2 / 8.0 * other.e * eta ** 3 * (1.0 - 11.0 * c_i ** 2 - 40.0 * (c_i ** 4 / (1 - 5 * c_i ** 2))) \
+              - gma_2 / 4.0 * eta ** 3 * (2.0 * (3.0 * c_i ** 2 - 1.0) * ((a_r * eta) ** 2 + a_r + 1) * np.sin(other.v) \
+                                          + 3.0 * (1.0 - c_i ** 2) * (
+                                          (-(a_r * eta) ** 2 - a_r + 1) * np.sin(2.0 * other.w + other.v) \
+                                          + (
+                                          ((a_r * eta) ** 2 + a_r + 1.0 / 3.0) * np.sin(2.0 * other.w + 3.0 * other.v))))
+
+        # formula G.308
+        dO = -gma_2_p / 8.0 * other.e ** 2 * c_i * (
+        11.0 + 80.0 * (c_i ** 2 / (1 - 5 * c_i ** 2)) + 200.0 * (c_i ** 4 / (1 - 5 * c_i ** 2) ** 2)) \
+             - gma_2_p / 2.0 * c_i * (
+        6.0 * (other.v - other.m + other.e * np.sin(other.v)) - 3.0 * np.sin(2.0 * other.w + 2.0 * other.v) \
+        - 3.0 * other.e * np.sin(2.0 * other.w + other.v) - other.e * np.sin(2.0 * other.w + 3.0 * other.v))
+
+        d_1 = (other.e + d_e) * np.sin(other.m) + edM * np.cos(other.m)  # G.309
+        d_2 = (other.e + d_e) * np.cos(other.m) - edM * np.sin(other.m)  # G.310
+
+        m = np.arctan2(d_1, d_2)  # G.311
+        self.e = np.sqrt(d_1 ** 2 + d_2 ** 2)  # G.312
+
+        d_3 = (np.sin(other.i / 2.0) + np.cos(other.i / 2.0) * d_i / 2.0) * np.sin(other.O) + np.sin(
+            other.i / 2.0) * dO * np.cos(other.O)  # G.313
+        d_4 = (np.sin(other.i / 2.0) + np.cos(other.i / 2.0) * d_i / 2.0) * np.cos(other.O) - np.sin(
+            other.i / 2.0) * dO * np.sin(other.O)  # G.314
+
+        self.O = np.arctan2(d_3, d_4)  # G.315
+        self.i = 2 * np.arcsin(np.sqrt(d_3 ** 2 + d_4 ** 2))  # G.316
+        self.w = MwO - m - self.O
+
+        self.m = m  # assign m latest, as other properties might be used for ocnversion!
 
 
 class OscKepOrbElem(KepOrbElem):
@@ -258,68 +355,5 @@ class OscKepOrbElem(KepOrbElem):
         super(OscKepOrbElem, self).__init__()
 
     def from_mean_elems(self, mean):
-        # Reference:
-        # Appendix G in [2]
-        eta = np.sqrt(1.0-mean.e**2)
-        gma_2 = Constants.J_2/2.0 *(Constants.R_earth/mean.a)**2  # G.297
-        gma_2_p = gma_2 / eta**4  # G.298
-        c_i = np.cos(mean.i)
-        c_v = np.cos(mean.v)
-        a_r = (1.0+mean.e*np.cos(mean.v))/(eta**2)  # G.301
-
-        # calculate osculating semi-major axis based on series expansion
-        a_1 = (3.0*c_i**2-1)*(a_r**3-1.0/eta**3)
-        a_2 = 3.0*(1-c_i**2)*a_r**3*np.cos(2.0*mean.w+2.0*mean.v)
-        self.a = mean.a + mean.a*gma_2*(a_1+a_2)  # G.302
-
-        # calculate intermediate for d_e
-        d_e1 = gma_2_p/8.0*mean.e*eta**2*(1.0-11*c_i**2-40.0*((c_i**4)/(1.0-5.0*c_i**2)))*np.cos(2.0*mean.w) # G.303
-        fe_1 = (3.0*c_i**2-1.0)/eta**6
-        e_1 = mean.e*eta+mean.e/(1.0+eta)+3*c_v+3*mean.e*c_v**2+mean.e**2*c_v**3
-        fe_2 = 3.0*(1.0-c_i**2)/eta**6
-        fe_3 = gma_2_p*(1.0-c_i**2)
-        e_2 = mean.e+3*c_v+3*mean.e*c_v**2+mean.e**2*c_v**3
-        e_3 = 3*np.cos(2.0*mean.w+mean.v)+np.cos(2.0*mean.w+3.0*mean.v)
-
-        d_e = d_e1+(eta**2/2.0)*(gma_2*(fe_1*e_1+fe_2*e_2)-fe_3*e_3)  # G.304
-
-        fi_1 = gma_2_p/2.0 * c_i * np.sqrt(1.0-c_i**2)
-        i_1 = 3.0*np.cos(2.0*mean.w+2.0*mean.v)+3.0*mean.e*np.cos(2.0*mean.w+mean.v)+mean.e*np.cos(2.0*mean.w+3.0*mean.v)
-        d_i = (mean.e*d_e1)/(eta**2*np.tan(mean.i)) + fi_1*i_1
-
-        # formula G.306
-        MwO = mean.m + mean.w + mean.O + \
-            gma_2_p/8.0 * eta**3 * (1.0 - 11.0*c_i**2 - 40.0*(c_i**4 / (1.0-5.0*c_i**2))) \
-            - gma_2_p/16.0 * (2.0 + mean.e**2 - 11*(2.0+3.0*mean.e**2)*c_i**2 \
-            - 40.0*(2.0+5.0*mean.e**2)*(c_i**4/(1.0-5.0*c_i**2))-400.0*mean.e*(c_i**6/(1.0-5.0*c_i**2)**2)) \
-            + gma_2_p/4.0 * (-6.0*(1.0-5.0*c_i**2)*(mean.v-mean.m+mean.e*np.sin(mean.v)) \
-            + (3.0-5.0*c_i**2)*(3.0*np.sin(2.0*mean.w+2.0*mean.v)+3.0*mean.e*np.sin(2.0*mean.w+mean.v) \
-            + mean.e * np.sin(2*mean.w+3*mean.v))) \
-            - gma_2_p/8.0 * mean.e**2 * c_i *(11.0+80.0*(c_i**2/(1.0-5.0*c_i**2))+200*(c_i**4/(1.0-5.0*c_i**2)**2)) \
-            - gma_2_p/2.0 * c_i *(6.0* (mean.v - mean.m + mean.e * np.sin(mean.v)) \
-            - 3.0 * np.sin(2.0*mean.w+2.0*mean.v)-3.0*mean.e*np.sin(2.0*mean.w+mean.v)-mean.e*np.sin(2.0*mean.w+3.0*mean.v))
-
-        # formula G.307
-        edM = gma_2/8.0 * mean.e * eta**3 * (1.0 - 11.0*c_i**2 - 40.0*(c_i**4/(1-5*c_i**2))) \
-            - gma_2/4.0 * eta**3 * (2.0 * (3.0*c_i**2-1.0) * ((a_r*eta)**2+a_r+1)*np.sin(mean.v) \
-            + 3.0*(1.0-c_i**2)*((-(a_r*eta)**2-a_r+1) * np.sin(2.0*mean.w + mean.v) \
-            + (((a_r*eta)**2+a_r+1.0/3.0)*np.sin(2.0*mean.w + 3.0*mean.v))))
-
-        # formula G.308
-        dO = -gma_2_p/8.0 * mean.e**2 * c_i * (11.0 + 80.0*(c_i**2/(1-5*c_i**2))+ 200.0*(c_i**4/(1-5*c_i**2)**2)) \
-            - gma_2_p/2.0 * c_i * (6.0 * (mean.v - mean.m + mean.e*np.sin(mean.v)) - 3.0*np.sin(2.0*mean.w+2.0*mean.v) \
-            - 3.0*mean.e*np.sin(2.0*mean.w+mean.v) - mean.e*np.sin(2.0*mean.w+3.0*mean.v))
-
-        d_1 = (mean.e + d_e)*np.sin(mean.m) + edM*np.cos(mean.m)  # G.309
-        d_2 = (mean.e + d_e)*np.cos(mean.m) - edM*np.sin(mean.m)  # G.310
-        
-        self.m = np.arctan2(d_2, d_1)  # G.311
-        self.e = np.sqrt(d_1**2 + d_2**2)  # G.312
-
-        d_3 = (np.sin(mean.i/2.0)+np.cos(mean.i/2.0)*d_i/2.0)*np.sin(mean.O)+np.sin(mean.i/2.0)*dO*np.cos(mean.O)  # G.313
-        d_4 = (np.sin(mean.i/2.0)+np.cos(mean.i/2.0)*d_i/2.0)*np.cos(mean.O)-np.sin(mean.i/2.0)*dO*np.sin(mean.O)  # G.314
-
-        self.O = np.arctan2(d_4, d_3)  # G.315
-        self.i = 2*np.arcsin(np.sqrt(d_3**2+d_4**2))  # G.316
-        self.w = MwO - self.M - self.O
+        self.osc_elems_transformation(mean, False)
 
