@@ -52,13 +52,19 @@ def handle_pose(msg):
                          k,
                          body_frame)
 
-
     for k in sensor_cfg:
         br.sendTransform(np.array([float(x) for x in sensor_cfg[k]["position"].split(" ")]),
                          np.array([float(x) for x in sensor_cfg[k]["pose"].split(" ")]),
                      rospy.Time.now(),
                      k,
                      body_frame)
+
+    for k in thruster_cfg:
+        br.sendTransform(np.array([float(x) for x in sensor_cfg[k]["position"].split(" ")]),
+                         np.array([float(x) for x in sensor_cfg[k]["pose"].split(" ")]),
+                         rospy.Time.now(),
+                         k,
+                         body_frame)
 
 
 def handle_target_oe(msg):
@@ -96,8 +102,9 @@ def handle_target_oe(msg):
 if __name__ == '__main__':
 
     rospy.init_node('satelite_tf_publisher')
-    sensor_cfg =  rospy.get_param("~sensors", "")
+    sensor_cfg = rospy.get_param("~sensors", "")
     frame_cfg = rospy.get_param("~frames", "")
+    thruster_cfg = rospy.get_param("~thrusters", "")
     body_frame = rospy.get_param("~body_frame", "cso")
     position_mode = rospy.get_param("~mode", "absolute")
 

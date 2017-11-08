@@ -18,7 +18,6 @@
             <param name="spin_axis"  value="0 0 1" /> <!-- some random spin axis -->
         </node>
 
-
         <!-- Launch Radar Sensor -->
         <node pkg="space_sim_radar" name="node_radar1" type="sim_radar_node.py" output="screen">
             <remap from="~sensor" to="/cso/sensors/Radar" />
