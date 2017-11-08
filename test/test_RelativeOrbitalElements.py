@@ -3,7 +3,7 @@
 import unittest
 import sys
 import os
-from copy import deepcopy
+from copy import copy
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + "/../src/")  # hack...
@@ -54,7 +54,7 @@ class RelativeOrbitalElementsTest(unittest.TestCase):
         target.omega = 1.39
         target.a = 7084
 
-        chaser = deepcopy(target)
+        chaser = copy(target)
         chaser.a = 7085
         chaser.v = 0.1
 
