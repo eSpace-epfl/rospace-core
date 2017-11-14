@@ -73,7 +73,7 @@ if __name__ == '__main__':
     if rospy.has_param("~frequency"):
         frequency = int(rospy.get_param("~frequency"))
     else:
-        frequency = 20.0
+        frequency = 50.0
 
     rate = float(1) / float(frequency)
 
