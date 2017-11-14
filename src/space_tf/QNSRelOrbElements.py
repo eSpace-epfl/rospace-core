@@ -48,6 +48,7 @@ class QNSRelOrbElements(BaseState):
         vector[3] = self.dEy
         vector[4] = self.dIx
         vector[5] = self.dIy
+        return vector
 
     def from_keporb(self, target, chaser):
         # Calculate relative coordinates based on

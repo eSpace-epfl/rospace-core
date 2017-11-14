@@ -241,14 +241,15 @@ class KepOrbElem(BaseState):
         u_t = u_c + (qns.dL - np.cos(chaser.i) * (self.O - chaser.O))
         m = u_t - self.w
 
+        self._v = None
+        self._E = None
         # correct angles!
         if m > 2*np.pi:
-            self.m = m - 2*np.pi
+            self._m = m - 2*np.pi
         elif m<0:
-            self.m = m + 2*np.pi
+            self._m = m + 2*np.pi
         else:
-            self.m = m
-
+            self._m = m
 
     def as_array_true(self):
         return np.array([[self.a, self.v, self.e, self.w, self.i, self.O]]).T
