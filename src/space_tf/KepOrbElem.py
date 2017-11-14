@@ -166,9 +166,9 @@ class KepOrbElem(BaseState):
         n = np.linalg.norm(N, ord=2)
 
         # 9. calculate RAAN
-        self.omega = np.arccos(N[0] / n)
+        self.O = np.arccos(N[0] / n)
         if N[1] < 0:
-            self.omega = 2 * np.pi - self.omega
+            self.O = 2 * np.pi - self.O
 
         # 10. calculate eccentricity vector  / 11. Calc eccentricity
         E = 1 / Constants.mu_earth * ((v ** 2 - Constants.mu_earth / r) * cart.R.flat - r * v_r * cart.V.flat)
@@ -213,7 +213,15 @@ class KepOrbElem(BaseState):
         self.w = np.arctan2(e_c_s_wc, e_c_c_wc)
 
         u_t = u_c + (qns.dL - np.cos(chaser.i) * (self.O - chaser.O))
-        self.m = u_t - self.w
+        m = u_t - self.w
+
+        self._v = None
+        self._E = None
+
+        if m < 0:
+            self._m = m + 2.0*np.pi
+        else:
+            self._m = m
 
     def as_array_true(self):
         return np.array([[self.a, self.v, self.e, self.w, self.i, self.O]]).T
