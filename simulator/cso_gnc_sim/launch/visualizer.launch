@@ -4,7 +4,7 @@
 	<param name="robot_description" textfile="$(find cso_gnc_sim)/res/models/world.urdf" />
 
     <!-- Include CSO base definition -->
-    <include file="$(find cso_gnc_sim)/launch/cso_base.launch" />
+    <include file="$(find cso_gnc_sim)/launch/cso_base_ore.launch" />
 
     <!-- Include TF publishers -->
     <include file="$(find cso_gnc_sim)/launch/tf_publisher_absolute.launch" />
