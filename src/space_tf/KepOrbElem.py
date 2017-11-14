@@ -94,20 +94,33 @@ class KepOrbElem(BaseState):
         if self._v is None and self._E is not None:
             self.calc_v_from_E()
 
+        if self._E is None and self._v is not None:
+            self.calc_E_from_v()
+
         if self._E is None and self._m is not None:
             self.calc_E_from_m()
 
-        if self._m is None and self._v is not None:
-            self.calc_m_from_v()
+        if self._m is None and self._E is not None:
+            self.calc_m_from_E()
 
         # recursively run until everything is set
         self.sync_anomalies()
 
+    def calc_E_from_v(self):
+        self._E = np.arctan2(np.sqrt(1.0-self.e**2)*np.sin(self._v),self.e+np.cos(self._v))
+
+        if self._E < 0:
+            self._E = self._E + np.pi * 2.0
+
     def calc_v_from_E(self):
         # Calculates v
         # Prerequisities: e and E
-        self._v = 2.0 * np.arctan2(np.sqrt(1 + self.e) * np.sin(self._E / 2.0),
-                                 np.sqrt(1 - self.e) * np.cos(self._E / 2.0))
+        self._v = 2.0 * np.arctan2(np.sqrt(1.0 + self.e) * np.sin(self._E / 2.0),
+                                 np.sqrt(1.0 - self.e) * np.cos(self._E / 2.0))
+
+        if self._v < 0:
+            self._v = self._v + np.pi * 2.0
+
 
     def calc_E_from_m(self):
         # Calculates mean eccentricity
@@ -119,7 +132,7 @@ class KepOrbElem(BaseState):
         else:
             self._E = self._m - self.e / 2.0
 
-        max_int = 10
+        max_int = 20
         cur_int = 0
 
         while True:
@@ -132,6 +145,15 @@ class KepOrbElem(BaseState):
             else:
                 break
 
+        if self._E < 0:
+            self._E = self._E + np.pi * 2.0
+
+    def calc_m_from_E(self):
+        self._m = self._E - self.e*np.sin(self._E)
+
+        if self._m < 0:
+            self._m = self._m + np.pi * 2.0
+
     def calc_m_from_v(self):
         # Calculates m based on series expansion
         # Prerequisites: v
@@ -139,14 +161,14 @@ class KepOrbElem(BaseState):
         self._m = self._v
         self._m = self._m - 2 * self.e * np.sin(self._v)
         self._m = self._m + (0.75 * self.e ** 2 + 0.125 * self.e ** 4) * np.sin(2 * self._v)
-        self._m = self._m - 1.0 / 3.0 * self.e ** 3 * np.sin(3 * self._v)
-        self._m = self._m + 5.0 / 32.0 * self.e ** 4 * np.sin(4 * self._v)
+        self._m = self._m - (1.0 / 3.0) * self.e ** 3 * np.sin(3 * self._v)
+        self._m = self._m + (5.0 / 32.0) * self.e ** 4 * np.sin(4 * self._v)
 
     def from_tle(self, i_tle, omega_tle, e_tle, m_tle, w_tle, mean_motion_tle):
         # assign known data
         self.i = i_tle
         self.e = e_tle
-        self.m = m_tle
+        self._m = m_tle
         self.w = w_tle
         self.O = omega_tle
         self.period = 1.0 / mean_motion_tle * 60 * 60 * 24
@@ -158,9 +180,11 @@ class KepOrbElem(BaseState):
         self.i = np.deg2rad(msg.inclination)
         self.w = np.deg2rad(msg.arg_perigee)
         self.O = np.deg2rad(msg.raan)
-        self.v = np.deg2rad(msg.true_anomaly)
         self.a = msg.semimajoraxis
         self.e = msg.eccentricity
+
+        # assign latest!
+        self._v = np.deg2rad(msg.true_anomaly)
 
     def from_cartesian(self, cart):
         # Calculates and initalizes keplerian elements from speed and position
