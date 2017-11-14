@@ -83,11 +83,18 @@ class KepOrbElem(BaseState):
     def calc_E_from_v(self):
         self._E = np.arctan2(np.sqrt(1.0-self.e**2)*np.sin(self._v),self.e+np.cos(self._v))
 
+        if self._E < 0:
+            self._E = self._E + np.pi * 2.0
+
     def calc_v_from_E(self):
         # Calculates v
         # Prerequisities: e and E
         self._v = 2.0 * np.arctan2(np.sqrt(1.0 + self.e) * np.sin(self._E / 2.0),
                                  np.sqrt(1.0 - self.e) * np.cos(self._E / 2.0))
+
+        if self._v < 0:
+            self._v = self._v + np.pi * 2.0
+
 
     def calc_E_from_m(self):
         # Calculates mean eccentricity
@@ -112,8 +119,14 @@ class KepOrbElem(BaseState):
             else:
                 break
 
+        if self._E < 0:
+            self._E = self._E + np.pi * 2.0
+
     def calc_m_from_E(self):
         self._m = self._E - self.e*np.sin(self._E)
+
+        if self._m < 0:
+            self._m = self._m + np.pi * 2.0
 
     def calc_m_from_v(self):
         # Calculates m based on series expansion

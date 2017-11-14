@@ -95,32 +95,6 @@ class KepOrbElemTest(unittest.TestCase):
 
         self.assertAlmostEqual(m_test, source.m, places=10)
 
-    def test_occ_elems(self):
-        source = OscKepOrbElem()
-        source.e = 0.000891342369007
-        source.a = 7088.68813833
-        source.i = np.deg2rad(98.5006834885)
-        source.w = np.deg2rad(69.2680911804)
-        source.O = np.deg2rad(38.7326244021)
-        source.v = np.deg2rad(100.250407006)
-
-        target = KepOrbElem()
-        target.from_osc_elems(source)
-
-
-        target2 = OscKepOrbElem()
-        target2.from_mean_elems(target)
-
-        print "e", source.e - target2.e
-        print "w", source.w - target2.w
-        print "O", source.O - target2.O
-        print "m", source.m - target2.m
-        print "v", source.v - target2.v
-        print "i", source.i - target2.i
-        print "a", source.a - target2.a
-
-        print "GUGUS"
-
 
 if __name__ == '__main__':
     unittest.main()
