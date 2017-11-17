@@ -106,19 +106,17 @@ Visualization Manager:
           Value: false
         cso:
           Value: true
-        filter_state:
+        filter_state_mean:
+          Value: true
+        filter_state_osc:
           Value: true
         sensorplate:
           Value: false
         target:
-          Value: false
-        target_ref:
           Value: true
         teme:
           Value: false
-        thruster-0:
-          Value: true
-      Marker Scale: 1
+      Marker Scale: 5000
       Name: TF
       Show Arrows: false
       Show Axes: true
@@ -138,13 +136,11 @@ Visualization Manager:
               {}
             sensorplate:
               {}
-            thruster-0:
-              {}
-          filter_state:
+          filter_state_mean:
+            {}
+          filter_state_osc:
             {}
           target:
-            {}
-          target_ref:
             {}
       Update Interval: 0
       Value: true
@@ -159,30 +155,29 @@ Visualization Manager:
       Unreliable: false
       Value: true
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /cso/observation
       Name: Marker
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /cso/aon_observation
       Name: Marker
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /orbit_marker
       Name: Marker
       Namespaces:
-        target: true
-        target_state: true
+        {}
       Queue Size: 1
-      Value: true
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
@@ -207,7 +202,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 2.056030750274658
+      Distance: 13591.3466796875
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -222,10 +217,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.0010000000474974513
-      Pitch: 0.6897974610328674
+      Pitch: 0.45479726791381836
       Target Frame: cso
       Value: Orbit (rviz)
-      Yaw: 2.7581799030303955
+      Yaw: 2.243177890777588
     Saved: ~
 Window Geometry:
   Displays:

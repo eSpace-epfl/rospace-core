@@ -63,15 +63,22 @@ if __name__ == '__main__':
             target_osc_oe = stf.OscKepOrbElem()
             target_osc_oe.from_mean_elems(target_oe)
             # convert to cartesian
+            cart_c_osc = stf.Cartesian()
+            cart_c_osc.from_keporb(target_osc_oe)
+
             cart_c = stf.Cartesian()
-            cart_c.from_keporb(target_osc_oe)
+            cart_c.from_keporb(target_oe)
 
-
-
-            br.sendTransform(cart_c.R*1000,
+            br.sendTransform(cart_c_osc.R*1000,
                             np.array([0, 0, 0, 1]),
                             filter.t,
-                             "filter_state",
+                             "filter_state_osc",
+                             "teme")
+
+            br.sendTransform(cart_c.R * 1000,
+                             np.array([0, 0, 0, 1]),
+                             filter.t,
+                             "filter_state_mean",
                              "teme")
 
             msg_tar = SatelitePose()

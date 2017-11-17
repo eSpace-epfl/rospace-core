@@ -87,11 +87,11 @@ def handle_target_oe(msg):
     # publish
     br = tf.TransformBroadcaster()
 
-    br.sendTransform(tf_target_teme.R*1000,
-                     q_ref,
-                     msg.header.stamp,
-                     body_frame+"_ref",
-                     "teme")
+    #br.sendTransform(tf_target_teme.R*1000,
+    #                q_ref,
+    #               msg.header.stamp,
+    #              body_frame+"_ref",
+    #             "teme")
 
 
 if __name__ == '__main__':

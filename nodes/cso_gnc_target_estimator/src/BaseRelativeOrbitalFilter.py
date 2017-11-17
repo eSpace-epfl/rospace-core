@@ -6,7 +6,9 @@ import space_tf as stf
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point
 from RelativeOrbitalSTM import *
+import time
 from threading import Lock
+from copy import copy
 class BaseRelativeOrbitalFilter:
     # used references:
     # [1] the other one... TODO
@@ -17,7 +19,10 @@ class BaseRelativeOrbitalFilter:
     def __init__(self):
         #00138646026702
         #self.x = np.array([[0.002, 0.007, 7.0e-7, 1.90e-5, 3.225e-6, -0.0052202]]).T
-        self.x = np.array([[0.002, 0.007,1.7e-5, 2.29e-5, 0.0052, 0.0096]]).T
+        #self.x = np.array([[-1.04166667e-05, -1.38888889e-03, 2.08333333e-05, 0, -2.08333333e-05, 0.0]]).T
+
+        self.x = np.array([[-5000, -20000, 0, 0, 0, 0.0]]).T
+        self.x = self.x / (7050.0*1000)
         self.P = np.diag([0.01,0.01,0.01,0.01,0.01,0.01])
         self.Q = np.diag([0.01, 0.01, 0.001, 0.001, 0.001, 0.001])
         self.R = np.array([[0.0001, 0],[0, 0.0001]])
@@ -43,17 +48,15 @@ class BaseRelativeOrbitalFilter:
     # current filter state and current position of chaser
     def update_target_oe(self):
 
-        print "============"
-        print self.x.T
-        print self.oe_c.a,self.oe_c.e,self.oe_c.w,self.oe_c.O,self.oe_c.v,self.oe_c.m,self.oe_c.i
 
 
 
         rel_elem = stf.QNSRelOrbElements()
         rel_elem.from_vector(self.x)
 
+        self.oe_t = stf.KepOrbElem()
         self.oe_t.from_qns_relative(rel_elem, self.oe_c)
-        print self.oe_t.a,self.oe_t.e,self.oe_t.w,self.oe_t.O,self.oe_t.v,self.oe_t.m,self.oe_t.i
+
 
         self.has_oe = True
 
@@ -61,8 +64,6 @@ class BaseRelativeOrbitalFilter:
 
     def get_H_of_x(self):
         # get cartesian locations of both
-
-
 
 
         target_osc_oe = stf.OscKepOrbElem()
@@ -237,9 +238,15 @@ class BaseRelativeOrbitalFilter:
             print "!!!!!!!!!!!!!!!!!!!!!!!!!!! ignore"
             return
 
+        oe_c_osc = stf.OscKepOrbElem()
+        oe_c_osc.from_message(chaser_oe.position)
+
         self.update_lock.acquire()
+
+
         self.oe_c = stf.KepOrbElem()
-        self.oe_c.from_message(chaser_oe.position)
+        self.oe_c.from_osc_elems(oe_c_osc)
+
 
         self.time_c = chaser_oe.header.stamp
         # store orientation
@@ -252,7 +259,6 @@ class BaseRelativeOrbitalFilter:
         # update time
         if self.t != 0:
             delta_t = (chaser_oe.header.stamp - self.t).to_sec()
-
             # advance state
             if delta_t > 0.1:
                 self.advance_state(delta_t)
@@ -265,7 +271,7 @@ class BaseRelativeOrbitalFilter:
 
     # Performs measurement update
     def callback_aon(self, meas_msg):
-
+        return
         if self.t == 0 or self.R_body is None:
             #discard measurement
             return
@@ -316,6 +322,9 @@ class BaseRelativeOrbitalFilter:
         return [self.x, self.P]
 
     def get_target_oe(self):
-        return self.oe_t
+        self.update_lock.acquire()
+        copy_oe_t = copy(self.oe_t)
+        self.update_lock.release()
+        return copy_oe_t
 
 
