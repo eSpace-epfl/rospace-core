@@ -1,19 +1,47 @@
-# Base Class for Keplerian orbital elements in different formulations
-from BaseState import *
-from Constants import *
+"""
+Module that contains Classes for Keplerian Orbital Elements.
+
+References:
+
+    [1] Orbital Mechanics for Engineering Students, 3rd Edition, Howard D. Curtis, ISBN 978-0-08-097747-8
+    [2] Analytical Mechanics of Space Systems, H. Schaub and J.L. Junkins, AIAA Education Series, 2003
+    [3] New State Transition Matrices for Relative Motion of Spacecraft Formations in Perturbed Orbits,
+        A. Koenig, T. Guffanti, S. D'Amico, AIAA 2016-5635
+
+"""
+from . import *
+from threading import RLock
 import numpy as np
 
 
-# Base without anomaly
 class KepOrbElem(BaseState):
+    """
+    Class that contains a spacecraft state in Keplerian orbital elements.
+    Use this class to hold _mean_ orbital elements.
+    """
     def __init__(self):
         super(KepOrbElem, self).__init__()
+
         self.a = 0
+        '''Semimajor axis in [km]'''
+
         self.e = 0
+        '''Eccentricity'''
+
         self.O = 0
+        '''Right Ascending of the Ascending Node (RAAN) [rad]'''
+
         self.w = 0
+        '''Argument of Perigeum [rad]'''
+
         self.i = 0
+        '''Inclination [rad]'''
+
         self.period = 0
+        '''Orbital Period. Might not always be set.'''
+
+        # Internal members
+        self._lock = RLock() # Lock for thread safety
 
         self._E = None  # eccentric anomaly
         self._m = None  # mean anomaly
@@ -21,42 +49,71 @@ class KepOrbElem(BaseState):
 
     @property
     def E(self):
-        if not self._E:
-            self.sync_anomalies()
+        """Eccentric Anomaly [rad]"""
+        self._lock.acquire()
+        if self._E is None:
+            self._sync_anomalies()
+        self._lock.release()
         return self._E
 
     @E.setter
     def E(self, value):
+        self._lock.acquire()
         self._E = value
         self._m = None
         self._v = None
+        self._sync_anomalies()
+        self._lock.release()
 
     @property
     def m(self):
-        if not self._m:
-            self.sync_anomalies()
-
+        """Mean Anomaly [rad]"""
+        self._lock.acquire()
+        if self._m is None:
+            self._sync_anomalies()
+        self._lock.release()
         return self._m
 
     @m.setter
     def m(self, value):
+        self._lock.acquire()
         self._E = None
         self._m = value
         self._v = None
+        self._sync_anomalies()
+        self._lock.release()
 
     @property
     def v(self):
-        if not self._v:
-            self.sync_anomalies()
+        """True Anomaly [rad]"""
+        self._lock.acquire()
+        if self._v is None:
+            self._sync_anomalies()
+        self._lock.release()
         return self._v
 
     @v.setter
     def v(self, value):
+
+        self._lock.acquire()
+        # Reset other anomalies (the are not valid anymore)s
         self._E = None
         self._m = None
+
+        # Set true anomaly
         self._v = value
 
-    def sync_anomalies(self):
+        # sync anomalies
+        self._sync_anomalies()
+        self._lock.release()
+
+    def _sync_anomalies(self):
+        """ Calculates unknown anomalies from given anomalies.
+
+            To calculate v from m and vice versa, the eccentric anomaly is needed.
+            Function is run recursively until all anomalies are set and valid
+
+        """
         if self._E is None and self._m is None and self._v is None:
             raise ValueError("No anomaly set. Cannot sync.")
 
@@ -66,79 +123,96 @@ class KepOrbElem(BaseState):
             return
 
         if self._v is None and self._E is not None:
-            self.calc_v_from_E()
+            self._calc_v_from_E()
 
         if self._E is None and self._v is not None:
-            self.calc_E_from_v()
+            self._calc_E_from_v()
 
         if self._E is None and self._m is not None:
-            self.calc_E_from_m()
+            self._calc_E_from_m()
 
         if self._m is None and self._E is not None:
-            self.calc_m_from_E()
+            self._calc_m_from_E()
 
         # recursively run until everything is set
-        self.sync_anomalies()
+        self._sync_anomalies()
 
-    def calc_E_from_v(self):
-        self._E = np.arctan2(np.sqrt(1.0-self.e**2)*np.sin(self._v),self.e+np.cos(self._v))
+    def _calc_E_from_v(self):
+        """Calculates Eccentric anomaly from true anomaly.
+
+        Closed form, analytical solution.
+        Prerequisites: e and v
+        """
+        self._E = np.arctan2(np.sqrt(1.0-self.e**2)*np.sin(self._v), self.e+np.cos(self._v))
 
         if self._E < 0:
             self._E = self._E + np.pi * 2.0
 
-    def calc_v_from_E(self):
-        # Calculates v
-        # Prerequisities: e and E
+    def _calc_v_from_E(self):
+        """Calculates True anomaly from Eccentric anomaly.
+
+        Closed form, analytical solution.
+        Prerequisites: e and E
+        """
         self._v = 2.0 * np.arctan2(np.sqrt(1.0 + self.e) * np.sin(self._E / 2.0),
                                  np.sqrt(1.0 - self.e) * np.cos(self._E / 2.0))
 
         if self._v < 0:
             self._v = self._v + np.pi * 2.0
 
+    def _calc_E_from_m(self):
+        """Calculates Eccentric anomaly from Mean anomaly
 
-    def calc_E_from_m(self):
-        # Calculates mean eccentricity
-        # Prerequisites: m and e
-        # Source: Algorithm 3.1 from [1]
-        # Uses Newton-Raphson iteration
+        Uses a Newton-Raphson iteration to solve Kepler's Equation.
+        Source: Algorithm 3.1 in [1]
+
+        Prerequisites: m and e
+
+        """
         if self._m < np.pi:
             self._E = self._m + self.e / 2.0
         else:
             self._E = self._m - self.e / 2.0
 
-        max_int = 20
-        cur_int = 0
+        max_int = 20  # maximum number of iterations
 
-        while True:
+        while max_int > 1:
             fE = self._E - self.e * np.sin(self._E) - self._m
             fpE = 1.0 - self.e * np.cos(self._E)
             ratio = fE / fpE
-            if abs(ratio) > 1e-15 and cur_int < max_int:
+            max_int = max_int - 1
+
+            # check if ratio is small enough
+            if abs(ratio) > 1e-15:
                 self._E = self._E - ratio
-                cur_int = cur_int + 1
             else:
                 break
 
         if self._E < 0:
             self._E = self._E + np.pi * 2.0
 
-    def calc_m_from_E(self):
+    def _calc_m_from_E(self):
+        """Calculates Mean anomaly Eccentric anomaly using Kepler's Equation.
+
+        Prerequisites: E and e
+        """
         self._m = self._E - self.e*np.sin(self._E)
 
         if self._m < 0:
             self._m = self._m + np.pi * 2.0
 
-    def calc_m_from_v(self):
-        # Calculates m based on series expansion
-        # Prerequisites: v
-        # Source: Todo: Celestial Mechanics by W.M. Smart
-        self._m = self._v
-        self._m = self._m - 2 * self.e * np.sin(self._v)
-        self._m = self._m + (0.75 * self.e ** 2 + 0.125 * self.e ** 4) * np.sin(2 * self._v)
-        self._m = self._m - (1.0 / 3.0) * self.e ** 3 * np.sin(3 * self._v)
-        self._m = self._m + (5.0 / 32.0) * self.e ** 4 * np.sin(4 * self._v)
-
     def from_tle(self, i_tle, omega_tle, e_tle, m_tle, w_tle, mean_motion_tle):
+        """ Initializes object from TLE elements (TLE = Two Line Elements)
+
+        Args:
+            i_tle: Inclination [rad]
+            omega_tle: RAAN [rad]
+            e_tle: Eccentricity
+            m_tle: Mean Anomaly [rad]
+            w_tle: Arg of Perigee [rad]
+            mean_motion_tle: Mean Motion [rad/s]
+
+        """
         # assign known data
         self.i = i_tle
         self.e = e_tle
@@ -151,6 +225,7 @@ class KepOrbElem(BaseState):
         self.a = np.power(self.period ** 2 * Constants.mu_earth / (4 * np.pi ** 2), 1 / 3.0)
 
     def from_message(self, msg):
+        """Initialize object from a ROS-Message that uses Degrees"""
         self.i = np.deg2rad(msg.inclination)
         self.w = np.deg2rad(msg.arg_perigee)
         self.O = np.deg2rad(msg.raan)
@@ -161,8 +236,14 @@ class KepOrbElem(BaseState):
         self._v = np.deg2rad(msg.true_anomaly)
 
     def from_cartesian(self, cart):
-        # Calculates and initalizes keplerian elements from speed and position
-        # Algorithm 4.1, Chapter 4 in [1]
+        """Initialize object from a cartesian state vector (pos + speed).
+
+        Source: Algorithm 4.1 in [1]
+
+        Args:
+            cart (Cartesian): Cartesian State Vector with R and V set.
+
+        """
         K = np.array([0, 0, 1])  # 3rd basis vector
 
         # 1. Calc distance
@@ -221,9 +302,15 @@ class KepOrbElem(BaseState):
         self.period = 2 * np.pi / np.sqrt(Constants.mu_earth) * (pow(self.a, 1.5))
 
     def from_qns_relative(self, qns, chaser):
-        # calculate target absolute orbital elements
-        # based on state and chaser absolute orbital elements
+        """Initialize object using Quasi-Non-Singular Relative Orbital Elements
+        and the corresponding absolute coordinates.
 
+        Source: Can be calculated based on the definition of QNS in [3]
+        Args:
+            qns (QNSRelOrbElements): Quasi-Non-Singular Relative Orbital Elements
+            chaser (KepOrbElem): Absolute coordinates (to which qns are relative)
+
+        """
         u_c = chaser.m + chaser.w
 
         # calculate absolute orbital elements.
@@ -248,7 +335,125 @@ class KepOrbElem(BaseState):
             self._m = m
 
     def as_array_true(self):
+        """Return as numpy array [a,v,e,w,i,O] """
         return np.array([[self.a, self.v, self.e, self.w, self.i, self.O]]).T
 
     def as_array_mean(self):
+        """Return as numpy array [a,m,e,w,i,O] """
         return np.array([[self.a, self.m, self.e, self.w, self.i, self.O]]).T
+
+    def from_osc_elems(self, osc):
+        """ Initialize mean elements from a set of osculating elements"""
+        self.osc_elems_transformation(osc, True)
+
+    def osc_elems_transformation(self, other, dir):
+        """ Approximation to convert between mean and osculating orbital elements.
+
+        Note that this is a first order approximation and does not map 1 to 1.
+        Also, it might not be well behaving for close to circular orbits.
+
+        Source: Appendix G in [2]
+
+
+        Args:
+            other: Other orbital elements
+            dir: if dir == True: other are osculating, this are mean elements,
+                 if dir == False: other are mean, this are osculating elements
+
+        """
+        eta = np.sqrt(1.0 - other.e ** 2)
+        gma_2 = Constants.J_2 / 2.0 * (Constants.R_earth / other.a) ** 2  # G.296
+
+        if dir: # if we are mapping osc to mean, switch sign of gma_2
+            gma_2 = -gma_2  # G.297
+
+        gma_2_p = gma_2 / eta ** 4  # G.298
+        c_i = np.cos(other.i)
+        c_v = np.cos(other.v)
+        a_r = (1.0 + other.e * np.cos(other.v)) / (eta ** 2)  # G.301
+
+        # calculate osculating semi-major axis based on series expansion
+        a_1 = (3.0 * c_i ** 2 - 1) * (a_r ** 3 - 1.0 / eta ** 3)
+        a_2 = 3.0 * (1 - c_i ** 2) * a_r ** 3 * np.cos(2.0 * other.w + 2.0 * other.v)
+        self.a = other.a + other.a * gma_2 * (a_1 + a_2)  # G.302
+
+        # calculate intermediate for d_e
+        d_e1 = gma_2_p / 8.0 * other.e * eta ** 2 * (
+        1.0 - 11 * c_i ** 2 - 40.0 * ((c_i ** 4) / (1.0 - 5.0 * c_i ** 2))) * np.cos(2.0 * other.w)  # G.303
+        fe_1 = (3.0 * c_i ** 2 - 1.0) / eta ** 6
+        e_1 = other.e * eta + other.e / (1.0 + eta) + 3 * c_v + 3 * other.e * c_v ** 2 + other.e ** 2 * c_v ** 3
+        fe_2 = 3.0 * (1.0 - c_i ** 2) / eta ** 6
+        fe_3 = gma_2_p * (1.0 - c_i ** 2)
+        e_2 = (other.e + 3 * c_v + 3 * other.e * c_v ** 2 + other.e ** 2 * c_v ** 3)*np.cos(2*other.w+2*other.v)
+        e_3 = 3 * np.cos(2.0 * other.w + other.v) + np.cos(2.0 * other.w + 3.0 * other.v)
+
+        d_e = d_e1 + (eta ** 2 / 2.0) * (gma_2 * (fe_1 * e_1 + fe_2 * e_2) - fe_3 * e_3)  # G.304
+
+        fi_1 = gma_2_p / 2.0 * c_i * np.sqrt(1.0 - c_i ** 2)
+        i_1 = 3.0 * np.cos(2.0 * other.w + 2.0 * other.v) + 3.0 * other.e * np.cos(
+            2.0 * other.w + other.v) + other.e * np.cos(2.0 * other.w + 3.0 * other.v)
+        d_i = (other.e * d_e1) / (eta ** 2 * np.tan(other.i)) + fi_1 * i_1
+
+        # formula G.306
+        MwO = other.m + other.w + other.O + \
+              gma_2_p / 8.0 * eta ** 3 * (1.0 - 11.0 * c_i ** 2 - 40.0 * (c_i ** 4 / (1.0 - 5.0 * c_i ** 2))) \
+              - gma_2_p / 16.0 * (2.0 + other.e ** 2 - 11 * (2.0 + 3.0 * other.e ** 2) * c_i ** 2 \
+                                  - 40.0 * (2.0 + 5.0 * other.e ** 2) * (
+                                  c_i ** 4 / (1.0 - 5.0 * c_i ** 2)) - 400.0 * other.e * (
+                                  c_i ** 6 / (1.0 - 5.0 * c_i ** 2) ** 2)) \
+              + gma_2_p / 4.0 * (-6.0 * (1.0 - 5.0 * c_i ** 2) * (other.v - other.m + other.e * np.sin(other.v)) \
+                                 + (3.0 - 5.0 * c_i ** 2) * (
+                                 3.0 * np.sin(2.0 * other.w + 2.0 * other.v) + 3.0 * other.e * np.sin(
+                                     2.0 * other.w + other.v) \
+                                 + other.e * np.sin(2 * other.w + 3 * other.v))) \
+              - gma_2_p / 8.0 * other.e ** 2 * c_i * (
+        11.0 + 80.0 * (c_i ** 2 / (1.0 - 5.0 * c_i ** 2)) + 200 * (c_i ** 4 / (1.0 - 5.0 * c_i ** 2) ** 2)) \
+              - gma_2_p / 2.0 * c_i * (6.0 * (other.v - other.m + other.e * np.sin(other.v)) \
+                                       - 3.0 * np.sin(2.0 * other.w + 2.0 * other.v) - 3.0 * other.e * np.sin(
+            2.0 * other.w + other.v) - other.e * np.sin(2.0 * other.w + 3.0 * other.v))
+
+        # formula G.307
+        edM = gma_2 / 8.0 * other.e * eta ** 3 * (1.0 - 11.0 * c_i ** 2 - 40.0 * (c_i ** 4 / (1 - 5 * c_i ** 2))) \
+              - gma_2 / 4.0 * eta ** 3 * (2.0 * (3.0 * c_i ** 2 - 1.0) * ((a_r * eta) ** 2 + a_r + 1) * np.sin(other.v) \
+                                          + 3.0 * (1.0 - c_i ** 2) * (
+                                          (-(a_r * eta) ** 2 - a_r + 1) * np.sin(2.0 * other.w + other.v) \
+                                          + (
+                                          ((a_r * eta) ** 2 + a_r + 1.0 / 3.0) * np.sin(2.0 * other.w + 3.0 * other.v))))
+
+        # formula G.308
+        dO = -gma_2_p / 8.0 * other.e ** 2 * c_i * (
+        11.0 + 80.0 * (c_i ** 2 / (1 - 5 * c_i ** 2)) + 200.0 * (c_i ** 4 / (1 - 5 * c_i ** 2) ** 2)) \
+             - gma_2_p / 2.0 * c_i * (
+        6.0 * (other.v - other.m + other.e * np.sin(other.v)) - 3.0 * np.sin(2.0 * other.w + 2.0 * other.v) \
+        - 3.0 * other.e * np.sin(2.0 * other.w + other.v) - other.e * np.sin(2.0 * other.w + 3.0 * other.v))
+
+        d_1 = (other.e + d_e) * np.sin(other.m) + edM * np.cos(other.m)  # G.309
+        d_2 = (other.e + d_e) * np.cos(other.m) - edM * np.sin(other.m)  # G.310
+
+        m = np.arctan2(d_1, d_2)  # G.311
+        self.e = np.sqrt(d_1 ** 2 + d_2 ** 2)  # G.312
+
+        d_3 = (np.sin(other.i / 2.0) + np.cos(other.i / 2.0) * d_i / 2.0) * np.sin(other.O) + np.sin(
+            other.i / 2.0) * dO * np.cos(other.O)  # G.313
+        d_4 = (np.sin(other.i / 2.0) + np.cos(other.i / 2.0) * d_i / 2.0) * np.cos(other.O) - np.sin(
+            other.i / 2.0) * dO * np.sin(other.O)  # G.314
+
+        self.O = np.arctan2(d_3, d_4)  # G.315
+        self.i = 2 * np.arcsin(np.sqrt(d_3 ** 2 + d_4 ** 2))  # G.316
+        self.w = MwO - m - self.O
+
+        self.m = m  # assign m latest, as other properties might be used for ocnversion!
+
+
+class OscKepOrbElem(KepOrbElem):
+    """
+    Class that contains a spacecraft state in Keplerian orbital elements.
+    Use this class to hold _osculating_ orbital elements.
+    """
+
+    def __init__(self):
+        super(OscKepOrbElem, self).__init__()
+
+    def from_mean_elems(self, mean):
+        """ Initialize osculating elements from a set of mean elements"""
+        self.osc_elems_transformation(mean, False)

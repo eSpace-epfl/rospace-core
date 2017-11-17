@@ -6,32 +6,38 @@ import numpy as np
 from BaseState import *
 from Constants import *
 
-class CartesianFrame:
-    UNDEF = 0
-    TEME = 1
-    ITRF = 2
-    LVLH = 3
 
+class CartesianFrame:
+    UNDEF = "UNDEF"
+    TEME = "TEME"
+    ITRF = "ITRF"
+    LVLH = "LVLH"
 
 
 class Cartesian(BaseState):
+    """
+    Holds a space craft state vector in cartesian coordinates.
+    Includes transformations to initialize from other coordinate types
+    """
+
     def __init__(self):
         super(Cartesian, self).__init__()
 
-        self.R = np.array([0, 0, 0])  # position
-        self.V = np.array([0, 0, 0])  # velocity
-        self.epochJD = 0  # julian date epoch
-        self.frame = CartesianFrame.UNDEF  # frame type
+        self.R = np.array([0, 0, 0])
+        '''numpy.array: Position in [km]'''
 
-    def setEpochFromDate(self, date):
-        J2000 = 2451545.0
-        J2000_date = datetime.datetime(2000, 1, 1, 11, 59, 0)  # UTC time of J2000
-        delta = date - J2000_date
-        self.epochJD = J2000 + delta.total_seconds() / (60.0 * 60 * 24)
+        self.V = np.array([0, 0, 0])
+        '''numpy.array: Velocity in [km/s]'''
 
+        self.frame = CartesianFrame.UNDEF
 
     def from_keporb(self, keporb):
-        # Calculates cartesian coordinates based on current orbital elements
+        """Sets cartesian state from Keplerian Orbital elements.
+
+        Args:
+            keporb (space_tf.KepOrbElem):  Spacecraft position
+
+        """
         p = keporb.a * (1 - keporb.e ** 2)
 
         # Position in perifocal frame, then rotate to proper orbital plane
@@ -43,6 +49,17 @@ class Cartesian(BaseState):
         self.V = R_z(keporb.O).dot(R_x(keporb.i)).dot(R_z(keporb.w)).dot(V_per)
 
     def get_lof(self):
+        """Calculates local orbital frame
+
+        Calculates the 3 base vectors (i,j,k) in the current frame.
+        Base vector i is aligned with the line between spacecraft and center of earth
+        Base vector j is aligned with the instantaneous velocity vector
+        Base vector k is crossproduct(i,j).
+
+        Returns:
+            numpy.array: 3x3 Matrix containing base vectors i,j,k in current frame
+
+        """
         # calculates base vectors of LOF in current frame
         # calculate 3 basis vectors
         i = self.R / np.linalg.norm(self.R)
@@ -70,6 +87,11 @@ class CartesianITRF(Cartesian):
 
 
 class CartesianLVLH(Cartesian):
+    """Class that holds relative coordinates in the local vertical local horizontal frame.
+
+    Allows to calculate and store R-bar/V-bar/H-bar.
+
+    """
 
     @property
     def rbar(self):
@@ -99,7 +121,16 @@ class CartesianLVLH(Cartesian):
         super(CartesianLVLH, self).__init__()
         self.frame = CartesianFrame.LVLH
 
+    def from_keporb(self, keporb):
+        raise RuntimeError("Method currently not supported")
+
     def from_cartesian_pair(self, chaser, target):
+        """Initializes relative coordinates in target lvlh frame.
+
+        Args:
+            chaser (Cartesian): Chaser state
+            target (Cartesian): Target state (base for LVLH)
+        """
 
         # calculate target lvlh
         R_lvlh = target.get_lof()
