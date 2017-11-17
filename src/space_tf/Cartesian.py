@@ -133,10 +133,11 @@ class CartesianLVLH(Cartesian):
         """
 
         # calculate target lvlh
-        R_lvlh = target.get_lof()
+        R_TL_T = target.get_lof()
 
         # get vector from target to chaser in TEME in [km]
-        self.R = (chaser.R - target.R)
+        p_T_C = (chaser.R - target.R)
 
-        # rotate into lvlh
-        self.R = R_lvlh.dot(self.R)
+        # get chaser position in target LVLH frame
+        p_TL_C = R_TL_T.dot(self.p_T_C)
+        self.R = p_TL_C
