@@ -139,5 +139,5 @@ class CartesianLVLH(Cartesian):
         p_T_C = (chaser.R - target.R)
 
         # get chaser position in target LVLH frame
-        p_TL_C = R_TL_T.dot(self.p_T_C)
+        p_TL_C = R_TL_T.dot(p_T_C)
         self.R = p_TL_C
