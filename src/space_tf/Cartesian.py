@@ -53,8 +53,8 @@ class Cartesian(BaseState):
 
         Calculates the 3 base vectors (i,j,k) in the current frame.
         Base vector i is aligned with the line between spacecraft and center of earth
-        Base vector j is aligned with the orbit angular momentum
-        Base vector k is crossproduct(i,j).
+        Base vector j is the negative crossproduct(i,k)
+        Base vector k is aligned with the orbit angular momentum
 
         Returns:
             numpy.array: 3x3 Matrix containing base vectors i,j,k in current frame
@@ -64,8 +64,8 @@ class Cartesian(BaseState):
         # calculate 3 basis vectors
         i = self.R / np.linalg.norm(self.R)
         H = np.cross(self.R, self.V)
-        j = H / np.linalg.norm(H)
-        k = -np.cross(i, j)
+        k = H / np.linalg.norm(H)
+        j = -np.cross(i, k)
 
         B = np.identity(3)
         B[0, 0:3] = i
