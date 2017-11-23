@@ -53,7 +53,7 @@ class Cartesian(BaseState):
 
         Calculates the 3 base vectors (i,j,k) in the current frame.
         Base vector i is aligned with the line between spacecraft and center of earth
-        Base vector j is aligned with the instantaneous velocity vector
+        Base vector j is aligned with the orbit angular momentum
         Base vector k is crossproduct(i,j).
 
         Returns:
@@ -63,8 +63,9 @@ class Cartesian(BaseState):
         # calculates base vectors of LOF in current frame
         # calculate 3 basis vectors
         i = self.R / np.linalg.norm(self.R)
-        j = self.V / np.linalg.norm(self.V)
-        k = np.cross(i, j)
+        H = np.cross(self.R, self.V)
+        j = H / np.linalg.norm(H)
+        k = -np.cross(i, j)
 
         B = np.identity(3)
         B[0, 0:3] = i
@@ -127,6 +128,26 @@ class CartesianLVLH(Cartesian):
     def from_cartesian_pair(self, chaser, target):
         """Initializes relative coordinates in target lvlh frame.
 
+        Two main definitions are available in literature, one with the
+        R vector pointing towards the Earth while the other pointing outwards.
+
+        According to:
+            Fehse W. et al, Automated Rendezvous and Docking of Spacecraft
+
+        vector R points towards the Earth, and is referred as x-axis. The y-axis is then
+        the direction of angular momentum, and z-axis is obtained by cross product.
+        In this reference, however, only circular orbits are considered.
+
+        According to:
+            Alfriend K.T. et al, Spacecraft Formation Flying
+
+        vector R points outwards, and is again referred as x-axis. In this case the y-axis
+        is obtained by negative cross product of x-axis and z-axis, where the z-axis is
+        in the direction of the angular momentum. In this case also elliptical orbits are
+        considered.
+
+        There the conversion is implemented according to Alfriend et al.
+
         Args:
             chaser (Cartesian): Chaser state
             target (Cartesian): Target state (base for LVLH)
@@ -139,5 +160,15 @@ class CartesianLVLH(Cartesian):
         p_T_C = (chaser.R - target.R)
 
         # get chaser position in target LVLH frame
-        p_TL_C = R_TL_T.dot(self.p_T_C)
+        p_TL_C = R_TL_T.dot(p_T_C)
         self.R = p_TL_C
+
+
+
+class CartesianLVC(Cartesian):
+    """ Class for the Local-Vertical-Curvilinear reference frame
+
+    Can it be useful?
+
+    """
+    pass
