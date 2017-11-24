@@ -31,6 +31,27 @@ class Cartesian(BaseState):
 
         self.frame = CartesianFrame.UNDEF
 
+    def from_lhlv_frame(self, target, chaser):
+        """
+
+        :param target (Cartesian):
+        :param chaser (LHLV):
+        :return:
+        """
+
+        # Get rotation matrix from target absolute position
+        R_TL_T = target.get_lof()
+
+        R_T_TL = np.linalg.inv(R_TL_T)
+
+        p_TL = chaser.R
+        v_TL = chaser.V
+
+        self.R = target.R + R_T_TL.dot(p_TL)
+        self.V = target.V + R_T_TL.dot(v_TL)
+
+
+
     def from_keporb(self, keporb):
         """Sets cartesian state from Keplerian Orbital elements.
 
@@ -159,10 +180,14 @@ class CartesianLVLH(Cartesian):
         # get vector from target to chaser in TEME in [km]
         p_T_C = (chaser.R - target.R)
 
-        # get chaser position in target LVLH frame
-        p_TL_C = R_TL_T.dot(p_T_C)
-        self.R = p_TL_C
+        # get the relative velocity of chaser w.r.t target in TEME [km/s]
+        v_T_C = chaser.V - target.V
 
+        # get chaser position and velocity in target LVLH frame
+        p_TL_C = R_TL_T.dot(p_T_C)
+        v_TL_C = R_TL_T.dot(v_T_C)
+        self.R = p_TL_C
+        self.V = v_TL_C
 
 
 class CartesianLVC(Cartesian):
