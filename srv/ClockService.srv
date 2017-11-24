@@ -1,0 +1,5 @@
+#request trigger to start/stop clock
+bool trigger
+---
+#respond if clock succesfully started/stopped
+bool success
