@@ -62,10 +62,11 @@ class Cartesian(BaseState):
         """
         # calculates base vectors of LOF in current frame
         # calculate 3 basis vectors
-        i = self.R / np.linalg.norm(self.R)
-        j = self.V / np.linalg.norm(self.V)
+        i = np.array(self.R) / np.linalg.norm(self.R)
+        j = np.array(self.V) / np.linalg.norm(self.V)
         k = np.cross(i, j)
-
+        k = k / np.linalg.norm(k)
+        
         B = np.identity(3)
         B[0, 0:3] = i
         B[1, 0:3] = j
