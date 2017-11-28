@@ -38,14 +38,14 @@ class Cartesian(BaseState):
             keporb (space_tf.KepOrbElem):  Spacecraft position
 
         """
-        p = keporb.a * (1 - keporb.e ** 2)
+        p = keporb.a - (keporb.a * keporb.e) * keporb.e
 
         # Position in perifocal frame, then rotate to proper orbital plane
-        R_per = np.array([p * np.cos(keporb.v), p * np.sin(keporb.v), 0]) / (1.0 + keporb.e * np.cos(keporb.v))
+        R_per = np.array([p * np.cos(keporb.v), p * np.sin(keporb.v), 0.0]) / (1.0 + keporb.e * np.cos(keporb.v))
         self.R = R_z(keporb.O).dot(R_x(keporb.i)).dot(R_z(keporb.w)).dot(R_per)
 
         # speed in perifocal frame, then rotate
-        V_per = np.array([-np.sin(keporb.v), keporb.e + np.cos(keporb.v), 0]) * np.sqrt(Constants.mu_earth / p)
+        V_per = np.array([-np.sin(keporb.v), keporb.e + np.cos(keporb.v), 0.0]) * np.sqrt(Constants.mu_earth / p)
         self.V = R_z(keporb.O).dot(R_x(keporb.i)).dot(R_z(keporb.w)).dot(V_per)
 
     def get_lof(self):
@@ -139,5 +139,6 @@ class CartesianLVLH(Cartesian):
         p_T_C = (chaser.R - target.R)
 
         # get chaser position in target LVLH frame
-        p_TL_C = R_TL_T.dot(self.p_T_C)
+        p_TL_C = R_TL_T.dot(p_T_C)
+
         self.R = p_TL_C

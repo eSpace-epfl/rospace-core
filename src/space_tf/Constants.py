@@ -41,22 +41,17 @@ def R_z(q):
     return np.array([[np.cos(q), -np.sin(q), 0], [np.sin(q), np.cos(q), 0], [0, 0, 1]])
 
 
-class Constants:
-    """
-    Static Helper Class that contains constants.
-    """
+mu_earth = 3.986004418e14 / 1e9
+'''Standard Gravitational Prameter of Earth [km^3 s^-2]'''
 
-    mu_earth = 3.986004418e14 / 1e9
-    '''Standard Gravitational Prameter of Earth [km^3 s^-2]'''
+R_earth = 6378.1363
+'''Radius of earth [km]'''
 
-    R_earth = 6378.1363
-    '''Radius of earth [km]'''
+J_2 = 1.08262668 * 10 ** (-3.0)
+'''Second dynamic form factor of earth.'''
 
-    J_2 = 1.08262668 * 10 ** (-3.0)
-    '''Second dynamic form factor of earth.'''
+J2000_jd = 2451545.0
+'''Julian Date of J2000 Epoch'''
 
-    J2000_jd = 2451545.0
-    '''Julian Date of J2000 Epoch'''
-
-    J2000_date = datetime.datetime(2000, 1, 1, 11, 59, 0)
-    '''UTC datetime of J2000 Epoch'''
+J2000_date = datetime.datetime(2000, 1, 1, 11, 59, 0)
+'''UTC datetime of J2000 Epoch'''
