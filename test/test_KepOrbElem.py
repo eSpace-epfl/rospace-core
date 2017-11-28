@@ -8,8 +8,6 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + "/../src/")  # hack...
 from space_tf import *
-from matplotlib.pyplot import  hist
-import matplotlib.pyplot
 
 class KepOrbElemTest(unittest.TestCase):
 
@@ -21,16 +19,13 @@ class KepOrbElemTest(unittest.TestCase):
         um = km/1e9
         max_err = um*100  # set 100 um max error after conversion
 
-        num_tests = int(3e4)
+        num_tests = int(1e4)
         a_min = 6700
         a_max = 90000
         e_min = 0.0
         e_max = -20
 
         err_samples = np.zeros([num_tests])
-
-        print np.exp(e_min)
-        print np.exp(e_max)
 
         rad_min = 0.0
         rad_max = np.pi*1.999
@@ -111,13 +106,24 @@ class KepOrbElemTest(unittest.TestCase):
             if i % 10000 == 0:
                 print i
 
-        print "<= um: ", np.sum(err_samples<=um)/float(num_tests)*100.0, "%"
-        print "<= mm: ", np.sum(err_samples <= mm) / float(num_tests) * 100.0, "%"
-        print "<= cm: ", np.sum(err_samples <= cm) / float(num_tests) * 100.0, "%"
-        print "<= m: ", np.sum(err_samples <= m) / float(num_tests) * 100.0, "%"
+	# assign....
+	percent_um = np.sum(err_samples<=um)/float(num_tests)*100.0
+	percent_mm = np.sum(err_samples <= mm) / float(num_tests) * 100.0
+	percent_cm =  np.sum(err_samples <= cm) / float(num_tests) * 100.0
+	percent_m = np.sum(err_samples <= m) / float(num_tests) * 100.0
+	percent_max_err = np.sum(err_samples <= max_err) / float(num_tests) * 100.0
 
-        print "<= 100um: ", np.sum(err_samples <= max_err) / float(num_tests) * 100.0, "%"
+        print "<= um: ", percent_um, "%"
+        print "<= mm: ", percent_mm, "%"
+        print "<= cm: ",percent_cm, "%"
+        print "<= m: ", percent_m, "%"
 
+        print "<= 100um: ", percent_max_err, "%"
+	
+	# 99.9% have to be smaller than max_err
+	# 99.0% have to be smaller than 1 mm
+	self.assertTrue(percent_max_err >= 99.9)
+	self.assertTrue(percent_mm >= 99.0)
 
     def test_true_to_mean_anomaly(self):
 
@@ -206,3 +212,4 @@ class KepOrbElemTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
