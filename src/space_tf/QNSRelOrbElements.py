@@ -1,3 +1,15 @@
+"""
+Module that contains Classes for Relative Orbital Elements (ROE)
+
+References:
+
+    [1] New State Transition Matrices for Relative Motion of Spacecraft Formations in Perturbed Orbits,
+        A. Koenig, T. Guffanti, S. D'Amico, AIAA 2016-5635
+    [2] Improved Maneuver-free approach to angles-only navigation for space rendezvous,
+        J. Sullivan, A.W. Koenig, S. D'Amico, AAS 16-530
+
+"""
+
 #   Class to hold relative orbital elements (ROE)
 #   Author: Michael Pantic, michael.pantic@gmail.com
 #   License: TBD
@@ -23,9 +35,14 @@ from BaseState import *
 
 
 class QNSRelOrbElements(BaseState):
+    """ Holds Relative Orbital Elements in the Quasi-Non Singular Formulation
+
+    IMPORTANT: Formulation is not unique if target is in equatorial orbit (ie. target.i =  0)
+
+    """
     def __init__(self):
         super(QNSRelOrbElements, self).__init__()
-        self.dA = 0  #
+        self.dA = 0
         self.dL = 0
         self.dEx = 0
         self.dEy = 0
@@ -33,6 +50,7 @@ class QNSRelOrbElements(BaseState):
         self.dIy = 0
 
     def from_vector(self, vector):
+        """Method to initialize from numpy vector [dA,dL,dEx,dEy,dIx,dIy]"""
         self.dA = vector[0]
         self.dL = vector[1]
         self.dEx = vector[2]
@@ -41,6 +59,7 @@ class QNSRelOrbElements(BaseState):
         self.dIy = vector[5]
 
     def as_vector(self):
+        """Initializes from a numpy vector [dA,dL,dEx,dEy,dIx,dIy]"""
         vector = np.zeros([6, 1])
         vector[0] = self.dA
         vector[1] = self.dL
@@ -51,8 +70,16 @@ class QNSRelOrbElements(BaseState):
         return vector
 
     def from_keporb(self, target, chaser):
-        # Calculate relative coordinates based on
-        # target and chaser orbital elements
+        """Calculate relative orbital elements based on target and chaser absolute elements.
+
+        Note:
+            In order to calculate mean relative orbital elements, use mean elements for target and chaser!
+
+        Args:
+            target (KepOrbElem): Mean Orbital Elements of target
+            chaser (KepOrbElem): Mean Orbital Elements of chaser
+
+        """
 
         # shorter writing
         t = target
