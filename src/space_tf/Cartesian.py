@@ -31,7 +31,7 @@ class Cartesian(BaseState):
 
         self.frame = CartesianFrame.UNDEF
 
-    def from_lhlv_frame(self, target, lvlh_chaser):
+    def from_lvlh_frame(self, target, lvlh_chaser):
         """Initialize cartesian frame from LVLH and target cartesian
   	
         Args:
@@ -43,8 +43,8 @@ class Cartesian(BaseState):
 
         R_T_TL = np.linalg.inv(R_TL_T)
 
-        p_TL = chaser.R
-        v_TL = chaser.V
+        p_TL = lvlh_chaser.R
+        v_TL = lvlh_chaser.V
 
         self.R = target.R + R_T_TL.dot(p_TL)
         self.V = target.V + R_T_TL.dot(v_TL)
@@ -91,6 +91,7 @@ class Cartesian(BaseState):
         B[2, 0:3] = k
 
         return B
+
 
 class CartesianTEME(Cartesian):
     def __init__(self):

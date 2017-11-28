@@ -278,18 +278,12 @@ class KepOrbElem(BaseState):
         # 10. calculate eccentricity vector  / 11. Calc eccentricity
         E = 1 / Constants.mu_earth * ((v ** 2 - Constants.mu_earth / r) * cart.R.flat - r * v_r * cart.V.flat)
         self.e = np.linalg.norm(E, ord=2)
-        
-            
 
         # direct form:
         # self.e = 1 / Constants.mu_earth * np.sqrt(
         #    (2 * Constants.mu_earth - r * v ** 2) * r * v_r ** 2 + (Constants.mu_earth - r * v ** 2) ** 2)
 
         # 11. Calculate arg. of perigee
-        #p_1 = np.exp(np.log(abs(E[0])) - (np.log(n) + np.log(self.e)))
-        #p_2 = np.exp(np.log(abs(E[1])) - (np.log(n) + np.log(self.e)))
-        #p_3 = np.exp(np.log(abs(E[2])) - (np.log(n) + np.log(self.e)))
-        #P = np.array([p_1*np.sign(E[0]),p_2*np.sign(E[1]),p_3*np.sign(E[2])])
         P = E / (n * self.e)
         self.w = np.arccos(np.dot(N, P))
         if E[2] < 0:
