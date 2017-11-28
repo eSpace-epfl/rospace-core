@@ -31,14 +31,13 @@ class Cartesian(BaseState):
 
         self.frame = CartesianFrame.UNDEF
 
-    def from_lhlv_frame(self, target, chaser):
+    def from_lhlv_frame(self, target, lvlh_chaser):
+        """Initialize cartesian frame from LVLH and target cartesian
+  	
+        Args:
+            target (space_tf.Cartesian):  Target Cartesian position
+            lvlh_chaser (space_tf.CartesianLVLH):  Chaser LVLH Cartesian position
         """
-
-        :param target (Cartesian):
-        :param chaser (LHLV):
-        :return:
-        """
-
         # Get rotation matrix from target absolute position
         R_TL_T = target.get_lof()
 
@@ -50,8 +49,6 @@ class Cartesian(BaseState):
         self.R = target.R + R_T_TL.dot(p_TL)
         self.V = target.V + R_T_TL.dot(v_TL)
 
-
-
     def from_keporb(self, keporb):
         """Sets cartesian state from Keplerian Orbital elements.
 
@@ -59,14 +56,14 @@ class Cartesian(BaseState):
             keporb (space_tf.KepOrbElem):  Spacecraft position
 
         """
-        p = keporb.a * (1 - keporb.e ** 2)
+        p = keporb.a - (keporb.a * keporb.e) * keporb.e
 
         # Position in perifocal frame, then rotate to proper orbital plane
-        R_per = np.array([p * np.cos(keporb.v), p * np.sin(keporb.v), 0]) / (1.0 + keporb.e * np.cos(keporb.v))
+        R_per = np.array([p * np.cos(keporb.v), p * np.sin(keporb.v), 0.0]) / (1.0 + keporb.e * np.cos(keporb.v))
         self.R = R_z(keporb.O).dot(R_x(keporb.i)).dot(R_z(keporb.w)).dot(R_per)
 
         # speed in perifocal frame, then rotate
-        V_per = np.array([-np.sin(keporb.v), keporb.e + np.cos(keporb.v), 0]) * np.sqrt(Constants.mu_earth / p)
+        V_per = np.array([-np.sin(keporb.v), keporb.e + np.cos(keporb.v), 0.0]) * np.sqrt(Constants.mu_earth / p)
         self.V = R_z(keporb.O).dot(R_x(keporb.i)).dot(R_z(keporb.w)).dot(V_per)
 
     def get_lof(self):
@@ -94,7 +91,6 @@ class Cartesian(BaseState):
         B[2, 0:3] = k
 
         return B
-
 
 class CartesianTEME(Cartesian):
     def __init__(self):
@@ -193,7 +189,7 @@ class CartesianLVLH(Cartesian):
 class CartesianLVC(Cartesian):
     """ Class for the Local-Vertical-Curvilinear reference frame
 
-    Can it be useful?
+    Can it be useful? (mpantic:)Yes. To do later ;-)
 
     """
     pass
