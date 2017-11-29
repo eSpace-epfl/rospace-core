@@ -4,6 +4,7 @@
         <!-- Launch TF publisher for visualizations -->
         <node pkg="cso_gnc_sim" name="tf_pub" type="satelite_tf_publisher.py" output="screen">
             <remap from="pose" to="/cso/pose" />
+            <remap from="target_oe" to="/cso/oe" />
             <remap from="~sensors" to="/cso/sensors" />
             <remap from="~frames" to="/cso/frames" />
             <param name="body_frame" value="cso" />

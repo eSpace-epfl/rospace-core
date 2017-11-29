@@ -13,9 +13,9 @@
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find cso_gnc_sim)/res/rviz/tf_large.rviz" required="true" />
 
 
-     <!-- Launch Visualizer -->
+     <!-- Launch Visualizer
     <node name="rqt_ekf" pkg="rqt_space_plugins" type="rqt_orbit_ekf" />
-
+-->
     <!-- launch orbit visualizers -->
     <node name="cso_orbit_vis" pkg="rviz_orbit_node" type="rviz_orbit_node.py" >
         <remap from="oe" to="/cso/oe" />

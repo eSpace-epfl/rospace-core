@@ -2,7 +2,7 @@
 
 <!-- Launch Epoch Clock without params (=realtime, start from now) -->
     <node pkg="epoch_clock" name="epoch_clock_sim" type="epoch_clock.py" output="screen">
-        <param name="realtime_factor" value="250" />
+        <param name="realtime_factor" value="15" />
         <param name="init_epoch" value="20170915T12:20:00" />
     </node>
 
@@ -14,8 +14,8 @@
         <remap from="oe_rel" to="/target/oe" />
         <remap from="pose_rel" to="/target/pose" />
 
-	    <param name="oe_init" type="yaml" value="{a: 7050, e: 0.0001, i: 98.4, O: 30, w: 90, v: 60}" />
-	    <param name="oe_init_rel" type="yaml" value="{ada: -5000, adL: -20000, adEx: 0, adEy: 0, adIx: 0, adIy: 0 }" />
+	    <param name="oe_init" type="yaml" value="{a: 7050, e: 0.0001, i: 98.4, O: 30, w: 90, v: 1}" />
+	    <param name="oe_init_rel" type="yaml" value="{ada: -0.1, adL: 4, adEx: 0, adEy: 0.1, adIx: 0, adIy: 0.1 }" />
 	    <param name="oe_epoch" value="20170915T12:20:00" />
    </node>
 
@@ -40,11 +40,11 @@
             <remap from="target_oe" to="/target/oe" />
         </node>
 
-          <!-- Launch Filter -->
+          <!-- Launch Filter
         <node pkg="cso_gnc_target_estimator" name="target_estimator" type="cso_gnc_target_estimator_node.py" output="screen">
             <remap from="chaser_oe" to="oe" />
             <remap from="target_oe" to="/target/oe" />
-        </node>
+        </node>-->
     </group>
 
   <group ns="target">
