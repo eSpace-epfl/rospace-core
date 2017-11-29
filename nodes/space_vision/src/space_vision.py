@@ -37,7 +37,7 @@ class image_converter:
     #call function for cube detection + analysis
     # d, azim, elev = analysis(cv_image)
 
-    d, azim, elev = lib.img_analysis(cv_image)
+    d, azim, elev, pose = lib.img_analysis(cv_image)
     data = [d, azim, elev ]
 
     try:
