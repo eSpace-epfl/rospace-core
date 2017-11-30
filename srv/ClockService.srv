@@ -1,5 +1,7 @@
 #request trigger to start/stop clock
 bool trigger
+float32 rtf
 ---
 #respond if clock succesfully started/stopped
 bool success
+float32 cur_rtf
