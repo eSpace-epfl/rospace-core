@@ -193,4 +193,23 @@ class CartesianLVC(Cartesian):
     Can it be useful? (mpantic:)Yes. To do later ;-)
 
     """
-    pass
+
+    def from_lvlh_frame(self, target, lvlh_chaser):
+        """
+        Args:
+            target:
+            lvlh_chaser:
+        """
+
+        # Convert chaser to cartesian
+        cart_chaser = Cartesian()
+        cart_chaser.from_lvlh_frame(target, lvlh_chaser)
+
+        # Convert both in perifocal frame
+
+
+        # Evaluate radius difference
+        
+
+    def from_cartesian_pair(self, target, chaser):
+        pass
