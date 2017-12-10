@@ -188,28 +188,62 @@ class CartesianLVLH(Cartesian):
 
 
 class CartesianLVC(Cartesian):
-    """ Class for the Local-Vertical-Curvilinear reference frame
+    """ Class for the Local-Vertical-Curvilinear reference frame.
 
-    Can it be useful? (mpantic:)Yes. To do later ;-)
+        Make sense when the distances from the target are significant. The radial distance is the
+        difference between the two radii at a certain instant in time. The along-track distance is defined
+        as the difference between the true anomalies, to give a consistent measure of the distance between
+        target and chaser. Finally the out-of-plane distance is also defined as the angle between the chaser
+        position and the target plane. Everything is then normalized to have values within a similar range.
 
     """
 
-    def from_lvlh_frame(self, target, lvlh_chaser):
+    def __init__(self):
+        super(CartesianLVC, self).__init__()
+
+        self.dR = 0
+        self.dV = 0
+        self.dH = 0
+
+        self.frame = CartesianFrame.UNDEF
+
+    def from_keporb(self, chaser, target):
         """
+            Given chaser and target (mean) orbital elements, evaluate radial distance and true anomaly difference.
+
         Args:
-            target:
-            lvlh_chaser:
+            chaser (KepOrbElem)
+            target (KepOrbElem)
         """
 
-        # Convert chaser to cartesian
-        cart_chaser = Cartesian()
-        cart_chaser.from_lvlh_frame(target, lvlh_chaser)
+        # Evaluate cartesian from keplerian
+        chaser_cartesian = Cartesian()
+        chaser_cartesian.from_keporb(chaser)
+        target_cartesian = Cartesian()
+        target_cartesian.from_keporb(target)
 
-        # Convert both in perifocal frame
+        # Evaluate along-track distance in terms of true anomaly difference
+        dv = chaser.v + chaser.w - target.v - target.w
 
+        # Evaluate radial distance w.r.t the position of the target
+        p_T = target.a * (1.0 - target.e**2)
+        r_T = p_T/(1 + target.e * np.cos(target.v))
+        p_C = chaser.a * (1.0 - chaser.e**2)
+        r_C = p_C/(1 + chaser.e * np.cos(chaser.v))
+        dr = r_C - r_T
 
-        # Evaluate radius difference
-        
+        # Evaluate plane angular distance to define the out-of-plane difference
+        p_C_TEM = chaser_cartesian.R
+        h_T_TEM = np.cross(target_cartesian.R, target_cartesian.V)
+        e_p_C_TEM = p_C_TEM / np.linalg.norm(p_C_TEM)
+        e_h_T_TEM = h_T_TEM / np.linalg.norm(h_T_TEM)
+        dh = np.pi/2.0 - np.arccos(np.dot(e_p_C_TEM, e_h_T_TEM))
 
-    def from_cartesian_pair(self, target, chaser):
+        # Assign variables
+        self.dR = dr / r_T
+        self.dV = dv / (2*np.pi)
+        self.dH = dh / (2*np.pi)
+
+    def from_qns(self):
+        # TODO
         pass
