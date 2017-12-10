@@ -233,7 +233,7 @@ class KepOrbElem(BaseState):
         self.e = msg.eccentricity
 
         # assign latest!
-        self._v = np.deg2rad(msg.true_anomaly)
+        self.v = np.deg2rad(msg.true_anomaly)
 
     def from_cartesian(self, cart):
         """Initialize object from a cartesian state vector (pos + speed).
@@ -416,11 +416,10 @@ class KepOrbElem(BaseState):
 
         # formula G.307
         edM = gma_2_p / 8.0 * other.e * eta ** 3 * (1.0 - 11.0 * c_i ** 2 - 40.0 * (c_i ** 4 / (1 - 5 * c_i ** 2))) \
-              - gma_2 / 4.0 * eta ** 3 * (2.0 * (3.0 * c_i ** 2 - 1.0) * ((a_r * eta) ** 2 + a_r + 1) * np.sin(other.v) \
+              - gma_2_p / 4.0 * eta ** 3 * (2.0 * (3.0 * c_i ** 2 - 1.0) * ((a_r * eta) ** 2 + a_r + 1) * np.sin(other.v) \
                                           + 3.0 * (1.0 - c_i ** 2) * (
                                           (-(a_r * eta) ** 2 - a_r + 1) * np.sin(2.0 * other.w + other.v) \
-                                          + (
-                                          ((a_r * eta) ** 2 + a_r + 1.0 / 3.0) * np.sin(2.0 * other.w + 3.0 * other.v))))
+                                          + (((a_r * eta) ** 2 + a_r + 1.0 / 3.0) * np.sin(2.0 * other.w + 3.0 * other.v))))
 
         # formula G.308
         dO = -gma_2_p / 8.0 * other.e ** 2 * c_i * (
