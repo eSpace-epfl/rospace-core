@@ -13,6 +13,8 @@ class Epoch:
 
         self.epoch_string = rospy.get_param('/epoch')
         self.epoch_datetime = datetime.strptime(self.epoch_string, "%Y-%m-%d %H:%M:%S")
+        self.publish_frequency = rospy.get_param('/publish_freq')
+        self.time_step_size = rospy.get_param('/time_step_size')
 
     def now(self):
         time_since_epoch = rospy.Time.now()
@@ -25,3 +27,17 @@ class Epoch:
         J2000_date = datetime(2000, 1, 1, 12, 00, 00)  # UTC time of J2000
         delta = now_utc - J2000_date
         return J2000 + delta.total_seconds() / (60.0 * 60 * 24)
+
+    def get_frequency(self):
+        return self.publish_frequency
+
+    def get_stepSize(self):
+        return self.stepSize
+
+    def changeRate(self, new_rate):
+        # Only propagator node is allowed to change this! Do not change!
+        self.publish_rate = new_rate
+
+    def changeStep(self, new_step):
+        # Only propagator node is allowed to change this! Do not change!
+        self.time_step_size = new_step
