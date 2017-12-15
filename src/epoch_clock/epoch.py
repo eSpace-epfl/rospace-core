@@ -34,9 +34,9 @@ class Epoch:
     def get_stepSize(self):
         return self.stepSize
 
-    def changeRate(self, new_rate):
+    def changeFrequency(self, new_frequency):
         # Only propagator node should change this! Do not change!
-        self.publish_rate = new_rate
+        self.publish_frequency = new_frequency
 
     def changeStep(self, new_step):
         # Only propagator node should change this! Do not change!
