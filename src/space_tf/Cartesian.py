@@ -109,7 +109,6 @@ class CartesianLVLH(Cartesian):
     """Class that holds relative coordinates in the local vertical local horizontal frame.
 
     Allows to calculate and store R-bar/V-bar/H-bar.
-
     """
 
     @property
