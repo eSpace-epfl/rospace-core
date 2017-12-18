@@ -9,24 +9,6 @@ References:
         J. Sullivan, A.W. Koenig, S. D'Amico, AAS 16-530
 
 """
-
-#   Class to hold relative orbital elements (ROE)
-#   Author: Michael Pantic, michael.pantic@gmail.com
-#   License: TBD
-# 	Literature: [1] New State Transition Matrices for Relative Motion of
-#                   Spacecraft Formations in Perturbed Orbits,
-#                   A.W. Koenig, T. Guffanti, S. D'Amico
-#                   AIAA 2016-5635
-#
-#               [2] Improved Maneuver-free approach to angles-only
-#                   navigation for space rendezvous,
-#                   J. Sullivan, A.W. Koenig, S. D'Amico
-#                   AAS 16-530
-#
-#   Note: This class uses the quasi-nonsingular formulation!
-#         It is well-defined for almost all configurations of chaser and target
-#         EXCEPT: Target is in equatorial orbit (target.i=0)
-#
 import sys
 import numpy as np
 
