@@ -9,12 +9,57 @@ References:
         A. Koenig, T. Guffanti, S. D'Amico, AIAA 2016-5635
 
 """
+import orekit
+
+from orekit.pyhelpers import setup_orekit_curdir
+import inspect
+import thread
+from threading import Thread
+from org.orekit.propagation.semianalytical.dsst import DSSTPropagator
+from java.util import Arrays
+from java.util import Collections
+from java.util import ArrayList
+from java.util import HashSet
+from orekit import JArray_double
+from orekit import JArray
+
+
+from org.orekit.attitudes import BodyCenterPointing
+from org.orekit.bodies import  OneAxisEllipsoid
+from org.orekit.frames import  FramesFactory
+from org.orekit.data import DataProvidersManager, ZipJarCrawler
+from org.orekit.time import TimeScalesFactory, AbsoluteDate
+from org.orekit.orbits import KeplerianOrbit
+from org.orekit.utils import Constants as Cst
+from org.orekit.propagation.analytical import EcksteinHechlerPropagator
+from org.orekit.propagation.analytical.tle import TLEPropagator
+from org.orekit.propagation.conversion import FiniteDifferencePropagatorConverter
+from org.orekit.propagation.conversion import TLEPropagatorBuilder
+from datetime import datetime
+from org.orekit.forces.gravity.potential import UnnormalizedSphericalHarmonicsProvider
+from org.orekit.propagation.semianalytical.dsst.forces import DSSTZonal
+from org.orekit.propagation.semianalytical.dsst.forces import DSSTForceModel
+from org.orekit.propagation.semianalytical.dsst.utilities import AuxiliaryElements
+
+from org.orekit.propagation import SpacecraftState
+from org.orekit.orbits import OrbitType, PositionAngle, EquinoctialOrbit
+from org.orekit.propagation.numerical import NumericalPropagator
+from org.hipparchus.ode.nonstiff import DormandPrince853Integrator
+from org.orekit.forces.gravity.potential import GravityFieldFactory
+from org.orekit.forces.gravity import HolmesFeatherstoneAttractionModel
+from org.orekit.utils import IERSConventions
+
+
 from . import *
-from threading import RLock
+from threading import RLock, Lock
 import numpy as np
 
-
 class KepOrbElem(BaseState):
+
+    vm = None
+    provider = None
+    lock = Lock()
+
     """
     Class that contains a spacecraft state in Keplerian orbital elements.
     Use this class to hold _mean_ orbital elements.
@@ -42,6 +87,7 @@ class KepOrbElem(BaseState):
 
         # Internal members
         self._lock = RLock() # Lock for thread safety
+        self._orekit_lock = Lock()
 
         self._E = None  # eccentric anomaly
         self._m = None  # mean anomaly
@@ -344,9 +390,96 @@ class KepOrbElem(BaseState):
         """Return as numpy array [a,m,e,w,i,O] """
         return np.array([[self.a, self.m, self.e, self.w, self.i, self.O]]).T
 
+    def __str__(self):
+        return "a: {0}, e: {1}, i: {2}, w: {3}, O: {4}, v: {5}, E: {6}, M: {7}".format(self.a,
+                                                                                       self.e,
+                                                                                       self.i,
+                                                                                       self.w,
+                                                                                       self.O,
+                                                                                       self.v,
+                                                                                       self.E,
+                                                                                       self.m)
+
     def from_osc_elems(self, osc):
         """ Initialize mean elements from a set of osculating elements"""
-        self.osc_elems_transformation(osc, True)
+        self.osc_elems_transformation_ore(osc, True)
+
+    def osc_elems_transformation_ore(self, other, dir):
+        print thread.get_ident()
+
+        self._orekit_lock.acquire()
+        if KepOrbElem.vm is None:
+            KepOrbElem.vm =  orekit.initVM()
+            setup_orekit_curdir()
+            KepOrbElem.provider = GravityFieldFactory.getUnnormalizedProvider(30,30)
+
+        KepOrbElem.vm.attachCurrentThread()
+
+        print "0"
+        utc = TimeScalesFactory.getUTC()
+        print "1"
+
+
+
+        orekit_date = AbsoluteDate(2017,
+                                   1,
+                                   1,
+                                   12,
+                                   1,
+                                   1.0,
+                                   utc)
+        print "A"
+        inertialFrame = FramesFactory.getEME2000()
+        print "B"
+        a = float(other.a)
+        e = float(other.e)
+        i = float(other.i)
+        w = float(other.w)
+        O = float(other.O)
+        v = float(other.v)
+
+        print "C"
+        initialOrbit = KeplerianOrbit(a * 1000.0, e, i, w, O, v,
+                                      PositionAngle.TRUE,
+                                      inertialFrame, orekit_date, Constants.mu_earth*1e9)
+
+        print "D",v, initialOrbit.getAnomaly(PositionAngle.TRUE)
+        initialState = SpacecraftState(initialOrbit, 1.0)
+        print "E"
+
+        #zonal_forces= DSSTZonal(provider,2,1,5)
+        print "F"
+        zonal_forces = DSSTZonal(KepOrbElem.provider, 6, 4, 6)
+        forces = ArrayList()
+        print "G"
+        forces.add(zonal_forces)
+        try:
+            equinoctial = None
+            if dir:
+
+                print "gugusA"
+                equinoctial = DSSTPropagator.computeMeanState(initialState, None, forces)
+            else:
+
+                print "gugusB"
+                equinoctial = DSSTPropagator.computeOsculatingState(initialState, None, forces)
+
+            print "gugusC"
+            newOrbit = KeplerianOrbit(equinoctial.getOrbit())
+
+            print "H"
+            self.a = newOrbit.getA()/1000.0
+            self.e = newOrbit.getE()
+            self.i = newOrbit.getI()
+            self.w = newOrbit.getPerigeeArgument()
+            self.O = newOrbit.getRightAscensionOfAscendingNode()
+            self.v = newOrbit.getAnomaly(PositionAngle.TRUE)
+
+            print "I"
+
+        finally:
+            self._orekit_lock.release()
+
 
     def osc_elems_transformation(self, other, dir):
         """ Approximation to convert between mean and osculating orbital elements.
@@ -416,7 +549,7 @@ class KepOrbElem(BaseState):
 
         # formula G.307
         edM = gma_2_p / 8.0 * other.e * eta ** 3 * (1.0 - 11.0 * c_i ** 2 - 40.0 * (c_i ** 4 / (1 - 5 * c_i ** 2))) \
-              - gma_2 / 4.0 * eta ** 3 * (2.0 * (3.0 * c_i ** 2 - 1.0) * ((a_r * eta) ** 2 + a_r + 1) * np.sin(other.v) \
+              - gma_2_p / 4.0 * eta ** 3 * (2.0 * (3.0 * c_i ** 2 - 1.0) * ((a_r * eta) ** 2 + a_r + 1) * np.sin(other.v) \
                                           + 3.0 * (1.0 - c_i ** 2) * (
                                           (-(a_r * eta) ** 2 - a_r + 1) * np.sin(2.0 * other.w + other.v) \
                                           + (
@@ -461,4 +594,4 @@ class OscKepOrbElem(KepOrbElem):
 
     def from_mean_elems(self, mean):
         """ Initialize osculating elements from a set of mean elements"""
-        self.osc_elems_transformation(mean, False)
+        self.osc_elems_transformation_ore(mean, False)
