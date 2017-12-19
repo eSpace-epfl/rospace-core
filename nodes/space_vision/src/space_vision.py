@@ -36,16 +36,16 @@ class image_converter:
     rospy.loginfo("received image with format {} x {} x {}".format(rows,cols,channels))
     
     d, azim, elev, quat = lib.img_analysis(cv_image, self.last_cube_pos, debug=False)
-    #cube_pos = [d, azim, elev]
-    #
-    #self.last_cube_pos=cube_pos
-    #try:
-    #  self.cube_pos_pub.publish("cube position : {} ".format(cube_pos))
-    #  rospy.loginfo("publish cube position : {}".format(cube_pos))
-    #  self.cube_quat_pub.publish("cube quaternion : {} ".format(quat))
-    #  rospy.loginfo("publish cube quaternion : {}".format(quat))
-    #except e:
-    #  print(e)
+    cube_pos = [d, azim, elev]
+
+    self.last_cube_pos=cube_pos
+    try:
+      self.cube_pos_pub.publish("cube position : {} ".format(cube_pos))
+      rospy.loginfo("publish cube position : {}".format(cube_pos))
+      self.cube_quat_pub.publish("cube quaternion : {} ".format(quat))
+      rospy.loginfo("publish cube quaternion : {}".format(quat))
+    except e:
+      print(e)
 
     t_end = time.time()
     try:
