@@ -12,6 +12,28 @@ from space_tf import *
 class KepOrbElemTest(unittest.TestCase):
 
     def test_precision_chain(self):
+        """
+        This function tests the precision of conversion functions in a
+        probabilistic way.
+
+        A sampling (n=10000) of orbits are taken:
+          - a: Uniform between 6700 and 90000 km
+          - e: Uniform between exp(0) and exp(-20)
+          - O,i,w,v: Uniform between 0..2Pi
+
+        For each sampling, the following calculations are performed:
+          - Get state vector p_source
+          - Perturb state vector by a few mm/cm to obtain p_source_per (in order to obtain numerical non-optimal cases)
+          - Convert back to orbital elements
+          - Assign to new orbital element object, but use mean-anomaly
+          - Convert back to perturbed state vector using true anomaly
+          - Compare to original perturbed state vector and calculate deviance
+
+        Altough a bit a convoluted method, it allows to test
+        the precision of the Cartesian-Keplerian mapping and the
+        True Anomaly-Mean Anomaly mapping in absence of ground truth data.
+
+        """
         km = 1
         m = km/1e3
         cm = km/1e5
@@ -58,8 +80,8 @@ class KepOrbElemTest(unittest.TestCase):
             v_source = p_source.V  # [km]
 
             # perturb these numbers a bit
-            r_source_per = r_source #+ (perturb_max - perturb_min)*np.random.random_sample([3])+ perturb_min
-            v_source_per = v_source #+ (perturb_max - perturb_min)*np.random.random_sample([3])+ perturb_min
+            r_source_per = r_source + (perturb_max - perturb_min)*np.random.random_sample([3])+ perturb_min
+            v_source_per = v_source + (perturb_max - perturb_min)*np.random.random_sample([3])+ perturb_min
 
 
             # Generate cartesian object with perturbed numbers
@@ -83,7 +105,7 @@ class KepOrbElemTest(unittest.TestCase):
             O_X_2.i = O_X.i
             O_X_2.w = O_X.w
             O_X_2.O = O_X.O
-            O_X_2.v = O_X.v
+            O_X_2.m = O_X.m
 
             # convert back v2
             p_target = Cartesian()
@@ -106,26 +128,33 @@ class KepOrbElemTest(unittest.TestCase):
             if i % 10000 == 0:
                 print i
 
-	# assign....
-	percent_um = np.sum(err_samples<=um)/float(num_tests)*100.0
-	percent_mm = np.sum(err_samples <= mm) / float(num_tests) * 100.0
-	percent_cm =  np.sum(err_samples <= cm) / float(num_tests) * 100.0
-	percent_m = np.sum(err_samples <= m) / float(num_tests) * 100.0
-	percent_max_err = np.sum(err_samples <= max_err) / float(num_tests) * 100.0
+        # assign....
+        percent_um = np.sum(err_samples<=um)/float(num_tests)*100.0
+        percent_mm = np.sum(err_samples <= mm) / float(num_tests) * 100.0
+        percent_cm =  np.sum(err_samples <= cm) / float(num_tests) * 100.0
+        percent_m = np.sum(err_samples <= m) / float(num_tests) * 100.0
+        percent_max_err = np.sum(err_samples <= max_err) / float(num_tests) * 100.0
 
-        print "<= um: ", percent_um, "%"
-        print "<= mm: ", percent_mm, "%"
-        print "<= cm: ",percent_cm, "%"
-        print "<= m: ", percent_m, "%"
+        print ""
+        print "Test statistics (n=", num_tests,")"
+        print "===================="
+        print "Max dev\t Percent pass"
+        print "1 um:\t", percent_um, "%"
+        print "1 mm:\t", percent_mm, "%"
+        print "1 cm:\t", percent_cm, "%"
+        print "1 m:\t", percent_m, "%"
 
-        print "<= 100um: ", percent_max_err, "%"
-	
-	# 99.9% have to be smaller than max_err
-	# 99.0% have to be smaller than 1 mm
-	self.assertTrue(percent_max_err >= 99.9)
-	self.assertTrue(percent_mm >= 99.0)
+        print "100um: \t", percent_max_err, "%"
+        # 99.9% have to be smaller than max_err
+        # 99.0% have to be smaller than 1 mm
+        self.assertTrue(percent_max_err >= 99.9)
+        self.assertTrue(percent_mm >= 99.0)
 
     def test_true_to_mean_anomaly(self):
+        """
+        Tests true to mean anomaly conversion
+
+        """
 
         for i in np.arange(0.1,np.pi*2, 0.1):
             v_test = i
@@ -148,6 +177,9 @@ class KepOrbElemTest(unittest.TestCase):
             self.assertAlmostEqual(v_test, source.v, places=10)
 
     def test_mean_to_true_anomaly(self):
+        """
+        Tests mean to true anomaly conversion
+        """
 
         for i in np.arange(0.1, np.pi * 2, 0.1):
             m_test = i
@@ -170,6 +202,10 @@ class KepOrbElemTest(unittest.TestCase):
             self.assertAlmostEqual(m_test, source.m, places=10)
 
     def test_true_to_ecc_anomaly(self):
+        """
+        Tests true to eccentric anomaly conversion
+
+        """
         v_test = 0.787398241564565646
         source = KepOrbElem()
         source.e = 0.01
@@ -190,6 +226,9 @@ class KepOrbElemTest(unittest.TestCase):
         self.assertAlmostEqual(v_test, source.v, places=10)
 
     def test_mean_to_ecc_anomaly(self):
+        """
+        Tests mean to eccentric anomaly conversion
+        """
         m_test = 0.787398241564565646
         source = KepOrbElem()
         source.e = 0.01
