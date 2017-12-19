@@ -28,7 +28,7 @@ def find_main_axes(angles, mode='fast'):
 
         return main_dirs
 
-def find_vertex(img_thresh, m, h, x_inter, y_inter, debug =True):
+def find_vertex(img_thresh, m, h, x_inter, y_inter, mode ='debug'):
     """Find the vertices in the cube from the intersection point and the line parameters (m,h)"""
     cube_px_y, cube_px_x = np.nonzero(img_thresh)
     temp = img_thresh
@@ -42,7 +42,7 @@ def find_vertex(img_thresh, m, h, x_inter, y_inter, debug =True):
         thresh += 1
 
     closest_to_line = np.argsort(dist_line)[:num_close]
-    if debug:
+    if mode=='debug':
         for pt in closest_to_line:
             temp = cv2.circle(temp, (cube_px_x[pt], cube_px_y[pt]), 10, 80)
 
@@ -52,7 +52,7 @@ def find_vertex(img_thresh, m, h, x_inter, y_inter, debug =True):
 
     return cube_px_x[further_from_inter], cube_px_y[further_from_inter]
 
-def find_cube_vertices(image, img_thresh,dirs, rhos, debug=True):
+def find_cube_vertices(image, img_thresh,dirs, rhos, mode='debug'):
     """Find the 3 vertices of the cubesat based on the houghlines"""
 
     m0 = -np.cos(dirs[0])/np.sin(dirs[0])
@@ -64,11 +64,11 @@ def find_cube_vertices(image, img_thresh,dirs, rhos, debug=True):
     x_inter = (h1-h0)/(m0-m1)
     y_inter = m0*x_inter+h0
 
-    v0_x, v0_y = find_vertex(img_thresh, m0, h0, x_inter, y_inter, debug)
-    v1_x, v1_y = find_vertex(img_thresh, m1, h1, x_inter, y_inter, debug)
+    v0_x, v0_y = find_vertex(img_thresh, m0, h0, x_inter, y_inter, mode)
+    v1_x, v1_y = find_vertex(img_thresh, m1, h1, x_inter, y_inter, mode)
 
     image_vert = image
-    if debug:
+    if mode=='debug':
         image_vert = cv2.circle(image_vert, (v1_x, v1_y), 10, (0,255,255))
         image_vert = cv2.circle(image_vert, (v0_x, v0_y), 10, (0,255,255))
         image_vert = cv2.circle(image_vert, (x_inter, y_inter), 10, (0,255,255))
@@ -154,7 +154,7 @@ def rotvec_to_quaternion(rvec):
     return Q
 
 
-def solve_projection(p1, p2, p3, K, dist, image, last_position, debug=True):
+def solve_projection(p1, p2, p3, K, dist, image, last_position, mode='debug'):
     """Solve the projection from the 3 cube vertices and find the other ones in image"""
     p1_3d = (0.0, 0.0, 0.0)
     p2_3d = (0.0, 1.0, 0.0)
@@ -213,7 +213,7 @@ def solve_projection(p1, p2, p3, K, dist, image, last_position, debug=True):
             print('Warning : cube is moving very fast or a bad position was computed')
             print('pos diff :', pos_diff)
 
-    if debug:
+    if mode=='debug' or mode=='test':
         for point in projected_points:
             #print(point)
             image = cv2.circle(image,(int(point[0, 0]),int(point[0, 1])), 10, (0, 255, 0))
@@ -226,19 +226,20 @@ def solve_projection(p1, p2, p3, K, dist, image, last_position, debug=True):
         image = cv2.line(image, p1, p3, (0, 255, 0), thickness=5)
         image = cv2.line(image, p1, (int(projected_points[0, 0, 0]), int(projected_points[0, 0, 1])), (255, 0, 0), thickness=5)
 
-        cv2.imshow("projected points", image)
+        if mode=='debug':
+          cv2.imshow("projected points", image)
 
     quat = rotvec_to_quaternion(rvec)
 
     return range_mean, azim, elev, quat, cm_pos
 
-def img_analysis(image, last_position, debug=True):
+def img_analysis(image, last_position, mode='debug'):
     """Performs the whole image analysis chain"""
     gray_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     eq_img = hist_eq(gray_img)
 
-    if debug:
+    if mode=='debug':
         cv2.imshow('original_img', image)
         cv2.imshow('gray_img', gray_img)
         cv2.imshow('eq_img', eq_img)
@@ -265,14 +266,14 @@ def img_analysis(image, last_position, debug=True):
             outer_canny[left_border, col_num] = 255
             outer_canny[-right_border, col_num] =255
 
-    if debug:
+    if mode=='debug':
         cv2.imshow("canny", canny)
         cv2.imshow("outer_canny", outer_canny)
 
     lines = cv2.HoughLines(outer_canny, 1, np.pi/180, 60)
 
     if lines is not None:
-        if debug:
+        if mode=='debug':
             lines_img = image
             for line in lines:
                 rho = line[:,0]
@@ -306,7 +307,7 @@ def img_analysis(image, last_position, debug=True):
         #print(main_dirs)
         #print(main_rhos)
 
-        if debug:
+        if mode=='debug' or mode=='test':
             for i in range(2):
                 rho = main_rhos[i]
                 theta = main_dirs[i]
@@ -319,17 +320,18 @@ def img_analysis(image, last_position, debug=True):
 
                 cv2.line(image, pt1, pt2, (0, 0, 255), 3, cv2.LINE_AA)
 
-            cv2.imshow("houghlines", image)
+            if mode=='debug':
+                cv2.imshow("houghlines", image)
 
     else:
         print("no lines found, reduce threshold")
 
         return 0,0,0,0,0, False
 
-    if debug:
+    if mode=='debug':
         cv2.imshow('thresholded image', eq_img_thresh)
 
-    v0,v1,v2,image = find_cube_vertices(image, canny, main_dirs, main_rhos, debug)
+    v0,v1,v2,image = find_cube_vertices(image, canny, main_dirs, main_rhos, mode)
 
     foc_mm = 12
     sens_w = 6.9
@@ -338,9 +340,9 @@ def img_analysis(image, last_position, debug=True):
     f_y = foc_mm/sens_h*image.shape[0]
     K = np.array([[f_x, 0, image.shape[1]/2],[0, f_y, image.shape[0]/2],[0,0,1]])
 
-    range_mean, azim, elev, quat, cm_pos = solve_projection(v0,v1,v2,K, np.asarray([]), image, last_position, debug)
+    range_mean, azim, elev, quat, cm_pos = solve_projection(v0,v1,v2,K, np.asarray([]), image, last_position, mode)
 
-    if debug:
+    if mode=='debug' or mode=='test':
         image_with_centerpoint = cv2.circle(image,(image.shape[1]/2, image.shape[0]/2), 15, (255, 0 ,0))
 
         cv2.imshow("circle2", image_with_centerpoint)
@@ -350,6 +352,9 @@ def img_analysis(image, last_position, debug=True):
         print("Azimuth : {:f} deg, Elevation : {:f} deg".format(azim, elev))
         print("Rotation quaternion : {:f} {:f} {:f} {:f}".format(quat[0], quat[1], quat[2], quat[3]))
 
-        cv2.waitKey(0)
+        if mode=='debug':
+            cv2.waitKey(0)
+        else:
+            cv2.waitKey(1)
 
     return range_mean, azim, elev, quat, cm_pos, True

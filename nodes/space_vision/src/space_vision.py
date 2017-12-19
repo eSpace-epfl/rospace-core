@@ -33,7 +33,7 @@ class image_converter:
     (rows,cols,channels) = cv_image.shape
     rospy.loginfo("received image with format {} x {} x {}".format(rows,cols,channels))
     
-    d, azim, elev, quat, cm_coo, cube_found = lib.img_analysis(cv_image, self.last_cube_pos, debug=True)
+    d, azim, elev, quat, cm_coo, cube_found = lib.img_analysis(cv_image, self.last_cube_pos, mode='test')
 
     if cube_found:
       cube_pos = [d, azim, elev]
