@@ -69,10 +69,10 @@ def main(args):
       img = cv2.imread(args[i],1)
 
       img_msg = ic.bridge.cv2_to_imgmsg(img, encoding='bgr8')
-      for j in range(20):
-        pub.publish(img_msg)
-        print("published on image_topic")
-        #time.sleep(1)
+      #for j in range(20):
+      pub.publish(img_msg)
+      print("published on image_topic")
+      #time.sleep(1)
 
     try:
       rospy.spin()
