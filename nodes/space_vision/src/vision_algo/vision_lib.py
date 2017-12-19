@@ -159,11 +159,15 @@ def solve_projection(p1, p2, p3, K, dist, image, last_position, debug=True):
     p1_3d = (0.0, 0.0, 0.0)
     p2_3d = (0.0, 1.0, 0.0)
     p3_3d = (1.0, 0.0, 0.0)
-    p11_3d = (0.0, 0.5, 0.0)
+    p12_3d = (0.0, 0.5, 0.0)
+    p13_3d = (0.5, 0.0, 0.0)
 
-    p11_temp = (np.asarray(p1)+np.asarray(p2))/2
-    p11 = (p11_temp[0], p11_temp[1])
-    retval, rvec, tvec = cv2.solvePnP(np.asarray((p1_3d, p2_3d, p3_3d, p11_3d), dtype=float), np.asarray((p1,p2,p3, p11),dtype=float), K, dist)
+    p12_temp = (np.asarray(p1)+np.asarray(p2))/2
+    p12 = (int(p12_temp[0]), int(p12_temp[1]))
+
+    p13_temp = (np.asarray(p1)+np.asarray(p3))/2
+    p13 = (int(p13_temp[0]), int(p13_temp[1]))
+    retval, rvec, tvec = cv2.solvePnP(np.asarray((p1_3d, p2_3d, p3_3d, p12_3d, p13_3d), dtype=float), np.asarray((p1,p2,p3, p12, p13),dtype=float), K, dist)
 
     range_mean = compute_range(tvec, rvec, K, dist)
 
@@ -177,24 +181,35 @@ def solve_projection(p1, p2, p3, K, dist, image, last_position, debug=True):
     P_3d = np.asarray((p4_3d, p5_3d, p6_3d, p7_3d, p8_3d, cm_3d), dtype=float)
     projected_points, _ = cv2.projectPoints(P_3d, rvec, tvec, K, dist)
 
-    azim, elev = coo_to_azim_elev(int(projected_points[5, 0, 0]), int(projected_points[5, 0, 1]), K)
+    cm_pos = (int(projected_points[5, 0, 0]), int(projected_points[5, 0, 1]))
+    print(cm_pos)
+    print(last_position)
 
-    pos_diff = np.abs((np.asarray((range_mean, azim, elev)) - last_position)/np.asarray((range_mean, azim, elev)))
-    if np.sum(last_position != [0,0,0]) and np.sum(pos_diff > np.asarray([0.05, 3,3])):
+    azim, elev = coo_to_azim_elev(cm_pos[0], cm_pos[1], K)
+
+    pos_diff = np.linalg.norm(np.asarray(cm_pos) - np.asarray(last_position))
+    print(pos_diff)
+    if np.sum(np.asarray(last_position) != [0,0]) and (pos_diff > 50):
         print('Cube was inverted to keep coherent position')
 
-        p11_temp = (np.asarray(p1) + np.asarray(p3)) / 2
-        p11 = (p11_temp[0], p11_temp[1])
-        retval, rvec, tvec = cv2.solvePnP(np.asarray((p1_3d, p2_3d, p3_3d, p11_3d), dtype=float),
-                                          np.asarray((p1, p3, p2, p11), dtype=float), K, dist)
+        p12_temp = (np.asarray(p1) + np.asarray(p3)) / 2
+        p12 = (int(p12_temp[0]), int(p12_temp[1]))
+
+        p13_temp = (np.asarray(p1) + np.asarray(p2)) / 2
+        p13 = (int(p13_temp[0]), int(p13_temp[1]))
+        retval, rvec, tvec = cv2.solvePnP(np.asarray((p1_3d, p2_3d, p3_3d, p12_3d, p13_3d), dtype=float),
+                                          np.asarray((p1, p3, p2, p12, p13), dtype=float), K, dist)
 
         range_mean = compute_range(tvec, rvec, K, dist)
 
         projected_points, _ = cv2.projectPoints(P_3d, rvec, tvec, K, dist)
 
+        cm_pos = (int(projected_points[5, 0, 0]), int(projected_points[5, 0, 1]))
+
         azim, elev = coo_to_azim_elev(int(projected_points[5, 0, 0]), int(projected_points[5, 0, 1]), K)
-        pos_diff = np.abs(np.asarray((range_mean, azim, elev)) - last_position)
-        if np.sum(last_position != [0, 0, 0]) and np.sum(pos_diff > np.asarray([0.05, 3,3])):
+
+        pos_diff = np.linalg.norm(np.asarray(cm_pos) - np.asarray(last_position))
+        if np.sum(np.asarray(last_position) != [0, 0]) and (pos_diff > 50):
             print('Warning : cube is moving very fast or a bad position was computed')
             print('pos diff :', pos_diff)
 
@@ -203,6 +218,10 @@ def solve_projection(p1, p2, p3, K, dist, image, last_position, debug=True):
             #print(point)
             image = cv2.circle(image,(int(point[0, 0]),int(point[0, 1])), 10, (0, 255, 0))
 
+        image = cv2.circle(image, cm_pos,10,(0,0,255))
+        image = cv2.circle(image, last_position,10,(0,0,255))
+        image = cv2.circle(image, p12, 10, (0, 255, 255))
+        image = cv2.circle(image, p13, 10, (0, 255, 255))
         image = cv2.line(image, p1, p2, (0, 0, 255), thickness=5)
         image = cv2.line(image, p1, p3, (0, 255, 0), thickness=5)
         image = cv2.line(image, p1, (int(projected_points[0, 0, 0]), int(projected_points[0, 0, 1])), (255, 0, 0), thickness=5)
@@ -211,7 +230,7 @@ def solve_projection(p1, p2, p3, K, dist, image, last_position, debug=True):
 
     quat = rotvec_to_quaternion(rvec)
 
-    return range_mean, azim, elev, quat
+    return range_mean, azim, elev, quat, cm_pos
 
 def img_analysis(image, last_position, debug=True):
     """Performs the whole image analysis chain"""
@@ -305,7 +324,7 @@ def img_analysis(image, last_position, debug=True):
     else:
         print("no lines found, reduce threshold")
 
-        return 0,0,0,0, False
+        return 0,0,0,0,0, False
 
     if debug:
         cv2.imshow('thresholded image', eq_img_thresh)
@@ -319,7 +338,7 @@ def img_analysis(image, last_position, debug=True):
     f_y = foc_mm/sens_h*image.shape[0]
     K = np.array([[f_x, 0, image.shape[1]/2],[0, f_y, image.shape[0]/2],[0,0,1]])
 
-    range_mean, azim, elev, quat = solve_projection(v0,v1,v2,K, np.asarray([]), image, np.asarray(last_position), debug)
+    range_mean, azim, elev, quat, cm_pos = solve_projection(v0,v1,v2,K, np.asarray([]), image, last_position, debug)
 
     if debug:
         image_with_centerpoint = cv2.circle(image,(image.shape[1]/2, image.shape[0]/2), 15, (255, 0 ,0))
@@ -333,4 +352,4 @@ def img_analysis(image, last_position, debug=True):
 
         cv2.waitKey(0)
 
-    return range_mean, azim, elev, quat, True
+    return range_mean, azim, elev, quat, cm_pos, True

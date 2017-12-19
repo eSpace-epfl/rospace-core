@@ -10,8 +10,6 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 import vision_algo.vision_lib as lib
 
-#from __future__ import print_function
-
 class image_converter:
 
   def __init__(self):
@@ -22,7 +20,7 @@ class image_converter:
     self.bridge = CvBridge()
     self.image_sub = rospy.Subscriber("image_topic",Image,self.callback)
 
-    self.last_cube_pos = (0.0, 0.0, 0.0)
+    self.last_cube_pos = (0, 0)
 
   def callback(self,data):
     t_start = time.time()
@@ -35,12 +33,12 @@ class image_converter:
     (rows,cols,channels) = cv_image.shape
     rospy.loginfo("received image with format {} x {} x {}".format(rows,cols,channels))
     
-    d, azim, elev, quat, cube_found = lib.img_analysis(cv_image, self.last_cube_pos, debug=False)
+    d, azim, elev, quat, cm_coo, cube_found = lib.img_analysis(cv_image, self.last_cube_pos, debug=True)
 
     if cube_found:
       cube_pos = [d, azim, elev]
 
-      self.last_cube_pos=cube_pos
+      self.last_cube_pos=cm_coo
 
       try:
         self.cube_pos_pub.publish("cube position : {} ".format(cube_pos))
