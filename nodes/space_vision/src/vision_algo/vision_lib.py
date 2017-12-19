@@ -35,7 +35,7 @@ def find_vertex(img_thresh, m, h, x_inter, y_inter, debug =True):
     dist_px = np.sqrt(np.square(cube_px_x - x_inter) + np.square(cube_px_y - y_inter))
     dist_line = np.sqrt((h + m * cube_px_x - cube_px_y) ** 2 / (m ** 2 + 1))
 
-    thresh = 1
+    thresh = 3
     num_close = 0
     while num_close < 50:
         num_close = np.sum(dist_line < thresh)
@@ -75,7 +75,7 @@ def find_cube_vertices(image, img_thresh,dirs, rhos, debug=True):
         cv2.imshow("vertices", image_vert)
     v0 = (v0_x, v0_y)
     v1 = (v1_x, v1_y)
-    v_inter = (x_inter, y_inter)
+    v_inter = (int(x_inter[0]), int(y_inter[0]))
 
     return v_inter, v0, v1, image_vert
     
@@ -159,7 +159,11 @@ def solve_projection(p1, p2, p3, K, dist, image, last_position, debug=True):
     p1_3d = (0.0, 0.0, 0.0)
     p2_3d = (0.0, 1.0, 0.0)
     p3_3d = (1.0, 0.0, 0.0)
-    retval, rvec, tvec = cv2.solvePnP(np.asarray((p1_3d, p2_3d, p3_3d), dtype=float), np.asarray((p1,p2,p3),dtype=float), K, dist)
+    p11_3d = (0.0, 0.5, 0.0)
+
+    p11_temp = (np.asarray(p1)+np.asarray(p2))/2
+    p11 = (p11_temp[0], p11_temp[1])
+    retval, rvec, tvec = cv2.solvePnP(np.asarray((p1_3d, p2_3d, p3_3d, p11_3d), dtype=float), np.asarray((p1,p2,p3, p11),dtype=float), K, dist)
 
     range_mean = compute_range(tvec, rvec, K, dist)
 
@@ -179,8 +183,10 @@ def solve_projection(p1, p2, p3, K, dist, image, last_position, debug=True):
     if np.sum(last_position != [0,0,0]) and np.sum(pos_diff > np.asarray([0.05, 3,3])):
         print('Cube was inverted to keep coherent position')
 
-        retval, rvec, tvec = cv2.solvePnP(np.asarray((p1_3d, p2_3d, p3_3d), dtype=float),
-                                          np.asarray((p1, p3, p2), dtype=float), K, dist)
+        p11_temp = (np.asarray(p1) + np.asarray(p3)) / 2
+        p11 = (p11_temp[0], p11_temp[1])
+        retval, rvec, tvec = cv2.solvePnP(np.asarray((p1_3d, p2_3d, p3_3d, p11_3d), dtype=float),
+                                          np.asarray((p1, p3, p2, p11), dtype=float), K, dist)
 
         range_mean = compute_range(tvec, rvec, K, dist)
 
@@ -299,6 +305,8 @@ def img_analysis(image, last_position, debug=True):
     else:
         print("no lines found, reduce threshold")
 
+        return 0,0,0,0, False
+
     if debug:
         cv2.imshow('thresholded image', eq_img_thresh)
 
@@ -325,4 +333,4 @@ def img_analysis(image, last_position, debug=True):
 
         cv2.waitKey(0)
 
-    return range_mean, azim, elev, quat
+    return range_mean, azim, elev, quat, True

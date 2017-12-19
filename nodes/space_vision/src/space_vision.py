@@ -35,21 +35,30 @@ class image_converter:
     (rows,cols,channels) = cv_image.shape
     rospy.loginfo("received image with format {} x {} x {}".format(rows,cols,channels))
     
-    d, azim, elev, quat = lib.img_analysis(cv_image, self.last_cube_pos, debug=False)
-    cube_pos = [d, azim, elev]
+    d, azim, elev, quat, cube_found = lib.img_analysis(cv_image, self.last_cube_pos, debug=False)
 
-    self.last_cube_pos=cube_pos
-    try:
-      self.cube_pos_pub.publish("cube position : {} ".format(cube_pos))
-      rospy.loginfo("publish cube position : {}".format(cube_pos))
-      self.cube_quat_pub.publish("cube quaternion : {} ".format(quat))
-      rospy.loginfo("publish cube quaternion : {}".format(quat))
-    except e:
-      print(e)
+    if cube_found:
+      cube_pos = [d, azim, elev]
+
+      self.last_cube_pos=cube_pos
+
+      try:
+        self.cube_pos_pub.publish("cube position : {} ".format(cube_pos))
+        rospy.loginfo("publish cube position : {}".format(cube_pos))
+        self.cube_quat_pub.publish("cube quaternion : {} ".format(quat))
+        rospy.loginfo("publish cube quaternion : {}".format(quat))
+
+      except(e):
+        print(e)
+
+    else:
+      rospy.loginfo("Cube not found on image")
 
     t_end = time.time()
+
     try:
       rospy.loginfo("image processed in {} seconds".format(t_end-t_start))
+
     except(e):
       print(e)
 
@@ -62,22 +71,22 @@ def main(args):
     pub = rospy.Publisher("image_topic", Image, queue_size=10)
     time.sleep(1)
 
-    print(len(args))
-    print(args)
     for i in range(1,len(args)):
 
       img = cv2.imread(args[i],1)
 
       img_msg = ic.bridge.cv2_to_imgmsg(img, encoding='bgr8')
+
       #for j in range(20):
       pub.publish(img_msg)
       print("published on image_topic")
-      #time.sleep(1)
+      time.sleep(1)
 
     try:
       rospy.spin()
     except KeyboardInterrupt:
       print("Shutting down")
+
     cv2.destroyAllWindows()
 
 if __name__ == '__main__':
