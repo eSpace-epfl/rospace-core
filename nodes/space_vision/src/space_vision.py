@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 import roslib
 roslib.load_manifest('space_vision')
-import sys, time
+import os, sys, time
 import rospy
 import cv2
+import scipy.misc
 import numpy as np
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
@@ -12,7 +13,7 @@ import vision_algo.vision_lib as lib
 
 class image_converter:
 
-  def __init__(self):
+  def __init__(self, path):
     self.image_pub = rospy.Publisher("image_topic_2",Image, queue_size=10)
     self.cube_pos_pub = rospy.Publisher("target_pos", String, queue_size=10)
     self.cube_quat_pub = rospy.Publisher("cube_quaternion", String, queue_size=10)
@@ -21,6 +22,16 @@ class image_converter:
     self.image_sub = rospy.Subscriber("image_topic",Image,self.callback)
 
     self.last_cube_pos = (0, 0)
+
+    self.save_file = os.path.join(path,'data.txt')
+
+    if not os.path.exists(path):
+      os.makedirs(path)
+
+    self.image_path = path
+    open(self.save_file,'w')
+    with open(self.save_file, 'w') as save_file:
+      save_file.write("Format : timestamp; range; azim; elev; quat\n")
 
   def callback(self,data):
     t_start = time.time()
@@ -33,24 +44,29 @@ class image_converter:
     (rows,cols,channels) = cv_image.shape
     rospy.loginfo("received image with format {} x {} x {}".format(rows,cols,channels))
     
-    d, azim, elev, quat, cm_coo, cube_found = lib.img_analysis(cv_image, self.last_cube_pos, mode='test')
+    d, azim, elev, quat, cm_coo, processed_image,  cube_found = lib.img_analysis(cv_image, self.last_cube_pos, mode='test')
 
     if cube_found:
       cube_pos = [d, azim, elev]
 
       self.last_cube_pos=cm_coo
 
-      try:
-        self.cube_pos_pub.publish("cube position : {} ".format(cube_pos))
-        rospy.loginfo("publish cube position : {}".format(cube_pos))
-        self.cube_quat_pub.publish("cube quaternion : {} ".format(quat))
-        rospy.loginfo("publish cube quaternion : {}".format(quat))
+      self.cube_pos_pub.publish("cube position : {} ".format(cube_pos))
+      rospy.loginfo("publish cube position : {}".format(cube_pos))
+      self.cube_quat_pub.publish("cube quaternion : {} ".format(quat))
+      rospy.loginfo("publish cube quaternion : {}".format(quat))
 
-      except(e):
-        print(e)
+      current_time = time.time()
+      with open(self.save_file, 'a') as save_file:
+        save_file.write("{}; {} ; {} ; {} ; {}\n".format(current_time, d,azim,elev,quat))
+
+      scipy.misc.imsave(os.path.join(self.image_path,'img{}.png'.format(current_time)),processed_image)
+
+
 
     else:
       rospy.loginfo("Cube not found on image")
+      self.last_cube_pos = (0, 0)
 
     t_end = time.time()
 
@@ -62,14 +78,14 @@ class image_converter:
 
 def main(args):
   while not rospy.is_shutdown():
-    ic = image_converter()
+    ic = image_converter(args[1])
 
     rospy.init_node('space_vision', anonymous=True)
 
     pub = rospy.Publisher("image_topic", Image, queue_size=10)
     time.sleep(1)
 
-    for i in range(1,len(args)):
+    for i in range(2,len(args)):
 
       img = cv2.imread(args[i],1)
 

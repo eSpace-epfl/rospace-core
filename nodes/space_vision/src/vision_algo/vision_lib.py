@@ -68,11 +68,12 @@ def find_cube_vertices(image, img_thresh,dirs, rhos, mode='debug'):
     v1_x, v1_y = find_vertex(img_thresh, m1, h1, x_inter, y_inter, mode)
 
     image_vert = image
-    if mode=='debug':
+    if mode=='debug' or mode =='test':
         image_vert = cv2.circle(image_vert, (v1_x, v1_y), 10, (0,255,255))
         image_vert = cv2.circle(image_vert, (v0_x, v0_y), 10, (0,255,255))
         image_vert = cv2.circle(image_vert, (x_inter, y_inter), 10, (0,255,255))
-        cv2.imshow("vertices", image_vert)
+        if mode=='debug':
+            cv2.imshow("vertices", image_vert)
     v0 = (v0_x, v0_y)
     v1 = (v1_x, v1_y)
     v_inter = (int(x_inter[0]), int(y_inter[0]))
@@ -326,7 +327,7 @@ def img_analysis(image, last_position, mode='debug'):
     else:
         print("no lines found, reduce threshold")
 
-        return 0,0,0,0,0, False
+        return 0,0,0,0,(0,0),[], False
 
     if mode=='debug':
         cv2.imshow('thresholded image', eq_img_thresh)
@@ -357,4 +358,4 @@ def img_analysis(image, last_position, mode='debug'):
         else:
             cv2.waitKey(1)
 
-    return range_mean, azim, elev, quat, cm_pos, True
+    return range_mean, azim, elev, quat, cm_pos, image_with_centerpoint, True
