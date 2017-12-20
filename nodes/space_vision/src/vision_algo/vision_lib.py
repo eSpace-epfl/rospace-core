@@ -183,8 +183,13 @@ def solve_projection(p1, p2, p3, K, dist, image, last_position, mode='debug'):
     projected_points, _ = cv2.projectPoints(P_3d, rvec, tvec, K, dist)
 
     cm_pos = (int(projected_points[5, 0, 0]), int(projected_points[5, 0, 1]))
-    print(cm_pos)
-    print(last_position)
+
+    cube_points = np.concatenate((np.reshape(projected_points,(6,2)),np.expand_dims(np.asarray(p1), axis=1).T, np.expand_dims(np.asarray(p2), axis=1).T, np.expand_dims(np.asarray(p3), axis=1).T)).astype(np.float32)
+    #conv = cv2.convexHull(cube_points)
+    #print(conv)
+    #print(conv.shape)
+    #image_temp = cv2.drawContours(image,[conv],0,(0,0,255),1)
+    #cv2.imshow("convex hull", image_temp)
 
     azim, elev = coo_to_azim_elev(cm_pos[0], cm_pos[1], K)
 
