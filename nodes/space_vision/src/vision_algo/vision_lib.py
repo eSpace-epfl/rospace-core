@@ -55,6 +55,11 @@ def find_vertex(img_thresh, m, h, x_inter, y_inter, mode ='debug'):
 def find_cube_vertices(image, img_thresh,dirs, rhos, mode='debug'):
     """Find the 3 vertices of the cubesat based on the houghlines"""
 
+    if np.sin(dirs[0])==0 or np.sin(dirs[1])==0:
+        print("Division by 0 incoming, stopping proceessing")
+
+        return 0,0,0,None
+
     m0 = -np.cos(dirs[0])/np.sin(dirs[0])
     h0 = rhos[0]/np.sin(dirs[0])
 
@@ -338,6 +343,10 @@ def img_analysis(image, last_position, mode='debug'):
         cv2.imshow('thresholded image', eq_img_thresh)
 
     v0,v1,v2,image = find_cube_vertices(image, canny, main_dirs, main_rhos, mode)
+    if image is None:
+        print("aborting")
+        return 0,0,0,0,(0,0),[], False
+
 
     foc_mm = 12
     sens_w = 6.9
