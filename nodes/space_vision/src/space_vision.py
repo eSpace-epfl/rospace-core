@@ -21,7 +21,7 @@ class image_converter:
     self.cube_quat_pub = rospy.Publisher("cube_quaternion", String, queue_size=10)
 
     self.bridge = CvBridge()
-    self.image_sub = rospy.Subscriber("image_topic",Image,self.callback)
+    self.image_sub = rospy.Subscriber("camera/image_raw",Image,self.callback)
 
     self.last_cube_pos = (0, 0)
 
@@ -99,7 +99,7 @@ def main(args):
 
     rospy.init_node('space_vision', anonymous=True)
 
-    pub = rospy.Publisher("image_topic", Image, queue_size=10)
+    pub = rospy.Publisher("camera/image_raw", Image, queue_size=10)
     time.sleep(1)
 
     if args2['image_path'] is not None:
