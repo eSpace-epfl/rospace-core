@@ -8,6 +8,8 @@ References:
     [3] New State Transition Matrices for Relative Motion of Spacecraft Formations in Perturbed Orbits,
         A. Koenig, T. Guffanti, S. D'Amico, AIAA 2016-5635
 
+    Author: Michael Pantic
+    License: TBD
 """
 from . import *
 from threading import RLock
@@ -233,7 +235,7 @@ class KepOrbElem(BaseState):
         self.e = msg.eccentricity
 
         # assign latest!
-        self._v = np.deg2rad(msg.true_anomaly)
+        self.v = np.deg2rad(msg.true_anomaly)
 
     def from_cartesian(self, cart):
         """Initialize object from a cartesian state vector (pos + speed).
@@ -244,7 +246,7 @@ class KepOrbElem(BaseState):
             cart (Cartesian): Cartesian State Vector with R and V set.
 
         """
-        K = np.array([0, 0, 1])  # 3rd basis vector
+        K = np.array([0, 0, 1.0])  # 3rd basis vector
 
         # 1. Calc distance
         r = np.linalg.norm(cart.R, ord=2)
@@ -277,19 +279,21 @@ class KepOrbElem(BaseState):
 
         # 10. calculate eccentricity vector  / 11. Calc eccentricity
         E = 1 / Constants.mu_earth * ((v ** 2 - Constants.mu_earth / r) * cart.R.flat - r * v_r * cart.V.flat)
-        # e = np.linalg.norm(E,ord=2)
+        self.e = np.linalg.norm(E, ord=2)
 
         # direct form:
-        self.e = 1 / Constants.mu_earth * np.sqrt(
-            (2 * Constants.mu_earth - r * v ** 2) * r * v_r ** 2 + (Constants.mu_earth - r * v ** 2) ** 2)
+        # self.e = 1 / Constants.mu_earth * np.sqrt(
+        #    (2 * Constants.mu_earth - r * v ** 2) * r * v_r ** 2 + (Constants.mu_earth - r * v ** 2) ** 2)
 
         # 11. Calculate arg. of perigee
-        self.w = np.arccos(np.dot(N, E / (n * self.e)))
+        P = E / (n * self.e)
+        self.w = np.arccos(np.dot(N, P))
         if E[2] < 0:
             self.w = 2 * np.pi - self.w
 
         # 12. Calculate the true anomaly
-        self.v = np.arccos(np.dot(E, cart.R.flat) / (self.e * r))
+        # p2 = np.log(self.e)+np.log(r)
+        self.v = np.arccos(np.dot(E, cart.R.flat) / (self.e*r))
         if v_r < 0:
             self.v = 2 * np.pi - self.v
 
@@ -399,7 +403,7 @@ class KepOrbElem(BaseState):
               gma_2_p / 8.0 * eta ** 3 * (1.0 - 11.0 * c_i ** 2 - 40.0 * (c_i ** 4 / (1.0 - 5.0 * c_i ** 2))) \
               - gma_2_p / 16.0 * (2.0 + other.e ** 2 - 11 * (2.0 + 3.0 * other.e ** 2) * c_i ** 2 \
                                   - 40.0 * (2.0 + 5.0 * other.e ** 2) * (
-                                  c_i ** 4 / (1.0 - 5.0 * c_i ** 2)) - 400.0 * other.e * (
+                                  c_i ** 4 / (1.0 - 5.0 * c_i ** 2)) - 400.0 * other.e ** 2 * (
                                   c_i ** 6 / (1.0 - 5.0 * c_i ** 2) ** 2)) \
               + gma_2_p / 4.0 * (-6.0 * (1.0 - 5.0 * c_i ** 2) * (other.v - other.m + other.e * np.sin(other.v)) \
                                  + (3.0 - 5.0 * c_i ** 2) * (
@@ -413,12 +417,11 @@ class KepOrbElem(BaseState):
             2.0 * other.w + other.v) - other.e * np.sin(2.0 * other.w + 3.0 * other.v))
 
         # formula G.307
-        edM = gma_2 / 8.0 * other.e * eta ** 3 * (1.0 - 11.0 * c_i ** 2 - 40.0 * (c_i ** 4 / (1 - 5 * c_i ** 2))) \
-              - gma_2 / 4.0 * eta ** 3 * (2.0 * (3.0 * c_i ** 2 - 1.0) * ((a_r * eta) ** 2 + a_r + 1) * np.sin(other.v) \
+        edM = gma_2_p / 8.0 * other.e * eta ** 3 * (1.0 - 11.0 * c_i ** 2 - 40.0 * (c_i ** 4 / (1 - 5 * c_i ** 2))) \
+              - gma_2_p / 4.0 * eta ** 3 * (2.0 * (3.0 * c_i ** 2 - 1.0) * ((a_r * eta) ** 2 + a_r + 1) * np.sin(other.v) \
                                           + 3.0 * (1.0 - c_i ** 2) * (
                                           (-(a_r * eta) ** 2 - a_r + 1) * np.sin(2.0 * other.w + other.v) \
-                                          + (
-                                          ((a_r * eta) ** 2 + a_r + 1.0 / 3.0) * np.sin(2.0 * other.w + 3.0 * other.v))))
+                                          + (((a_r * eta) ** 2 + a_r + 1.0 / 3.0) * np.sin(2.0 * other.w + 3.0 * other.v))))
 
         # formula G.308
         dO = -gma_2_p / 8.0 * other.e ** 2 * c_i * (
@@ -441,6 +444,9 @@ class KepOrbElem(BaseState):
         self.O = np.arctan2(d_3, d_4)  # G.315
         self.i = 2 * np.arcsin(np.sqrt(d_3 ** 2 + d_4 ** 2))  # G.316
         self.w = MwO - m - self.O
+
+        if self.w > 2*np.pi:
+            self.w = self.w - 2*np.pi
 
         self.m = m  # assign m latest, as other properties might be used for ocnversion!
 
