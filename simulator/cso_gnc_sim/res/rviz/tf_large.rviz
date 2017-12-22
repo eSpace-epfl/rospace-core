@@ -7,9 +7,14 @@ Panels:
         - /Global Options1
         - /Status1
         - /Grid1
+        - /RobotModel1
+        - /RobotModel1/Links1
+        - /RobotModel1/Links1/teme1
         - /TF1
         - /TF1/Frames1
         - /TF1/Tree1
+        - /Marker1
+        - /Marker2
       Splitter Ratio: 0.5
     Tree Height: 678
   - Class: rviz/Selection
@@ -51,7 +56,7 @@ Visualization Manager:
         Z: 0
       Plane: YZ
       Plane Cell Count: 10
-      Reference Frame: cso
+      Reference Frame: chaser
       Value: true
     - Alpha: 1
       Class: rviz/RobotModel
@@ -63,7 +68,7 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        cso:
+        chaser:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -74,7 +79,7 @@ Visualization Manager:
           Show Trail: false
           Value: true
         teme:
-          Alpha: 1
+          Alpha: 0.25
           Show Axes: false
           Show Trail: false
           Value: true
@@ -88,53 +93,69 @@ Visualization Manager:
       Enabled: true
       Frame Timeout: 1500
       Frames:
-        AON:
-          Value: true
-        All Enabled: true
-        Lidar:
-          Value: true
+        All Enabled: false
         NAC:
+          Value: false
+        chaser:
           Value: true
-        Radar:
-          Value: true
-        cso:
-          Value: true
+        chaser_s0_aon:
+          Value: false
+        chaser_s1_radar:
+          Value: false
+        chaser_s2_lidar:
+          Value: false
         t-main:
-          Value: true
+          Value: false
         target:
-          Value: true
-        target_ref:
+          Value: false
+        target_lvlh:
           Value: true
         teme:
-          Value: true
-      Marker Scale: 1
+          Value: false
+      Marker Scale: 50000
       Name: TF
       Show Arrows: false
       Show Axes: true
       Show Names: true
       Tree:
         teme:
-          cso:
-            AON:
-              {}
-            Lidar:
-              {}
+          chaser:
             NAC:
               {}
-            Radar:
+            chaser_s0_aon:
+              {}
+            chaser_s1_radar:
+              {}
+            chaser_s2_lidar:
               {}
             t-main:
               {}
           target:
             {}
-          target_ref:
+          target_lvlh:
             {}
       Update Interval: 0
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /orbit_marker
+      Name: Marker
+      Namespaces:
+        orbit_marker: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /cso/aon_observation
+      Name: Marker
+      Namespaces:
+        "": true
+      Queue Size: 100
       Value: true
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
-    Fixed Frame: target_ref
+    Fixed Frame: chaser
     Frame Rate: 30
   Name: root
   Tools:
@@ -155,7 +176,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 3.7308473587036133
+      Distance: 262661.15625
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -170,10 +191,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.0010000000474974513
-      Pitch: -0.909796953201294
+      Pitch: -0.6197975873947144
       Target Frame: cso
       Value: Orbit (rviz)
-      Yaw: 5.588181972503662
+      Yaw: 0.04500056803226471
     Saved: ~
 Window Geometry:
   Displays:

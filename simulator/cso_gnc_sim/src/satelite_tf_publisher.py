@@ -70,11 +70,12 @@ def handle_pose(msg):
 def handle_target_oe(msg):
     global body_frame
     # convert to R/V
-    target_oe = space_tf.Converter.fromOEMessage(msg.position)
+    target_oe = space_tf.KepOrbElem()
+    target_oe.from_message(msg.position)
 
     # convert to TEME
     tf_target_teme = space_tf.CartesianTEME()
-    space_tf.Converter.convert(target_oe, tf_target_teme)
+    tf_target_teme.from_keporb(target_oe)
 
     # calculate reference frame
     i = tf_target_teme.R / np.linalg.norm(tf_target_teme.R)
@@ -95,7 +96,7 @@ def handle_target_oe(msg):
     br.sendTransform(tf_target_teme.R*1000,
                      q_ref,
                      msg.header.stamp,
-                     body_frame+"_ref",
+                     body_frame+"_lvlh",
                      "teme")
 
 
@@ -105,7 +106,7 @@ if __name__ == '__main__':
     sensor_cfg = rospy.get_param("~sensors", "")
     frame_cfg = rospy.get_param("~frames", "")
     thruster_cfg = rospy.get_param("~thrusters", "")
-    body_frame = rospy.get_param("~body_frame", "cso")
+    body_frame = rospy.get_param("~body_frame", "chaser")
     position_mode = rospy.get_param("~mode", "absolute")
 
     # position mode zero_pos = no position is broadcasted for body frame (for debugging)

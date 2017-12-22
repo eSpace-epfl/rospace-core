@@ -13,36 +13,42 @@ from space_sensor_model import SimpleRangeFOVSensor
 pub = rospy.Publisher('radar', RangeStamped, queue_size=10)
 sensor_obj = SimpleRangeFOVSensor()
 
+
 def callback(target_oe, chaser_oe):
-
     # calculate baseline
-    tf_target_oe = space_tf.Converter.fromOEMessage(target_oe.position)
-    tf_chaser_oe = space_tf.Converter.fromOEMessage(chaser_oe.position)
+    O_T = space_tf.KepOrbElem()
+    O_C = space_tf.KepOrbElem()
 
-    # convert to TEME
-    tf_target_teme = space_tf.CartesianTEME()
-    tf_chaser_teme = space_tf.CartesianTEME()
-    space_tf.Converter.convert(tf_target_oe, tf_target_teme)
-    space_tf.Converter.convert(tf_chaser_oe, tf_chaser_teme)
+    O_T.from_message(target_oe.position)
+    O_C.from_message(chaser_oe.position)
 
+    # convert to cartesian
+    p_T = space_tf.Cartesian()
+    p_C = space_tf.Cartesian()
+
+    p_T.from_keporb(O_T)
+    p_C.from_keporb(O_C)
     # vector from chaser to target in chaser body frame in [m]
 
-    ## get current rotation of body
-    R_body = transformations.quaternion_matrix([chaser_oe.orientation.x,
-                                                chaser_oe.orientation.y,
-                                                chaser_oe.orientation.z,
-                                                chaser_oe.orientation.w])
+    ## get current rotation of chaser
+    R_J2K_C = transformations.quaternion_matrix([chaser_oe.orientation.x,
+                                                 chaser_oe.orientation.y,
+                                                 chaser_oe.orientation.z,
+                                                 chaser_oe.orientation.w])
 
-    p_teme = (tf_target_teme.R -tf_chaser_teme.R)*1000
-    p_body = np.dot(R_body[0:3,0:3].T, p_teme)
+    # Calculate relative vector from chaser to target in J2K Frame
+    J2K_p_C_T = (p_T.R - p_C.R) * 1000
+
+    # rotate vector into chaser (C) frame
+    p_C_T = np.dot(R_J2K_C[0:3, 0:3].T, J2K_p_C_T)
 
     # check if visible and augment sensor value
-    visible, value = sensor_obj.get_measurement(p_body)
+    visible, value = sensor_obj.get_measurement(p_C_T)
 
     if visible:
         msg = RangeStamped()
         msg.header.stamp = rospy.Time.now()
-        msg.value.range = np.linalg.norm(tf_target_teme.R -tf_chaser_teme.R)*1000
+        msg.value.range = np.linalg.norm(p_C_T)*1000  # range = norm of vector chaser to target in [m]
         pub.publish(msg)
 
 
