@@ -405,7 +405,6 @@ class KepOrbElem(BaseState):
         self.osc_elems_transformation_ore(osc, True)
 
     def osc_elems_transformation_ore(self, other, dir):
-        print thread.get_ident()
 
         self._orekit_lock.acquire()
         if KepOrbElem.vm is None:
@@ -415,9 +414,7 @@ class KepOrbElem(BaseState):
 
         KepOrbElem.vm.attachCurrentThread()
 
-        print "0"
         utc = TimeScalesFactory.getUTC()
-        print "1"
 
 
 
@@ -428,9 +425,7 @@ class KepOrbElem(BaseState):
                                    1,
                                    1.0,
                                    utc)
-        print "A"
         inertialFrame = FramesFactory.getEME2000()
-        print "B"
         a = float(other.a)
         e = float(other.e)
         i = float(other.i)
@@ -438,36 +433,27 @@ class KepOrbElem(BaseState):
         O = float(other.O)
         v = float(other.v)
 
-        print "C"
         initialOrbit = KeplerianOrbit(a * 1000.0, e, i, w, O, v,
                                       PositionAngle.TRUE,
                                       inertialFrame, orekit_date, Constants.mu_earth*1e9)
 
-        print "D",v, initialOrbit.getAnomaly(PositionAngle.TRUE)
         initialState = SpacecraftState(initialOrbit, 1.0)
-        print "E"
 
         #zonal_forces= DSSTZonal(provider,2,1,5)
-        print "F"
         zonal_forces = DSSTZonal(KepOrbElem.provider, 6, 4, 6)
         forces = ArrayList()
-        print "G"
         forces.add(zonal_forces)
         try:
             equinoctial = None
             if dir:
 
-                print "gugusA"
                 equinoctial = DSSTPropagator.computeMeanState(initialState, None, forces)
             else:
 
-                print "gugusB"
                 equinoctial = DSSTPropagator.computeOsculatingState(initialState, None, forces)
 
-            print "gugusC"
             newOrbit = KeplerianOrbit(equinoctial.getOrbit())
 
-            print "H"
             self.a = newOrbit.getA()/1000.0
             self.e = newOrbit.getE()
             self.i = newOrbit.getI()
@@ -475,7 +461,6 @@ class KepOrbElem(BaseState):
             self.O = newOrbit.getRightAscensionOfAscendingNode()
             self.v = newOrbit.getAnomaly(PositionAngle.TRUE)
 
-            print "I"
 
         finally:
             self._orekit_lock.release()
