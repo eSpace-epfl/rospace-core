@@ -8,6 +8,8 @@ References:
     [2] Improved Maneuver-free approach to angles-only navigation for space rendezvous,
         J. Sullivan, A.W. Koenig, S. D'Amico, AAS 16-530
 
+    Author: Michael Pantic
+    License: TBD
 """
 import sys
 import numpy as np

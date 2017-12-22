@@ -1,6 +1,5 @@
 import Constants
 
-
 class BaseState(object):
     """
     Base Class for all Coordinate elements.
