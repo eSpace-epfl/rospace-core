@@ -12,7 +12,6 @@ References:
 import sys
 import numpy as np
 
-from . import Constants
 from BaseState import *
 
 
