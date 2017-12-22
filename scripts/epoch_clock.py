@@ -1,3 +1,9 @@
+"""
+Warning: This code becomes obsolete very soon - don't change/refactor/update anymore.
+
+(mp, 23.12.17)
+"""
+
 #!/usr/bin/env python
 import rospy
 import random
