@@ -13,7 +13,7 @@
         </visual>
     </link>
 
-    <link name="cso">
+    <link name="chaser">
         <visual>
           <geometry>
             <mesh filename="package://cso_gnc_sim/res/meshes/cso-mesh.stl" scale="0.001 0.001 0.001">
@@ -41,7 +41,7 @@
 
     <joint name="cso2teme" type="fixed">
         <parent link="teme"/>
-        <child link="cso"/>
+        <child link="chaser"/>
         <origin xyz="0 0 0 "/>
     </joint>
  </robot>

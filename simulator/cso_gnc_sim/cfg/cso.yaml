@@ -1,11 +1,11 @@
 name: "CSO-v0"
 
 frames:
-  cog:
+  chaser_cog:
     pose: 0 0 0 1
     position: 0 0 0
 
-  sensorplate:
+  chaser_sensorplate:
     pose: 0 0 0 1
     position: 0.355 0 0
 
@@ -17,7 +17,16 @@ thrusters:
     force: 22
 
 sensors:
-  Radar:
+  chaser_s0_aon:
+    position: 0 0 0
+    pose: 0 0 0 1.0
+    fov_x: 6
+    fov_y: 6
+    max_range: 50000
+    mu: 0
+    sigma: 0.01
+
+  chaser_s1_radar:
     position: 0.355 0.25 0.2
     pose: -0.707 0 -0.707 0.0
     fov_x: 1.5
@@ -26,20 +35,10 @@ sensors:
     mu: 0
     sigma: 0.01
 
-
-  Lidar:
+  chaser_s2_lidar:
     position: 0.355 0.25 -0.075
     pose: -0.707 0 -0.707 0.0
 
-  AON:
-    position: 0.355 -0.02 0.08
-    pose: -0.707 0 -0.707 0.0
-    fov_x: 1.5
-    fov_y: 1.5
-    max_range: 10000
-    mu: 0
-    sigma: 0.01
-
-  NAC:
+  chaser_s3_nac:
     position: 0.355 -0.01 -0.095
     pose: -0.707 0 -0.707 0.0

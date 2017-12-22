@@ -1,51 +1,77 @@
 #!/usr/bin/env python
-import rospy
-import sys
-import time
-import message_filters
-from geometry_msgs.msg import PointStamped
-from space_msgs.msg import SatelitePose, AzimutElevationStamped
-import space_tf
-from tf import transformations
 import numpy as np
-from space_sensor_model import SimpleAnglesFOVSensor
+import rospy
 
-pub = rospy.Publisher('aon', AzimutElevationStamped, queue_size=10)
-sensor_obj = SimpleAnglesFOVSensor()
+import message_filters
+from tf import transformations
+from visualization_msgs.msg import Marker
+from geometry_msgs.msg import Point
 
-def callback(target_oe, chaser_oe):
-
-    # calculate baseline
-    tf_target_oe = space_tf.Converter.fromOEMessage(target_oe.position)
-    tf_chaser_oe = space_tf.Converter.fromOEMessage(chaser_oe.position)
-
-    # convert to TEME
-    tf_target_teme = space_tf.CartesianTEME()
-    tf_chaser_teme = space_tf.CartesianTEME()
-    space_tf.Converter.convert(tf_target_oe, tf_target_teme)
-    space_tf.Converter.convert(tf_chaser_oe, tf_chaser_teme)
-
-    # vector from chaser to target in chaser body frame in [m]
-
-    ## get current rotation of body
-    R_body = transformations.quaternion_matrix([chaser_oe.orientation.x,
-                                                chaser_oe.orientation.y,
-                                                chaser_oe.orientation.z,
-                                                chaser_oe.orientation.w])
-
-    p_teme = (tf_target_teme.R -tf_chaser_teme.R)*1000
-    p_body = np.dot(R_body[0:3,0:3].T, p_teme)
-
-    # check if visible and augment sensor value
-    visible, value = sensor_obj.get_measurement(p_body)
+import space_tf
+from space_msgs.msg import SatelitePose, AzimutElevationStamped
+from space_sensor_model import PaperAnglesSensor
 
 
-    if visible:
-        msg = AzimutElevationStamped()
-        msg.header.stamp = rospy.Time.now()
-        msg.value.azimut = value[0]
-        msg.value.elevation = value[1]
-        pub.publish(msg)
+class AONSensorNode:
+    def __init__(self, sensor, rate=1.0):
+        self.last_publish_time = rospy.Time.now()
+        self.rate = rate
+        self.sensor = sensor
+        self.pub = rospy.Publisher('aon', AzimutElevationStamped, queue_size=10)
+
+        self.pub_m = rospy.Publisher("aon_observation", Marker, queue_size=10)
+
+    def callback(self, target_oe, chaser_oe):
+        # calculate baseline
+        O_T = space_tf.KepOrbElem()
+        O_C = space_tf.KepOrbElem()
+
+        O_T.from_message(target_oe.position)
+        O_C.from_message(chaser_oe.position)
+
+        # convert to cartesian
+        p_T = space_tf.Cartesian()
+        p_C = space_tf.Cartesian()
+
+        p_T.from_keporb(O_T)
+        p_C.from_keporb(O_C)
+        # vector from chaser to target in chaser body frame in [m]
+
+        # get current rotation of chaser
+        R_J2K_C = transformations.quaternion_matrix([chaser_oe.orientation.x,
+                                                    chaser_oe.orientation.y,
+                                                    chaser_oe.orientation.z,
+                                                    chaser_oe.orientation.w])
+
+        # Calculate relative vector from chaser to target in J2K Frame
+        J2K_p_C_T = (p_T.R -p_C.R)*1000
+
+        # rotate vector into chaser (C) frame
+        p_C_T = np.dot(R_J2K_C[0:3,0:3].T, J2K_p_C_T)
+
+        # publish observation
+        msg = Marker()
+        msg.header.frame_id = "chaser"
+        msg.type = Marker.ARROW
+        msg.action = Marker.ADD
+        msg.points.append(Point(0, 0, 0))
+        msg.points.append(Point(p_C_T[0], p_C_T[1], p_C_T[2]))
+        msg.scale.x = 100
+        msg.scale.y = 200
+        msg.color.a = 1.0
+        msg.color.r = 1.0
+        self.pub_m.publish(msg)
+
+        # check if visible and augment sensor value
+        visible, value = sensor_obj.get_measurement(p_C_T)
+
+        if visible and (target_oe.header.stamp - self.last_publish_time).to_sec() > 1.0/self.rate:
+            msg = AzimutElevationStamped()
+            msg.header.stamp = target_oe.header.stamp
+            msg.value.azimut = value[0]
+            msg.value.elevation = value[1]
+            self.pub.publish(msg)
+            self.last_publish_time = target_oe.header.stamp
 
 
 if __name__ == '__main__':
@@ -55,18 +81,23 @@ if __name__ == '__main__':
     chaser_oe_sub = message_filters.Subscriber('chaser_oe', SatelitePose)
 
     sensor_cfg = rospy.get_param("~sensor", 0)
-    print sensor_cfg
 
+    sensor_obj = PaperAnglesSensor()
     sensor_obj.fov_x = float(sensor_cfg["fov_x"])
     sensor_obj.fov_y = float(sensor_cfg["fov_y"])
     sensor_obj.max_range = float(sensor_cfg["max_range"])
     sensor_obj.mu = float(sensor_cfg["mu"])
     sensor_obj.sigma = float(sensor_cfg["sigma"])
 
+    pub_rate = float(rospy.get_param("~publish_rate", 1))
+
     # set transforms!
     sensor_obj.set_frame_by_string(sensor_cfg["pose"], sensor_cfg["position"])
 
+    # set up node
+    node = AONSensorNode(sensor_obj, rate=pub_rate)
+
     # set message syncher and start
     ts = message_filters.TimeSynchronizer([target_oe_sub, chaser_oe_sub], 10)
-    ts.registerCallback(callback)
+    ts.registerCallback(node.callback)
     rospy.spin()
