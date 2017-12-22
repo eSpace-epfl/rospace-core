@@ -46,6 +46,7 @@ class AONSensorNode:
         p_teme = (tf_target_teme.R -tf_chaser_teme.R)*1000
         p_body = np.dot(R_body[0:3,0:3].T, p_teme)
 
+
         # publish observation
         msg = Marker()
         msg.header.frame_id = "cso"
@@ -68,6 +69,8 @@ class AONSensorNode:
             msg.header.stamp = target_oe.header.stamp
             msg.value.azimut = value[0]
             msg.value.elevation = value[1]
+            print "A",p_body
+            print "B", target_oe.header.stamp, value[0], value[1]
             self.pub.publish(msg)
             self.last_publish_time = target_oe.header.stamp
 
