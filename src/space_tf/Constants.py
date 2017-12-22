@@ -1,5 +1,7 @@
 """Constants and Helper Classes
 
+    Author: Michael Pantic
+    License: TBD
 """
 import numpy as np
 import datetime

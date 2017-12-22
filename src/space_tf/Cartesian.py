@@ -1,6 +1,9 @@
-#   Classes for storing cartesian coordinates with epoch and frame information
-#   Author: Michael Pantic, michael.pantic@gmail.com
-#   License: TBD
+"""
+    Classes for storing cartesian coordinates with epoch and frame information
+
+    Author: Michael Pantic, Davide Freay
+    License: TBD
+"""
 import datetime
 import numpy as np
 from BaseState import *

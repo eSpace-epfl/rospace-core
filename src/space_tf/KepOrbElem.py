@@ -8,6 +8,8 @@ References:
     [3] New State Transition Matrices for Relative Motion of Spacecraft Formations in Perturbed Orbits,
         A. Koenig, T. Guffanti, S. D'Amico, AIAA 2016-5635
 
+    Author: Michael Pantic
+    License: TBD
 """
 import orekit
 
