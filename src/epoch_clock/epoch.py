@@ -10,6 +10,8 @@ Example:
     Current rostime is 10:00 (simulation is running since 10s)
     Now = Epoch_0+Rostime = 23.12.2017 15:47:10
 
+    Author: Michael Pantic
+    License: TBD
 """
 import rospy
 from datetime import datetime, timedelta
