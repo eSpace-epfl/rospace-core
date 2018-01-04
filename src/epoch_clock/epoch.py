@@ -48,12 +48,6 @@ class Epoch:
         delta = now_utc - J2000_date
         return J2000 + delta.total_seconds() / (60.0 * 60 * 24)
 
-    def get_frequency(self):
-        return self.publish_frequency
-
-    def get_stepSize(self):
-        return self.stepSize
-
     def changeFrequency(self, new_frequency):
         # Only propagator node should change this! Do not change!
         self.publish_frequency = new_frequency
