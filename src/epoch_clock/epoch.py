@@ -20,6 +20,9 @@ import time
 
 class Epoch:
     """Wrapper for Epochtime in ROS"""
+    # instances needed to keep nodes synchronous
+    publish_frequency = None
+    time_step_size = None
 
     def __init__(self):
         """Gets Epoch_0 from rosparam server and saves it"""
@@ -31,8 +34,10 @@ class Epoch:
 
         self.epoch_string = rospy.get_param('/epoch')
         self.epoch_datetime = datetime.strptime(self.epoch_string, "%Y-%m-%d %H:%M:%S")
-        self.publish_frequency = rospy.get_param('/publish_freq')
-        self.time_step_size = rospy.get_param('/time_step_size')
+
+        # update class instances
+        Epoch.publish_frequency = rospy.get_param('/publish_freq')
+        Epoch.time_step_size = rospy.get_param('/time_step_size')
 
     def now(self):
         """Returns current simulation time in UTC"""
@@ -50,8 +55,8 @@ class Epoch:
 
     def changeFrequency(self, new_frequency):
         # Only propagator node should change this! Do not change!
-        self.publish_frequency = new_frequency
+        Epoch.publish_frequency = new_frequency
 
     def changeStep(self, new_step):
         # Only propagator node should change this! Do not change!
-        self.time_step_size = new_step
+        Epoch.time_step_size = new_step
