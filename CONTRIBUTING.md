@@ -2,6 +2,11 @@
 
 Thanks for wanting to contribute source code to the RDV Simulator. That's great!
 
+### Documentation
+
+All code should be documented using the [Google Python Style](http://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html) and should be
+processable by `pdoc` (A documentation generator meant to replace epydoc).
+
 ### Tests
 
 In order to constantly increase the quality of our software we can no longer accept pull request which submit un-tested code.
