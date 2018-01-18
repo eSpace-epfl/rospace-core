@@ -52,7 +52,7 @@ class image_converter:
     (rows,cols,channels) = cv_image.shape
     rospy.loginfo("received image with format {} x {} x {}".format(rows,cols,channels))
     
-    d, azim, elev, quat, cm_coo, processed_image,  cube_found = lib.img_analysis(cv_image, self.last_cube_pos, mode='test')
+    d, azim, elev, quat, cm_coo, processed_image,  cube_found = lib.img_analysis(cv_image, self.last_cube_pos, mode='debug')
 
     if cube_found:
       cube_pos = [d, azim, elev]
@@ -103,8 +103,12 @@ def main(args):
     time.sleep(1)
 
     if args2['image_path'] is not None:
+      print(args2['image_path'][0])
       for i in range(0,len(args2['image_path'])):
 
+        #for img_number in range(120,320):
+          #print('img{:d}.png'.format(img_number))
+        #img = cv2.imread(os.path.join(args2['image_path'][0],'img{:d}.png'.format(img_number)) ,1)
         img = cv2.imread(args2['image_path'][i],1)
 
         img_msg = ic.bridge.cv2_to_imgmsg(img, encoding='bgr8')

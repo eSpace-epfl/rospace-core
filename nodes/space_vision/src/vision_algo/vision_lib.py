@@ -2,6 +2,29 @@ import sys, os
 import numpy as np
 import cv2
 from sklearn import mixture
+
+def remove_green(image):
+    """return image with black pixels instead of green"""
+    if(len(image.shape) <3):
+        print("Warning : received image is not RGB")
+        return image
+    else:
+        hsv_img = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
+
+        #mask = cv2.inRange(hsv_img,(30,0,0), (90,255,255))
+        mask = cv2.inRange(hsv_img,(42,20,20), (78,255,255))
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel=np.ones((30, 30), np.uint8))
+        #mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel=np.ones((20, 20), np.uint8))
+        mask = mask.astype(bool)
+
+        #print(mask)
+        image_no_green = image
+        image_no_green[mask] = (0,0,0)
+
+        #cv2.imshow("image_no_green",image_no_green)
+        #cv2.waitKey(0)
+        return image_no_green
+
 def hist_eq(image):
     """return image with equalize histogram"""
     eq_img = cv2.equalizeHist(image)
@@ -100,6 +123,7 @@ def coo_to_azim_elev(x, y, K):
     P_ics = np.linalg.inv(K).dot(P)
     azim = P_ics[0]*180/np.pi
     elev = P_ics[1]*180/np.pi
+    print("pics", P_ics[2])
 
     return azim, elev
 
@@ -200,29 +224,37 @@ def solve_projection(p1, p2, p3, K, dist, image, last_position, mode='debug'):
 
     pos_diff = np.linalg.norm(np.asarray(cm_pos) - np.asarray(last_position))
     print(pos_diff)
-    if np.sum(np.asarray(last_position) != [0,0]) and (pos_diff > 50):
-        print('Cube was inverted to keep coherent position')
+    if np.sum(np.asarray(last_position) != [0,0]) and (pos_diff > 40):
 
         p12_temp = (np.asarray(p1) + np.asarray(p3)) / 2
         p12 = (int(p12_temp[0]), int(p12_temp[1]))
 
         p13_temp = (np.asarray(p1) + np.asarray(p2)) / 2
         p13 = (int(p13_temp[0]), int(p13_temp[1]))
-        retval, rvec, tvec = cv2.solvePnP(np.asarray((p1_3d, p2_3d, p3_3d, p12_3d, p13_3d), dtype=float),
+        retval, rvec2, tvec2 = cv2.solvePnP(np.asarray((p1_3d, p2_3d, p3_3d, p12_3d, p13_3d), dtype=float),
                                           np.asarray((p1, p3, p2, p12, p13), dtype=float), K, dist)
 
-        range_mean = compute_range(tvec, rvec, K, dist)
+        range_mean2 = compute_range(tvec2, rvec2, K, dist)
 
-        projected_points, _ = cv2.projectPoints(P_3d, rvec, tvec, K, dist)
+        projected_points2, _ = cv2.projectPoints(P_3d, rvec2, tvec2, K, dist)
 
-        cm_pos = (int(projected_points[5, 0, 0]), int(projected_points[5, 0, 1]))
+        cm_pos2 = (int(projected_points2[5, 0, 0]), int(projected_points2[5, 0, 1]))
 
-        azim, elev = coo_to_azim_elev(int(projected_points[5, 0, 0]), int(projected_points[5, 0, 1]), K)
+        azim2, elev2 = coo_to_azim_elev(int(projected_points2[5, 0, 0]), int(projected_points2[5, 0, 1]), K)
 
-        pos_diff = np.linalg.norm(np.asarray(cm_pos) - np.asarray(last_position))
-        if np.sum(np.asarray(last_position) != [0, 0]) and (pos_diff > 50):
+        pos_diff2 = np.linalg.norm(np.asarray(cm_pos2) - np.asarray(last_position))
+        if np.sum(np.asarray(last_position) != [0, 0]) and (pos_diff2 > 40):
             print('Warning : cube is moving very fast or a bad position was computed')
             print('pos diff :', pos_diff)
+
+        if pos_diff2 < pos_diff:
+            print('Cube was inverted to keep coherent position')
+            azim = azim2
+            elev = elev2
+            projected_points = projected_points2
+            range_mean = range_mean2
+            cm_pos = cm_pos2
+            rvec = rvec2
 
     if mode=='debug' or mode=='test':
         for point in projected_points:
@@ -246,17 +278,20 @@ def solve_projection(p1, p2, p3, K, dist, image, last_position, mode='debug'):
 
 def img_analysis(image, last_position, mode='debug'):
     """Performs the whole image analysis chain"""
+    image = remove_green(image)
+
     gray_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    eq_img = hist_eq(gray_img)
+    #eq_img = hist_eq(gray_img)
+    eq_img = gray_img
+    ret, eq_img_thresh = cv2.threshold(eq_img, 18, 255, cv2.THRESH_BINARY)
+    eq_img_thresh = cv2.morphologyEx(eq_img_thresh, cv2.MORPH_OPEN, kernel=np.ones((5, 5), np.uint8))
 
     if mode=='debug':
         cv2.imshow('original_img', image)
         cv2.imshow('gray_img', gray_img)
         cv2.imshow('eq_img', eq_img)
-
-    ret, eq_img_thresh = cv2.threshold(eq_img, 80, 255, cv2.THRESH_BINARY)
-    eq_img_thresh = cv2.morphologyEx(eq_img_thresh, cv2.MORPH_OPEN, kernel=np.ones((5, 5), np.uint8))
+        cv2.imshow('eq_img_thresh', eq_img_thresh)
 
     canny = cv2.Canny(eq_img_thresh.copy(), 30, 200)
     outer_canny = np.zeros(canny.shape, dtype=np.uint8)
@@ -281,7 +316,7 @@ def img_analysis(image, last_position, mode='debug'):
         cv2.imshow("canny", canny)
         cv2.imshow("outer_canny", outer_canny)
 
-    lines = cv2.HoughLines(outer_canny, 1, np.pi/180, 60)
+    lines = cv2.HoughLines(outer_canny, 1, np.pi/180, 40)
 
     if lines is not None:
         if mode=='debug':
@@ -304,7 +339,7 @@ def img_analysis(image, last_position, mode='debug'):
         rhos =lines[:, :, 0]
         #print(rhos)
 
-        main_dirs = find_main_axes(angles)
+        main_dirs = find_main_axes(angles, mode='fast')
         main_rhos = np.zeros(main_dirs.shape)
         cnt = 0
         for direction in main_dirs:
@@ -335,12 +370,15 @@ def img_analysis(image, last_position, mode='debug'):
                 cv2.imshow("houghlines", image)
 
     else:
+        #cv2.waitKey(0)
         print("no lines found, reduce threshold")
 
         return 0,0,0,0,(0,0),[], False
 
     if mode=='debug':
         cv2.imshow('thresholded image', eq_img_thresh)
+        #cv2.waitKey(0)
+
 
     v0,v1,v2,image = find_cube_vertices(image, canny, main_dirs, main_rhos, mode)
     if image is None:
