@@ -83,7 +83,7 @@ class ImageAnalyser:
         (rows, cols, channels) = cv_image.shape
         rospy.loginfo("received image with format {} x {} x {}".format(rows,cols,channels))
     
-        d, azim, elev, quat, cm_coo, processed_image, cube_found = lib.img_analysis(cv_image, self.last_cube_pos, mode='debug')
+        d, azim, elev, quat, cm_coo, processed_image, cube_found = lib.img_analysis(cv_image, self.last_cube_pos, mode='test')
 
         if cube_found:
             cube_pos = [d, azim, elev]
@@ -119,7 +119,7 @@ class ImageAnalyser:
 def main(args):
     """Main function. Parses arguments given as input ad generates an instance of ImageAnalyser
     to process the given images (if any)"""
-    
+
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-s', '--save_path', default=None)
@@ -158,6 +158,7 @@ def main(args):
             print("Shutting down")
 
     cv2.destroyAllWindows()
+
 
 if __name__ == '__main__':
     main(sys.argv)

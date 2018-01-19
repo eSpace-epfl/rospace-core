@@ -318,7 +318,7 @@ def rotvec_to_quaternion(rvec):
     return Q
 
 
-def solve_projection(p1, p2, p3, K, dist, image, last_position, mode='debug'):
+def solve_projection(p1, p2, p3, K, dist, image, image_thresh, last_position, mode='debug'):
     """Solve the projection from the 3 cube vertices and find the other ones in the image. This function uses the last
     position of the target to perform continuous tracking.
 
@@ -329,6 +329,7 @@ def solve_projection(p1, p2, p3, K, dist, image, last_position, mode='debug'):
             K: The intrinsic camera matrix
             dist: The distortion coefficeints of the camera if available. If no distortion is assumed, use []
             image: The image to draw on
+            image_thresh: A thresholded version of the image
             last_position: The last position of the cube. If last position is (0,0) assumes it is unknown
             mode: Either 'debug' or 'test'. Regulates the amount of figures
 
@@ -338,6 +339,7 @@ def solve_projection(p1, p2, p3, K, dist, image, last_position, mode='debug'):
             elev: The elevation of the target (in degrees)
             quat: The rotation quaternion of the target
             cm_pos: The position of the center of mass on the image
+            image: The processed image
     """
     p1_3d = (0.0, 0.0, 0.0)
     p2_3d = (0.0, 1.0, 0.0)
@@ -367,17 +369,26 @@ def solve_projection(p1, p2, p3, K, dist, image, last_position, mode='debug'):
     cm_pos = (int(projected_points[5, 0, 0]), int(projected_points[5, 0, 1]))
 
     cube_points = np.concatenate((np.reshape(projected_points,(6,2)),np.expand_dims(np.asarray(p1), axis=1).T, np.expand_dims(np.asarray(p2), axis=1).T, np.expand_dims(np.asarray(p3), axis=1).T)).astype(np.float32)
-    #conv = cv2.convexHull(cube_points)
-    #print(conv)
-    #print(conv.shape)
-    #image_temp = cv2.drawContours(image,[conv],0,(0,0,255),1)
-    #cv2.imshow("convex hull", image_temp)
+
+    conv = cv2.convexHull(cube_points)
+    conv = conv.astype(int)
+    image_temp = image.copy()
+    image_temp = cv2.polylines(image_temp, [conv], True, (0, 255, 255), 1)
+    hull_mask = cv2.fillConvexPoly(np.zeros(image.shape), conv, (0, 255, 255), 1)
+    hull_mask = hull_mask[:,:,2]
+
+    thresh_diff_img = image_thresh - np.multiply(image_thresh/255,hull_mask)
+    thresh_diff = np.sum(thresh_diff_img/255)
+    if mode=='debug':
+        print(np.sum(thresh_diff))
+        print(np.sum(image_thresh/255))
+        cv2.imshow("convex hull", thresh_diff_img)
 
     azim, elev = coo_to_azim_elev(cm_pos[0], cm_pos[1], K)
 
     pos_diff = np.linalg.norm(np.asarray(cm_pos) - np.asarray(last_position))
     print(pos_diff)
-    if np.sum(np.asarray(last_position) != [0,0]) and (pos_diff > 40):
+    if (np.sum(np.asarray(last_position) != [0,0]) and (pos_diff > 40)) or (thresh_diff/np.sum(image_thresh/255) > 0.01):
 
         p12_temp = (np.asarray(p1) + np.asarray(p3)) / 2
         p12 = (int(p12_temp[0]), int(p12_temp[1]))
@@ -393,6 +404,24 @@ def solve_projection(p1, p2, p3, K, dist, image, last_position, mode='debug'):
 
         cm_pos2 = (int(projected_points2[5, 0, 0]), int(projected_points2[5, 0, 1]))
 
+        cube_points2 = np.concatenate((np.reshape(projected_points2, (6, 2)), np.expand_dims(np.asarray(p1), axis=1).T,
+                                      np.expand_dims(np.asarray(p2), axis=1).T,
+                                      np.expand_dims(np.asarray(p3), axis=1).T)).astype(np.float32)
+
+        conv2 = cv2.convexHull(cube_points2)
+        conv2 = conv2.astype(int)
+        image_temp2 = image.copy()
+        image_temp2 = cv2.polylines(image_temp2, [conv2], True, (0, 255, 255), 1)
+        hull_mask2 = cv2.fillConvexPoly(np.zeros(image.shape), conv2, (0, 255, 255), 1)
+        hull_mask2 = hull_mask2[:, :, 2]
+
+        thresh_diff_img2 = image_thresh - np.multiply(image_thresh / 255, hull_mask2)
+        thresh_diff2 = np.sum(thresh_diff_img2 / 255)
+        if mode=='debug':
+            print(np.sum(thresh_diff2))
+            print(np.sum(image_thresh / 255))
+            cv2.imshow("convex hull 2", thresh_diff_img2)
+
         azim2, elev2 = coo_to_azim_elev(int(projected_points2[5, 0, 0]), int(projected_points2[5, 0, 1]), K)
 
         pos_diff2 = np.linalg.norm(np.asarray(cm_pos2) - np.asarray(last_position))
@@ -400,7 +429,7 @@ def solve_projection(p1, p2, p3, K, dist, image, last_position, mode='debug'):
             print('Warning : cube is moving very fast or a bad position was computed')
             print('pos diff :', pos_diff)
 
-        if pos_diff2 < pos_diff:
+        if ((pos_diff2 < pos_diff) and (np.sum(np.asarray(last_position) != [0,0]))) or thresh_diff2 < thresh_diff:
             print('Cube was inverted to keep coherent position')
             azim = azim2
             elev = elev2
@@ -408,7 +437,9 @@ def solve_projection(p1, p2, p3, K, dist, image, last_position, mode='debug'):
             range_mean = range_mean2
             cm_pos = cm_pos2
             rvec = rvec2
+            image_temp = image_temp2
 
+        image = image_temp
     if mode=='debug' or mode=='test':
         for point in projected_points:
             #print(point)
@@ -427,7 +458,7 @@ def solve_projection(p1, p2, p3, K, dist, image, last_position, mode='debug'):
 
     quat = rotvec_to_quaternion(rvec)
 
-    return range_mean, azim, elev, quat, cm_pos
+    return range_mean, azim, elev, quat, cm_pos, image
 
 
 def img_analysis(image, last_position, mode='debug'):
@@ -565,10 +596,10 @@ def img_analysis(image, last_position, mode='debug'):
     f_y = foc_mm/sens_h*image.shape[0]
     K = np.array([[f_x, 0, image.shape[1]/2],[0, f_y, image.shape[0]/2],[0,0,1]])
 
-    range_mean, azim, elev, quat, cm_pos = solve_projection(v0,v1,v2,K, np.asarray([]), image, last_position, mode)
+    range_mean, azim, elev, quat, cm_pos, image_proc = solve_projection(v0,v1,v2,K, np.asarray([]), image, eq_img_thresh, last_position, mode)
 
     if mode=='debug' or mode=='test':
-        image_with_centerpoint = cv2.circle(image,(image.shape[1]/2, image.shape[0]/2), 15, (255, 0 ,0))
+        image_with_centerpoint = cv2.circle(image_proc,(image.shape[1]/2, image.shape[0]/2), 15, (255, 0 ,0))
 
         cv2.imshow("circle2", image_with_centerpoint)
 
@@ -580,6 +611,6 @@ def img_analysis(image, last_position, mode='debug'):
         if mode=='debug':
             cv2.waitKey(0)
         else:
-            cv2.waitKey(1)
+            cv2.waitKey(10)
 
     return range_mean, azim, elev, quat, cm_pos, image_with_centerpoint, True
