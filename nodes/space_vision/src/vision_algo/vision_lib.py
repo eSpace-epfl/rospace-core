@@ -1,12 +1,31 @@
+"""
+Module that contains all the functions related to the detection of the target with the camera and computing its range, azimuth, elevation and pose
+
+Author: Gaetan Ramet
+License: TBD
+
+"""
+
+
 import sys, os
 import numpy as np
 import cv2
 from sklearn import mixture
 
+
 def remove_green(image):
-    """return image with black pixels instead of green"""
+    """Return image with black pixels instead of green. If the image is in grayscale, does not do anything.
+    The image is converted to HSV to remove the green component.
+
+        Args:
+            image : an RGB image or grayscale image as a numpy array
+
+        Returns:
+            image_no_green : an image of the same format as input with black instead of green
+    """
+
     if(len(image.shape) <3):
-        print("Warning : received image is not RGB")
+        print("Warning : received image is grayscale")
         return image
     else:
         hsv_img = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
@@ -25,14 +44,32 @@ def remove_green(image):
         #cv2.waitKey(0)
         return image_no_green
 
+
 def hist_eq(image):
-    """return image with equalize histogram"""
+    """Return image with equalize histogram
+
+        Args:
+            image : A grayscale image as a numpy array
+
+        Returns:
+            eq_img : an image of the same format as input with equalized histogram"""
+
     eq_img = cv2.equalizeHist(image)
 
     return eq_img
 
+
 def find_main_axes(angles, mode='fast'):
-    """ Fit the directions of Hough lines to a GMM and return the main directions"""
+    """ Use the angles from the Hough lines detection to find two axis of the cube. If mode=='gmm', the angles are fit
+    using a 2 parameters GMM. If mode=='fast', the two angles that are the most perpendicular together are kept
+
+        Args:
+            angles : The angles returned by cv2.Houghlines ( out = cv2.Houghliines(...), angles = out[:,:,1])
+            mode : either 'fast' or 'gmm'
+
+        Returns:
+            main_dirs : The angles of the two axis detected"""
+
     if mode=='gmm':
         g = mixture.GaussianMixture(n_components=2)
 
@@ -51,10 +88,26 @@ def find_main_axes(angles, mode='fast'):
 
         return main_dirs
 
-def find_vertex(img_thresh, m, h, x_inter, y_inter, mode ='debug'):
-    """Find the vertices in the cube from the intersection point and the line parameters (m,h)"""
+
+def find_vertex(img_thresh, m, h, x_inter, y_inter):
+    """Find a vertex in the cube from one vertex and the line parameters (m,h).
+    The algorithm will gather the points of the cube that are the closest to the given line, and then find
+    the one amongst them that is the furthest from the initial vertex.
+
+        Args:
+            img_thresh: A BW image of the cube, preferably after a Canny edge detection
+            m: The slope of the line
+            h: The y-intersect of the line
+            x_inter: The X position of the initial vertex
+            y_inter: The Y position of the initial vertex
+
+        Returns:
+            cube_px_x: The X position of the new vertex
+            cube_px_y: The Y position of the new vertex
+    """
+
     cube_px_y, cube_px_x = np.nonzero(img_thresh)
-    temp = img_thresh
+    #temp = img_thresh
     dist_px = np.sqrt(np.square(cube_px_x - x_inter) + np.square(cube_px_y - y_inter))
     dist_line = np.sqrt((h + m * cube_px_x - cube_px_y) ** 2 / (m ** 2 + 1))
 
@@ -65,9 +118,9 @@ def find_vertex(img_thresh, m, h, x_inter, y_inter, mode ='debug'):
         thresh += 1
 
     closest_to_line = np.argsort(dist_line)[:num_close]
-    if mode=='debug':
-        for pt in closest_to_line:
-            temp = cv2.circle(temp, (cube_px_x[pt], cube_px_y[pt]), 10, 80)
+    #if mode=='debug':
+    #    for pt in closest_to_line:
+    #        temp = cv2.circle(temp, (cube_px_x[pt], cube_px_y[pt]), 10, 80)
 
     max_d = np.max(dist_px[closest_to_line])
 
@@ -75,11 +128,26 @@ def find_vertex(img_thresh, m, h, x_inter, y_inter, mode ='debug'):
 
     return cube_px_x[further_from_inter], cube_px_y[further_from_inter]
 
-def find_cube_vertices(image, img_thresh,dirs, rhos, mode='debug'):
-    """Find the 3 vertices of the cubesat based on the houghlines"""
+
+def find_cube_vertices(image, img_thresh, dirs, rhos, mode='debug'):
+    """Find 3 vertices of the target based on two lines and a thresholded (preferably Canny edge detection) of an image
+
+        Args:
+            image: The image to draw on
+            img_thresh: A thresholded or preferably a Canny edge detection of image
+            dirs: The two angles returned by find_main_axes
+            rhos: The associated rhos from the two angles
+            mode: Either 'debug' or 'test'. Regulates the number of figures generated
+
+        Returns:
+            v_inter: The vertex at the intersection of the two lines
+            v0: The vertex at the other end of line 0
+            v1: The vertex at the other end of line 1
+            image_vert: The image with the vertices drawn
+            """
 
     if np.sin(dirs[0])==0 or np.sin(dirs[1])==0:
-        print("Division by 0 incoming, stopping proceessing")
+        print("Division by 0 incoming, aborting")
 
         return 0,0,0,None
 
@@ -92,8 +160,8 @@ def find_cube_vertices(image, img_thresh,dirs, rhos, mode='debug'):
     x_inter = (h1-h0)/(m0-m1)
     y_inter = m0*x_inter+h0
 
-    v0_x, v0_y = find_vertex(img_thresh, m0, h0, x_inter, y_inter, mode)
-    v1_x, v1_y = find_vertex(img_thresh, m1, h1, x_inter, y_inter, mode)
+    v0_x, v0_y = find_vertex(img_thresh, m0, h0, x_inter, y_inter)
+    v1_x, v1_y = find_vertex(img_thresh, m1, h1, x_inter, y_inter)
 
     image_vert = image
     if mode=='debug' or mode =='test':
@@ -107,9 +175,19 @@ def find_cube_vertices(image, img_thresh,dirs, rhos, mode='debug'):
     v_inter = (int(x_inter[0]), int(y_inter[0]))
 
     return v_inter, v0, v1, image_vert
-    
+
+
 def find_center_of_mass(bw_image):
-    """ compute the center of mass of the blob in bw_image"""
+    """Compute the center of mass of the blob in a BW image
+
+        Args:
+            bw_image: a BW image
+
+        Returns:
+            y_ : The Y position of the center of mass
+            x_ : The X position of the center of mass
+    """
+
     non_zero = np.where(bw_image != 0)
 
     y_ = int(round(np.mean(non_zero[0]))) # mean value of row
@@ -117,18 +195,45 @@ def find_center_of_mass(bw_image):
 
     return y_, x_
 
+
 def coo_to_azim_elev(x, y, K):
-    """ Compute the azimuth and elevation angle (in degrees)of a point in image, requires the intrinsic camera matrix K"""
+    """Compute the azimuth and elevation angle (in degrees) of a point in image, requires the intrinsic camera matrix K
+
+        Args:
+            x: The X position of a pixel in the image
+            y: The Y position of a pixel in the image
+            K: The intrinsic matrix of the camera
+
+        Returns:
+            azim: The azimuth in degree
+            elev: The elevation in degree
+            """
+
     P = np.asarray((x, y, 1)).T
     P_ics = np.linalg.inv(K).dot(P)
     azim = P_ics[0]*180/np.pi
     elev = P_ics[1]*180/np.pi
-    print("pics", P_ics[2])
+    #print("pics", P_ics[2])
 
     return azim, elev
 
+
 def compute_edge_len(rvec, tvec, K, dist):
-    """return the approxmate length of the edge of the cube in #pixel"""
+    """return the approximate length of the edge of the cube in #pixel.
+     The function undo the rotation along the z-axis so that the face of the cube would be parallel to the image plane,
+     and then measure the length of the edges along the x and y axis.
+
+        Args:
+            rvec: The rotation vector returned by cv2.solvePnP
+            tvec: The translation vector returned by cv2.solvePnP
+            K: The intrinsic camera matrix
+            dist: The distortion coefficients of the camera if available. If no distortion is assumed, use []
+
+        Returns:
+            dx: The distance estimated using the x coordinates
+            dy: The distance estimated using the y coordinate
+            """
+
     undo_z = np.asarray([[0], [0], [rvec[2]]]) - rvec
     R, _ = cv2.Rodrigues(undo_z)
 
@@ -145,10 +250,23 @@ def compute_edge_len(rvec, tvec, K, dist):
 
     return dx, dy
 
+
 def compute_range(tvec, rvec, K, dist, method='fast'):
     """Computes the range of the cube vs the camera (in meters).
-     Fast method is based on the translation vector and returns the distance to the center of the cube
-     Similar triangle method is more computationally expensive and returns the average distance to the detected face"""
+     'fast' method is based on the translation vector and returns the distance to the center of the cube (default)
+     'simtri' method is more computationally expensive and returns the average distance to the detected face
+
+        Args:
+            tvec: The translation vector returned by cv2.solvePnP
+            rvec: The rotation vector returned by cv2.solvePnP
+            K: The intrinsic camera matrix
+            dist: The distortion coefficients of the camera if available. If no distortion is assumed, use []
+            method: either 'fast' or 'simtri'
+
+        Returns:
+            range: The distance from the camera to the target
+         """
+
     if method == 'fast':
         return np.linalg.norm((tvec + 0.5)/10)
     elif method == 'simtri':
@@ -158,19 +276,35 @@ def compute_range(tvec, rvec, K, dist, method='fast'):
         range_y = K[1, 1]*0.1/dy
         return (range_x + range_y)/2
 
+
 def rotmat_to_quaternion(rmat):
-    """compute the quaternion (qw, qx, qy, qz) from a rotation matrix"""
+    """Computes the quaternion (qw, qx, qy, qz) from a rotation matrix
+
+        Args:
+            rmat : A rotation matrix
+
+        Returns:
+            Q: A Quaternion (qw, qx, qy, qz)
+            """
+
     Q = np.zeros(4, dtype=float)
     Q[0] = 0.5 * np.sqrt(rmat[0,0] + rmat[1,1] + rmat[2,2]+1)
     Q[1] = (rmat[2,1] - rmat[1,2])/(4*Q[0])
     Q[2] = (rmat[0,2] - rmat[2,0])/(4*Q[0])
     Q[3] = (rmat[1,0] - rmat[0,1])/(4*Q[0])
 
-
     return Q
 
+
 def rotvec_to_quaternion(rvec):
-    """compute the quaternion (qw, qx, qy, qz) from a rotation vector"""
+    """compute the quaternion (qw, qx, qy, qz) from a rotation vector
+
+    Args:
+        rvec: A rotation vector from cv2.solvePnP
+
+    Returns:
+        Q: A Quaternin (qw, qx, qy, qz)
+        """
 
     Q = np.zeros(4, dtype=float)
     angle = np.linalg.norm(rvec)
@@ -185,7 +319,26 @@ def rotvec_to_quaternion(rvec):
 
 
 def solve_projection(p1, p2, p3, K, dist, image, last_position, mode='debug'):
-    """Solve the projection from the 3 cube vertices and find the other ones in image"""
+    """Solve the projection from the 3 cube vertices and find the other ones in the image. This function uses the last
+    position of the target to perform continuous tracking.
+
+        Args:
+            p1: The vertex at the intersection of the two axis
+            p2: One vertex of the cube
+            p3: One other vertex of the cube ((p1,p2,p3) should define a face of the cube)
+            K: The intrinsic camera matrix
+            dist: The distortion coefficeints of the camera if available. If no distortion is assumed, use []
+            image: The image to draw on
+            last_position: The last position of the cube. If last position is (0,0) assumes it is unknown
+            mode: Either 'debug' or 'test'. Regulates the amount of figures
+
+        Returns:
+            range: The range between the target and the camera
+            azim: The azimuth of the target (in degrees)
+            elev: The elevation of the target (in degrees)
+            quat: The rotation quaternion of the target
+            cm_pos: The position of the center of mass on the image
+    """
     p1_3d = (0.0, 0.0, 0.0)
     p2_3d = (0.0, 1.0, 0.0)
     p3_3d = (1.0, 0.0, 0.0)
@@ -276,8 +429,27 @@ def solve_projection(p1, p2, p3, K, dist, image, last_position, mode='debug'):
 
     return range_mean, azim, elev, quat, cm_pos
 
+
 def img_analysis(image, last_position, mode='debug'):
-    """Performs the whole image analysis chain"""
+    """Performs the whole image analysis process to compute the range, azimuth, elevation and pose of the target from
+    an image. The image is first processed by removing the green background if it is RGB. Then it is converted to grayscale,
+    thresholded and we perform a small opening to remove noise. We then apply a Canny edge detector and keep only
+    the outer edges detected. We apply the cv2.Houghlines function to this canny edge detection to find the edges.
+    We then apply find_main_axes, find_cube_vertices and solve_projection to reconstruct the target.
+
+        Args:
+            image: An RGB or Grayscale image
+            last_position: The last position of the target on the image. If it is (0,0), assumes it is unknown
+            mode: Either 'debug' or 'test'. Regulates the amount of figures
+        Returns:
+            range: The range between the camera and the target
+            azim: The azimuth of the target (in degrees)
+            elev: The elevation of the target (in degrees)
+            quat: The rotation quaternion of the target
+            cm_point: The position of the center of mass of the target
+            image_with_centerpoint: The image with the reconstructed vertices
+            cube_found: A boolean, True if everything went fine
+    """
     image = remove_green(image)
 
     gray_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
