@@ -674,6 +674,8 @@ def img_analysis(image, last_position, mode='debug'):
     f_y = foc_mm/sens_h*image.shape[0]
     K = np.array([[f_x, 0, image.shape[1]/2],[0, f_y, image.shape[0]/2],[0,0,1]])
 
+    K = np.array([[2356.810245, 0.0, 1106.716358], [0.0, 2359.988119, 1070.114249], [0.0, 0.0, 1.0]]) # Basler
+
     range_mean, azim, elev, quat, cm_pos, image_proc = solve_projection(v0,v1,v2,K, np.asarray([]), image, eq_img_thresh, last_position, mode)
 
     if mode=='debug' or mode=='test':

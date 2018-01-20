@@ -82,7 +82,7 @@ class ImageAnalyser:
 
     def data_reader_callback(self, data):
         """Callback of the data reader from the robot"""
-        self.real_data = data
+        self.real_data = str(data.data)
 
     def callback(self, data):
         """Callback of the image subscriber for the image analysis routine
@@ -98,6 +98,9 @@ class ImageAnalyser:
             cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
         except CvBridgeError as e:
             print(e)
+
+        # Fix the position so that it does not change anymore
+        real_data_str = self.real_data
 
         (rows, cols, channels) = cv_image.shape
         rospy.loginfo("received image with format {} x {} x {}".format(rows,cols,channels))
@@ -121,7 +124,7 @@ class ImageAnalyser:
                     save_file.write("{}; {} ; {} ; {} ; {}\n".format(current_time, d, azim, elev, quat))
 
                 with open(self.real_data_file, 'a') as save_file:
-                    save_file.write("{}".format(current_time) + self.real_data + '\n')
+                    save_file.write("{}; ".format(current_time) + real_data_str + '\n')
 
                 scipy.misc.imsave(os.path.join(self.image_path, 'processed', 'img{}.png'.format(current_time)), processed_image)
                 scipy.misc.imsave(os.path.join(self.image_path, 'original', 'img{}.png'.format(current_time)), cv_image)
