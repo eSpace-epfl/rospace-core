@@ -40,7 +40,7 @@ class ImageAnalyser:
         self.bridge = CvBridge()
         '''Bridge between ROS and OpenCV'''
 
-        self.image_sub = rospy.Subscriber("camera/image_raw",Image,self.callback)
+        self.image_sub = rospy.Subscriber("/camera_crop/image_rect_color",Image,self.callback)
         '''Image subscriber for the images to be analyzed'''
 
         self.last_cube_pos = (0, 0)
@@ -49,14 +49,21 @@ class ImageAnalyser:
         self.save_file = None
         '''Path to save file'''
 
+        self.real_data_file = None
+        '''Path to real data file'''
+
         self.image_path = None
         '''Path to saving folder'''
 
-        self.write_signal_pub = rospy.Publisher("writer_trigger", Bool, queue_size=1)
-        '''Publisher for triggering the wirting of files with real data'''
+        self.real_data = ''
+        '''Real parameters of the target'''
+
+        self.data_reader = rospy.Subscriber("sat_SHC", String, self.data_reader_callback)
+        '''Subscriber to robot real data'''
 
         if path is not None:
-            self.save_file = os.path.join(path, 'data.txt')
+            self.save_file = os.path.join(path, 'measured_data.txt')
+            self.real_data_file = os.path.join(path, 'real_data.txt')
 
             if not os.path.exists(path):
                 os.makedirs(path)
@@ -67,6 +74,15 @@ class ImageAnalyser:
 
             with open(self.save_file, 'w') as save_file:
                 save_file.write("Format : timestamp; range; azim; elev; quat\n")
+
+            with open(self.real_data_file, 'w') as save_file:
+                save_file.write("Format : timestamp; range; azim; elev; quat\n")
+
+
+
+    def data_reader_callback(self, data):
+        """Callback of the data reader from the robot"""
+        self.real_data = data
 
     def callback(self, data):
         """Callback of the image subscriber for the image analysis routine
@@ -100,10 +116,12 @@ class ImageAnalyser:
 
             if self.save_file is not None:
 
-                self.write_signal_pub.publish(True)
                 current_time = time.time()
                 with open(self.save_file, 'a') as save_file:
                     save_file.write("{}; {} ; {} ; {} ; {}\n".format(current_time, d, azim, elev, quat))
+
+                with open(self.real_data_file, 'a') as save_file:
+                    save_file.write("{}".format(current_time) + self.real_data + '\n')
 
                 scipy.misc.imsave(os.path.join(self.image_path, 'processed', 'img{}.png'.format(current_time)), processed_image)
                 scipy.misc.imsave(os.path.join(self.image_path, 'original', 'img{}.png'.format(current_time)), cv_image)
@@ -137,7 +155,7 @@ def main(args):
 
         rospy.init_node('space_vision', anonymous=True)
 
-        pub = rospy.Publisher("camera/image_raw", Image, queue_size=10)
+        pub = rospy.Publisher("/camera_crop/image_rect_color", Image, queue_size=10)
         time.sleep(1)
 
         if args2['image_path'] is not None:

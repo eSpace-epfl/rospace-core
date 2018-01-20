@@ -32,9 +32,9 @@ def remove_green(image):
         hsv_img = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
 
         #mask = cv2.inRange(hsv_img,(30,0,0), (90,255,255))
-        mask = cv2.inRange(hsv_img,(42,20,20), (78,255,255))
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel=np.ones((30, 30), np.uint8))
-        #mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel=np.ones((20, 20), np.uint8))
+        mask = cv2.inRange(hsv_img,(35,0,0), (90,255,255))
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel=np.ones((3, 3), np.uint8))
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel=np.ones((3, 3), np.uint8))
         mask = mask.astype(bool)
 
         #print(mask)
@@ -490,7 +490,7 @@ def img_analysis(image, last_position, mode='debug'):
 
     #eq_img = hist_eq(gray_img)
     eq_img = gray_img
-    ret, eq_img_thresh = cv2.threshold(eq_img, 18, 255, cv2.THRESH_BINARY)
+    ret, eq_img_thresh = cv2.threshold(eq_img, 90, 255, cv2.THRESH_BINARY)
     eq_img_thresh = cv2.morphologyEx(eq_img_thresh, cv2.MORPH_OPEN, kernel=np.ones((5, 5), np.uint8))
 
     if mode=='debug':
