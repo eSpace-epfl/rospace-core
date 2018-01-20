@@ -10,6 +10,7 @@ License: TBD
 import sys, os
 import numpy as np
 import cv2
+import matplotlib.pyplot as plt
 from sklearn import mixture
 
 
@@ -59,7 +60,7 @@ def hist_eq(image):
     return eq_img
 
 
-def find_main_axes(angles, mode='fast'):
+def find_main_axes(angles, rhos, mode='fast'):
     """ Use the angles from the Hough lines detection to find two axis of the cube. If mode=='gmm', the angles are fit
     using a 2 parameters GMM. If mode=='fast', the two angles that are the most perpendicular together are kept
 
@@ -71,10 +72,12 @@ def find_main_axes(angles, mode='fast'):
             main_dirs : The angles of the two axis detected"""
 
     if mode=='gmm':
-        g = mixture.GaussianMixture(n_components=2)
+        g = mixture.GaussianMixture(n_components=6)
 
-        g.fit(angles)
+        g.fit(np.concatenate((angles, rhos), axis=1))
 
+        means= g.means_
+        main_dirs = means[:,0]
         return g.means_
 
     if mode =='fast':
@@ -157,8 +160,8 @@ def find_cube_vertices(image, img_thresh, dirs, rhos, mode='debug'):
     m1 = -np.cos(dirs[1])/np.sin(dirs[1])
     h1 = rhos[1]/np.sin(dirs[1])
 
-    x_inter = (h1-h0)/(m0-m1)
-    y_inter = m0*x_inter+h0
+    x_inter = int((h1-h0)/(m0-m1))
+    y_inter = int(m0*x_inter+h0)
 
     v0_x, v0_y = find_vertex(img_thresh, m0, h0, x_inter, y_inter)
     v1_x, v1_y = find_vertex(img_thresh, m1, h1, x_inter, y_inter)
@@ -172,7 +175,7 @@ def find_cube_vertices(image, img_thresh, dirs, rhos, mode='debug'):
             cv2.imshow("vertices", image_vert)
     v0 = (v0_x, v0_y)
     v1 = (v1_x, v1_y)
-    v_inter = (int(x_inter[0]), int(y_inter[0]))
+    v_inter = (x_inter, y_inter)
 
     return v_inter, v0, v1, image_vert
 
@@ -542,22 +545,85 @@ def img_analysis(image, last_position, mode='debug'):
         rhos =lines[:, :, 0]
         #print(rhos)
 
-        main_dirs = find_main_axes(angles, mode='fast')
-        main_rhos = np.zeros(main_dirs.shape)
-        cnt = 0
-        for direction in main_dirs:
+        #plt.figure()
+        #plt.scatter(rhos,angles)
+        #plt.show()
+        #cv2.waitkey(0)
 
-            angle_diff = angles - direction
+        axes_mode = 'gmm'
+        main_dirs = find_main_axes(angles, rhos, mode=axes_mode)
 
-            main_rhos[cnt] = rhos[np.argmin(np.absolute(angle_diff))]
+        if axes_mode =='fast':
+            main_rhos = np.zeros(main_dirs.shape)
+            cnt = 0
+            for direction in main_dirs:
 
-            cnt += 1
+                angle_diff = angles - direction
+
+                main_rhos[cnt] = rhos[np.argmin(np.absolute(angle_diff))]
+
+                cnt += 1
+        elif axes_mode =='gmm':
+            main_rhos = main_dirs[:,1]
+            main_dirs = main_dirs[:,0]
+
+            #print(main_dirs)
+            #print(main_rhos)
+
+            cnt=6
+
+            dil_img = cv2.morphologyEx(eq_img_thresh, cv2.MORPH_DILATE, kernel=np.ones((5, 5), np.uint8))
+
+            stop=False
+            for i in range(cnt):
+                for j in range(1,cnt):
+                    if i==j:
+                        continue
+                    else:
+
+                        if np.sin(main_dirs[i]) == 0 or np.sin(main_dirs[j]) == 0:
+                            print("Division by 0 incoming, skipping this line")
+                            continue
+
+                        m0 = -np.cos(main_dirs[i]) / np.sin(main_dirs[i])
+                        h0 = main_rhos[i] / np.sin(main_dirs[i])
+
+                        m1 = -np.cos(main_dirs[j]) / np.sin(main_dirs[j])
+                        h1 = main_rhos[j] / np.sin(main_dirs[j])
+
+                        x_inter = int((h1 - h0) / (m0 - m1))
+                        y_inter = int(m0 * x_inter + h0)
+
+                        #temp = cv2.circle(dil_img.copy(),(x_inter, y_inter), 10,(0,0,255))
+                        #cv2.imshow("test2", temp)
+                        #cv2.waitKey(0)
+                        #print(eq_img_thresh[x_inter, y_inter])
+                        if x_inter >0 and y_inter >0 and x_inter < eq_img_thresh.shape[1] and y_inter < eq_img_thresh.shape[0]:
+                            if dil_img[y_inter,x_inter] !=0:
+                                print('found ok vertex')
+                                stop=True
+                        if stop:
+                            print(i)
+                            print(j)
+                            break
+                if stop:
+                    break
+
+            cnt=2
+            dir0= main_dirs[i]
+            rho0 = main_rhos[i]
+            dir1 = main_dirs[j]
+            rho1 = main_rhos[j]
+
+            main_dirs = np.asarray((dir0,dir1))
+            main_rhos = np.asarray((rho0, rho1))
+
 
         #print(main_dirs)
         #print(main_rhos)
 
         if mode=='debug' or mode=='test':
-            for i in range(2):
+            for i in range(cnt):
                 rho = main_rhos[i]
                 theta = main_dirs[i]
                 a = np.cos(theta)
@@ -567,7 +633,7 @@ def img_analysis(image, last_position, mode='debug'):
                 pt1 = (int(x0 + 1000 * (-b)), int(y0 + 1000 * a))
                 pt2 = (int(x0 - 1000 * (-b)), int(y0 - 1000 * a))
 
-                cv2.line(image, pt1, pt2, (0, 0, 255), 3, cv2.LINE_AA)
+                cv2.line(image, pt1, pt2, (255, 0, 0), 3, cv2.LINE_AA)
 
             if mode=='debug':
                 cv2.imshow("houghlines", image)
@@ -590,10 +656,10 @@ def img_analysis(image, last_position, mode='debug'):
 
 
     foc_mm = 12
-    #sens_w = 6.9 #Pointgrey
-    #sens_h = 5.5
-    sens_w = 11.3 # Basler
-    sens_h= 11.3
+    sens_w = 6.9 #Pointgrey
+    sens_h = 5.5
+    #sens_w = 11.3 # Basler
+    #sens_h= 11.3
     f_x = foc_mm/sens_w*image.shape[1]
     f_y = foc_mm/sens_h*image.shape[0]
     K = np.array([[f_x, 0, image.shape[1]/2],[0, f_y, image.shape[0]/2],[0,0,1]])
