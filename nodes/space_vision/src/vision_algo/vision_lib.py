@@ -493,6 +493,16 @@ def img_analysis(image, last_position, mode='debug'):
     ret, eq_img_thresh = cv2.threshold(eq_img, 90, 255, cv2.THRESH_BINARY)
     eq_img_thresh = cv2.morphologyEx(eq_img_thresh, cv2.MORPH_OPEN, kernel=np.ones((5, 5), np.uint8))
 
+    im_filled = eq_img_thresh.copy()
+    h,w = eq_img_thresh.shape[:2]
+    mask = np.zeros((h+2,w+2), np.uint8)
+
+    im_filled = cv2.floodFill(im_filled,mask,(0,0), 255)
+    #print(im_filled)
+    inv_im_filled = 255 - im_filled[1]
+
+    eq_img_thresh = eq_img_thresh + inv_im_filled
+
     if mode=='debug':
         cv2.imshow('original_img', image)
         cv2.imshow('gray_img', gray_img)
