@@ -679,6 +679,6 @@ def img_analysis(image, last_position, mode='debug'):
         if mode=='debug':
             cv2.waitKey(0)
         else:
-            cv2.waitKey(10)
+            cv2.waitKey(1000)
 
     return range_mean, azim, elev, quat, cm_pos, image_with_centerpoint, True

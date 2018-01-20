@@ -16,7 +16,7 @@ import cv2
 import scipy.misc
 import numpy as np
 import argparse
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 import vision_algo.vision_lib as lib
@@ -51,6 +51,9 @@ class ImageAnalyser:
 
         self.image_path = None
         '''Path to saving folder'''
+
+        self.write_signal_pub = rospy.Publisher("writer_trigger", Bool, queue_size=1)
+        '''Publisher for triggering the wirting of files with real data'''
 
         if path is not None:
             self.save_file = os.path.join(path, 'data.txt')
@@ -96,6 +99,8 @@ class ImageAnalyser:
             rospy.loginfo("publish cube quaternion : {}".format(quat))
 
             if self.save_file is not None:
+
+                self.write_signal_pub.publish(True)
                 current_time = time.time()
                 with open(self.save_file, 'a') as save_file:
                     save_file.write("{}; {} ; {} ; {} ; {}\n".format(current_time, d, azim, elev, quat))
