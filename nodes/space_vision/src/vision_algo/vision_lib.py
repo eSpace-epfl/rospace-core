@@ -27,7 +27,7 @@ def remove_green(image):
 
     if(len(image.shape) <3):
         print("Warning : received image is grayscale")
-        return image
+        return image.copy()
     else:
         hsv_img = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
 
@@ -38,7 +38,7 @@ def remove_green(image):
         mask = mask.astype(bool)
 
         #print(mask)
-        image_no_green = image
+        image_no_green = image.copy()
         image_no_green[mask] = (0,0,0)
 
         #cv2.imshow("image_no_green",image_no_green)
@@ -385,7 +385,7 @@ def solve_projection(p1, p2, p3, K, dist, image, image_thresh, last_position, mo
     if mode=='debug':
         print(np.sum(thresh_diff))
         print(np.sum(image_thresh/255))
-        cv2.imshow("convex hull", thresh_diff_img)
+        cv2.imshow("convex hull", image_temp)
 
     azim, elev = coo_to_azim_elev(cm_pos[0], cm_pos[1], K)
 
@@ -442,7 +442,7 @@ def solve_projection(p1, p2, p3, K, dist, image, image_thresh, last_position, mo
             rvec = rvec2
             image_temp = image_temp2
 
-        image = image_temp
+    image = image_temp
     if mode=='debug' or mode=='test':
         for point in projected_points:
             #print(point)
@@ -484,13 +484,13 @@ def img_analysis(image, last_position, mode='debug'):
             image_with_centerpoint: The image with the reconstructed vertices
             cube_found: A boolean, True if everything went fine
     """
-    image = remove_green(image)
+    image_no_green = remove_green(image)
 
-    gray_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    gray_img = cv2.cvtColor(image_no_green, cv2.COLOR_BGR2GRAY)
 
     #eq_img = hist_eq(gray_img)
     eq_img = gray_img
-    ret, eq_img_thresh = cv2.threshold(eq_img, 90, 255, cv2.THRESH_BINARY)
+    ret, eq_img_thresh = cv2.threshold(eq_img, 20, 255, cv2.THRESH_BINARY)
     eq_img_thresh = cv2.morphologyEx(eq_img_thresh, cv2.MORPH_OPEN, kernel=np.ones((5, 5), np.uint8))
 
     im_filled = eq_img_thresh.copy()
@@ -498,7 +498,6 @@ def img_analysis(image, last_position, mode='debug'):
     mask = np.zeros((h+2,w+2), np.uint8)
 
     im_filled = cv2.floodFill(im_filled,mask,(0,0), 255)
-    #print(im_filled)
     inv_im_filled = 255 - im_filled[1]
 
     eq_img_thresh = eq_img_thresh + inv_im_filled
@@ -536,7 +535,7 @@ def img_analysis(image, last_position, mode='debug'):
 
     if lines is not None:
         if mode=='debug':
-            lines_img = image
+            lines_img = image.copy()
             for line in lines:
                 rho = line[:,0]
                 theta = line[:,1]
@@ -549,16 +548,19 @@ def img_analysis(image, last_position, mode='debug'):
 
                 cv2.line(lines_img, pt1, pt2, (0, 0, 255), 3, cv2.LINE_AA)
 
-            cv2.imshow("houghlines", lines_img)
+            cv2.imshow("many_houghlines", lines_img)
 
         angles = lines[:, :, 1]
         rhos =lines[:, :, 0]
         #print(rhos)
 
-        #plt.figure()
-        #plt.scatter(rhos,angles)
-        #plt.show()
-        #cv2.waitkey(0)
+        if mode=='debug':
+            plt.figure()
+            plt.scatter(rhos,angles, marker='x', linewidths=0.1)
+            plt.title(r'Hough Lines parameters : $\rho$ vs $\theta$')
+            plt.xlabel(r'$\rho$ [px]')
+            plt.ylabel(r'$\theta$ [rad]')
+            plt.show()
 
         axes_mode = 'gmm'
         main_dirs = find_main_axes(angles, rhos, mode=axes_mode)
@@ -666,15 +668,15 @@ def img_analysis(image, last_position, mode='debug'):
 
 
     foc_mm = 12
-    sens_w = 6.9 #Pointgrey
-    sens_h = 5.5
-    #sens_w = 11.3 # Basler
-    #sens_h= 11.3
+    #sens_w = 6.9 #Pointgrey
+    #sens_h = 5.5
+    sens_w = 11.3 # Basler
+    sens_h= 11.3
     f_x = foc_mm/sens_w*image.shape[1]
     f_y = foc_mm/sens_h*image.shape[0]
     K = np.array([[f_x, 0, image.shape[1]/2],[0, f_y, image.shape[0]/2],[0,0,1]])
 
-    K = np.array([[2356.810245, 0.0, 1106.716358], [0.0, 2359.988119, 1070.114249], [0.0, 0.0, 1.0]]) # Basler
+    #K = np.array([[2356.810245, 0.0, 1106.716358], [0.0, 2359.988119, 1070.114249], [0.0, 0.0, 1.0]]) # Basler
 
     range_mean, azim, elev, quat, cm_pos, image_proc = solve_projection(v0,v1,v2,K, np.asarray([]), image, eq_img_thresh, last_position, mode)
 
@@ -691,6 +693,6 @@ def img_analysis(image, last_position, mode='debug'):
         if mode=='debug':
             cv2.waitKey(0)
         else:
-            cv2.waitKey(1000)
+            cv2.waitKey(50)
 
     return range_mean, azim, elev, quat, cm_pos, image_with_centerpoint, True
