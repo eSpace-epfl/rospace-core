@@ -390,8 +390,8 @@ def solve_projection(p1, p2, p3, K, dist, image, image_thresh, last_position, mo
     azim, elev = coo_to_azim_elev(cm_pos[0], cm_pos[1], K)
 
     pos_diff = np.linalg.norm(np.asarray(cm_pos) - np.asarray(last_position))
-    print(pos_diff)
-    if (np.sum(np.asarray(last_position) != [0,0]) and (pos_diff > 40)) or (thresh_diff/np.sum(image_thresh/255) > 0.01):
+    #print(pos_diff)
+    if (np.sum(np.asarray(last_position) == [0,0])) and (np.sum(np.asarray(last_position) != [0,0]) and (pos_diff > 40)) or (thresh_diff/np.sum(image_thresh/255) > 0.01):
 
         p12_temp = (np.asarray(p1) + np.asarray(p3)) / 2
         p12 = (int(p12_temp[0]), int(p12_temp[1]))
