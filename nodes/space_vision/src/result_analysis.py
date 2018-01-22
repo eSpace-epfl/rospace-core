@@ -104,6 +104,24 @@ def main():
         azim_fit = poly.polyval(time_m, azim_coeffs)
         elev_fit = poly.polyval(time_m, elev_coeffs)
 
+        quat_diff = np.asarray([[]]).reshape((0,4))
+
+        i=0
+        for quat in quat_m:
+            temp = np.asarray((quat[0], -quat[1], -quat[2], -quat[3]))
+            temp = temp/(np.linalg.norm(temp)**2)
+            temp_r = quat_r[i]
+            temp_diff = np.expand_dims(np.asarray((temp[0]*temp_r[0] - temp[1]*temp_r[1] - temp[2]*temp_r[2] - temp[3]*temp_r[3],
+                                    temp_r[0]*temp[1] + temp_r[1]*temp[0] - temp_r[2]*temp[3] + temp_r[3]*temp[2],
+                                    temp_r[0] * temp[2] + temp_r[1] * temp[3] + temp_r[2] * temp[0] - temp_r[3] * temp[1],
+                                    temp_r[0] * temp[3] - temp_r[1] * temp[2] + temp_r[2] * temp[1] + temp_r[3] * temp[0],
+                                    )),axis=0)
+            print(temp_diff.shape)
+            quat_diff = np.append(quat_diff, temp_diff,axis=0)
+            i+=1
+
+        print(quat_diff.shape)
+
 
         plt.figure(figsize=(16,5))
         plt.subplot(1,3,1)
@@ -201,6 +219,26 @@ def main():
         #plt.legend()
         #
         #plt.suptitle('Relative Errors')
+
+
+        plt.figure(figsize=(16,5))
+        plt.plot(time_r, quat_diff[:,0],'b', label='qw')
+        plt.plot(time_r, quat_diff[:,1],'r', label='qx')
+        plt.plot(time_r, quat_diff[:,2],'m', label='qy')
+        plt.plot(time_r, quat_diff[:,3],'--', label='qz')
+        plt.axhline(y=1, color='0', linestyle='-')
+        plt.axhline(y=np.sqrt(2)/2, color='0', linestyle='-')
+        plt.axhline(y=0.5, color='0', linestyle='-')
+        plt.axhline(y=0, color='0', linestyle='-')
+        plt.axhline(y=-np.sqrt(2)/2, color='0', linestyle='-')
+        plt.axhline(y=-0.5, color='0', linestyle='-')
+        plt.axhline(y=-1, color='0', linestyle='-')
+
+        plt.xlabel('Time [s]')
+        plt.ylabel('Quaternion difference')
+        plt.ylim((-1.2,1.2))
+        plt.legend()
+        plt.title('Quaternion difference')
 
         plt.show()
 
