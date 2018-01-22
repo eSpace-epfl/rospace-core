@@ -116,11 +116,9 @@ def main():
                                     temp_r[0] * temp[2] + temp_r[1] * temp[3] + temp_r[2] * temp[0] - temp_r[3] * temp[1],
                                     temp_r[0] * temp[3] - temp_r[1] * temp[2] + temp_r[2] * temp[1] + temp_r[3] * temp[0],
                                     )),axis=0)
-            print(temp_diff.shape)
             quat_diff = np.append(quat_diff, temp_diff,axis=0)
             i+=1
 
-        print(quat_diff.shape)
 
 
         plt.figure(figsize=(16,5))
