@@ -24,7 +24,7 @@ from cv_bridge import CvBridge, CvBridgeError
 import vision_algo.vision_lib as lib
 
 
-class ImageAnalyser:
+class ImageAnalyser(object):
     """
     use this class to create a subscriber/publisher which performs image analysis on received images
     """
@@ -107,7 +107,7 @@ class ImageAnalyser:
         (rows, cols, channels) = cv_image.shape
         rospy.loginfo("received image with format {} x {} x {}".format(rows,cols,channels))
     
-        d, azim, elev, quat, cm_coo, processed_image, cube_found = lib.img_analysis(cv_image.copy(), self.last_cube_pos, mode='test')
+        d, azim, elev, quat, cm_coo, processed_image, cube_found = lib.img_analysis(cv_image.copy(), self.last_cube_pos, mode='debug')
 
         if cube_found:
             cube_pos = [d, azim, elev]

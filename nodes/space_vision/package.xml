@@ -3,10 +3,10 @@
   <name>space_vision</name>
   <version>0.0.0</version>
   <description>
-	    Node that simulates a camera on a spacecraft
+	    Node that simulates a vision system on a spacecraft. Receives images and outputs target's relative position
   </description>
 
-  <maintainer email="michael.pantic@epfl.ch">Michael Pantic</maintainer>
+  <maintainer email="gaetan.ramet@epfl.ch">Gaetan Ramet</maintainer>
 
   <license>BSD</license>
 

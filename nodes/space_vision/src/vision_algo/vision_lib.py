@@ -668,10 +668,10 @@ def img_analysis(image, last_position, mode='debug'):
 
 
     foc_mm = 12
-    #sens_w = 6.9 #Pointgrey
-    #sens_h = 5.5
-    sens_w = 11.3 # Basler
-    sens_h= 11.3
+    sens_w = 6.9 #Pointgrey
+    sens_h = 5.5
+    #sens_w = 11.3 # Basler
+    #sens_h= 11.3
     f_x = foc_mm/sens_w*image.shape[1]
     f_y = foc_mm/sens_h*image.shape[0]
     K = np.array([[f_x, 0, image.shape[1]/2],[0, f_y, image.shape[0]/2],[0,0,1]])

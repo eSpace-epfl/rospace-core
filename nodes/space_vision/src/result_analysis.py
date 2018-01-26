@@ -33,10 +33,8 @@ def main():
         elev_m = np.asarray([])
         quat_m = np.asarray([[]]).reshape((0,4))
 
-        i=0
-        for line in data:
+        for i, line in enumerate(data):
             if i==0:
-                i += 1
                 continue
             else:
 
@@ -52,9 +50,6 @@ def main():
 
                 quat_m = np.append(quat_m, np.expand_dims(np.fromstring(words[4], sep=' '), axis=0), axis=0)
 
-                i += 1
-                if i==100:
-                    break
 
         if args['real_data_path'] is not None:
             real_data_path = os.path.join(args['real_data_path'], 'real_data.txt')
@@ -68,10 +63,8 @@ def main():
             elev_r = np.asarray([])
             quat_r = np.asarray([[]]).reshape((0, 4))
 
-            i = 0
-            for line in data:
+            for i, line in enumerate(data):
                 if i == 0:
-                    i += 1
                     continue
                 else:
 
@@ -86,10 +79,6 @@ def main():
                     elev_r = np.append(elev_r, np.asarray(float(words[3])))
 
                     quat_r = np.append(quat_r, np.expand_dims(np.fromstring(words[4], sep=' '), axis=0), axis=0)
-
-                    i += 1
-                    if i == 100:
-                        break
 
         time_m = time_m - time_m[0]
         time_r = time_r - time_r[0]
@@ -106,8 +95,7 @@ def main():
 
         quat_diff = np.asarray([[]]).reshape((0,4))
 
-        i=0
-        for quat in quat_m:
+        for i, quat in enumerate(quat_m):
             temp = np.asarray((quat[0], -quat[1], -quat[2], -quat[3]))
             temp = temp/(np.linalg.norm(temp)**2)
             temp_r = quat_r[i]
@@ -117,7 +105,6 @@ def main():
                                     temp_r[0] * temp[3] - temp_r[1] * temp[2] + temp_r[2] * temp[1] + temp_r[3] * temp[0],
                                     )),axis=0)
             quat_diff = np.append(quat_diff, temp_diff,axis=0)
-            i+=1
 
 
 
@@ -129,7 +116,7 @@ def main():
         plt.title('Range vs Time')
         plt.xlabel('Time [s]')
         plt.ylabel('Range [m]')
-        plt.ylim((0,2))
+        plt.ylim((0,np.max(range_m)+0.3))
         plt.legend()
 
         plt.subplot(1,3,2)
@@ -231,7 +218,7 @@ def main():
         plt.axhline(y=-np.sqrt(2)/2, color='0', linestyle='-')
         plt.axhline(y=-0.5, color='0', linestyle='-')
         plt.axhline(y=-1, color='0', linestyle='-')
-
+        
         plt.xlabel('Time [s]')
         plt.ylabel('Quaternion difference')
         plt.ylim((-1.2,1.2))
@@ -245,4 +232,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
