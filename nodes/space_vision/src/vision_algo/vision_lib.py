@@ -6,7 +6,6 @@ License: TBD
 
 """
 
-
 import sys, os
 import numpy as np
 import cv2
@@ -72,13 +71,21 @@ def find_main_axes(angles, rhos, mode='fast'):
             main_dirs : The angles of the two axis detected"""
 
     if mode=='gmm':
-        g = mixture.GaussianMixture(n_components=6)
+        best_bic = 1000
+        data = np.concatenate((angles, rhos), axis=1)
+        for n_comp in range(2, 7):
 
-        g.fit(np.concatenate((angles, rhos), axis=1))
+            g = mixture.GaussianMixture(n_components=6)
 
-        means= g.means_
-        main_dirs = means[:,0]
-        return g.means_
+            g.fit(data)
+
+            if g.bic(data) < best_bic:
+                best_bic = g.bic(data)
+                print('bic score', best_bic)
+
+                means= g.means_
+
+        return means
 
     if mode =='fast':
         angles_diff = np.zeros((len(angles), len(angles)))
@@ -87,7 +94,7 @@ def find_main_axes(angles, rhos, mode='fast'):
             angles_diff[row] = np.squeeze(np.abs(np.abs(angles - angle) - np.pi/2))
 
         main_dirs_idx = np.unravel_index(angles_diff.argmin(), angles_diff.shape)
-        main_dirs =  np.asarray((angles[main_dirs_idx[0]], angles[main_dirs_idx[1]]))
+        main_dirs = np.asarray((angles[main_dirs_idx[0]], angles[main_dirs_idx[1]]))
 
         return main_dirs
 
@@ -127,7 +134,7 @@ def find_vertex(img_thresh, m, h, x_inter, y_inter):
 
     max_d = np.max(dist_px[closest_to_line])
 
-    further_from_inter = np.argmin(abs(dist_px - max_d))
+    further_from_inter = np.argmin(np.absolute(dist_px - max_d))
 
     return cube_px_x[further_from_inter], cube_px_y[further_from_inter]
 
@@ -271,7 +278,11 @@ def compute_range(tvec, rvec, K, dist, method='fast'):
          """
 
     if method == 'fast':
-        return np.linalg.norm((tvec + 0.5)/10)
+        rmat, _ = cv2.Rodrigues(rvec)
+        rmat = np.asarray(rmat)
+
+        return 0.1*np.linalg.norm(rmat*np.expand_dims(np.array((0.5, 0.5, 0.5)), axis=1).T + tvec)
+        #return np.linalg.norm((tvec + 0.5)/10)
     elif method == 'simtri':
         dx, dy = compute_edge_len(rvec, tvec, K, dist)
 
@@ -446,7 +457,7 @@ def solve_projection(p1, p2, p3, K, dist, image, image_thresh, last_position, mo
     if mode=='debug' or mode=='test':
         for point in projected_points:
             #print(point)
-            image = cv2.circle(image,(int(point[0, 0]),int(point[0, 1])), 10, (0, 255, 0))
+            image = cv2.circle(image,(int(point[0, 0]), int(point[0, 1])), 10, (0, 255, 0))
 
         image = cv2.circle(image, cm_pos,10,(0,0,255))
         image = cv2.circle(image, last_position,10,(0,0,255))
@@ -488,9 +499,9 @@ def img_analysis(image, last_position, mode='debug'):
 
     gray_img = cv2.cvtColor(image_no_green, cv2.COLOR_BGR2GRAY)
 
-    #eq_img = hist_eq(gray_img)
+    eq_img = hist_eq(gray_img)
     eq_img = gray_img
-    ret, eq_img_thresh = cv2.threshold(eq_img, 20, 255, cv2.THRESH_BINARY)
+    ret, eq_img_thresh = cv2.threshold(eq_img, 18, 255, cv2.THRESH_BINARY)
     eq_img_thresh = cv2.morphologyEx(eq_img_thresh, cv2.MORPH_OPEN, kernel=np.ones((5, 5), np.uint8))
 
     im_filled = eq_img_thresh.copy()
@@ -531,10 +542,10 @@ def img_analysis(image, last_position, mode='debug'):
         cv2.imshow("canny", canny)
         cv2.imshow("outer_canny", outer_canny)
 
-    lines = cv2.HoughLines(outer_canny, 1, np.pi/180, 40)
+    lines = cv2.HoughLines(outer_canny, 1, np.pi/180, 30)
 
     if lines is not None:
-        if mode=='debug':
+        if mode=='debug' or mode=='test':
             lines_img = image.copy()
             for line in lines:
                 rho = line[:,0]
@@ -551,7 +562,7 @@ def img_analysis(image, last_position, mode='debug'):
             cv2.imshow("many_houghlines", lines_img)
 
         angles = lines[:, :, 1]
-        rhos =lines[:, :, 0]
+        rhos = lines[:, :, 0]
         #print(rhos)
 
         if mode=='debug':
@@ -622,12 +633,12 @@ def img_analysis(image, last_position, mode='debug'):
                     break
 
             cnt=2
-            dir0= main_dirs[i]
+            dir0 = main_dirs[i]
             rho0 = main_rhos[i]
             dir1 = main_dirs[j]
             rho1 = main_rhos[j]
 
-            main_dirs = np.asarray((dir0,dir1))
+            main_dirs = np.asarray((dir0, dir1))
             main_rhos = np.asarray((rho0, rho1))
 
 

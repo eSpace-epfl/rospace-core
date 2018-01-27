@@ -29,7 +29,7 @@ class ImageAnalyser(object):
     use this class to create a subscriber/publisher which performs image analysis on received images
     """
 
-    def __init__(self, path):
+    def __init__(self, path, mode):
         self.image_pub = rospy.Publisher("image_topic_2", Image, queue_size=10)
         '''Image publisher for processed images'''
 
@@ -62,6 +62,9 @@ class ImageAnalyser(object):
 
         self.data_reader = rospy.Subscriber("sat_SHC", String, self.data_reader_callback)
         '''Subscriber to robot real data'''
+
+        self.mode = mode
+        '''Mode of the image_analysis callback. Either 'debug' or 'test' '''
 
         if path is not None:
             self.save_file = os.path.join(path, 'measured_data.txt')
@@ -107,7 +110,7 @@ class ImageAnalyser(object):
         (rows, cols, channels) = cv_image.shape
         rospy.loginfo("received image with format {} x {} x {}".format(rows,cols,channels))
     
-        d, azim, elev, quat, cm_coo, processed_image, cube_found = lib.img_analysis(cv_image.copy(), self.last_cube_pos, mode='debug')
+        d, azim, elev, quat, cm_coo, processed_image, cube_found = lib.img_analysis(cv_image.copy(), self.last_cube_pos, mode=self.mode)
 
         if cube_found:
             cube_pos = [d, azim, elev]
@@ -152,11 +155,12 @@ def main(args):
 
     parser.add_argument('-s', '--save_path', default=None)
     parser.add_argument('-i', '--image_path', nargs='+', default=None)
+    parser.add_argument('-m', '--mode', default='test')
 
     args2 = vars(parser.parse_args())
 
     while not rospy.is_shutdown():
-        ic = ImageAnalyser(args2['save_path'])
+        ic = ImageAnalyser(args2['save_path'], args2['mode'])
 
         rospy.init_node('space_vision', anonymous=True)
 
@@ -167,14 +171,13 @@ def main(args):
             print(args2['image_path'][0])
             for i in range(0,len(args2['image_path'])):
 
-                #for img_number in range(120,320):
+                #for img_number in range(180,320):
                     #print('img{:d}.png'.format(img_number))
-                    #img = cv2.imread(os.path.join(args2['image_path'][0],'img{:d}.png'.format(img_number)) ,1)
+                    #img = cv2.imread(os.path.join(args2['image_path'][0],'img{:d}.png'.format(img_number)), 1)
                 img = cv2.imread(args2['image_path'][i],1)
 
                 img_msg = ic.bridge.cv2_to_imgmsg(img, encoding='bgr8')
 
-            #for j in range(20):
                 pub.publish(img_msg)
                 print("published on image_topic")
                 time.sleep(1)
