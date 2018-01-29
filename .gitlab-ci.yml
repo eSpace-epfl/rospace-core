@@ -1,0 +1,19 @@
+image: python:2.7
+
+before_script:
+  - pip install numpy sgp4 pytest pdoc
+  - PYTHONPATH="${PYTHONPATH}:${CI_PROJECT_DIR}/nodes/space_vision/src/"
+  - export PYTHONPATH
+
+space_vision:
+  script:
+    - mkdir docs
+    - pdoc --html --html-dir docs nodes/space_vision/src/
+    - pdoc --html --html-dir docs nodes/space_vision/src/vision_lib
+    - cp -r docs public
+
+  artifacts:
+    paths:
+    - docs/
+    - public
+
