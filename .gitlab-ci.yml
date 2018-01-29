@@ -9,7 +9,7 @@ space_vision:
   script:
     - mkdir documentation
     - pdoc --html --html-dir documentation nodes/space_vision/src/
-    - pdoc --html --html-dir documentation nodes/space_vision/src/vision_lib/
+    - pdoc --html --html-dir documentation nodes/space_vision/src/vision_algo/
     - cp -r documentation public
 
   artifacts:
