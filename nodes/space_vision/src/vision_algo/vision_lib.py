@@ -361,6 +361,8 @@ def solve_projection(p1, p2, p3, K, dist, image, image_thresh, last_position, mo
     p12_3d = (0.0, 0.5, 0.0)
     p13_3d = (0.5, 0.0, 0.0)
 
+    # These points are the 3 3D vertices of the cube that we assume are known. p12 and p13 are on the middle of the edges
+
     p12_temp = (np.asarray(p1)+np.asarray(p2))/2
     p12 = (int(p12_temp[0]), int(p12_temp[1]))
 
@@ -369,6 +371,8 @@ def solve_projection(p1, p2, p3, K, dist, image, image_thresh, last_position, mo
     retval, rvec, tvec = cv2.solvePnP(np.asarray((p1_3d, p2_3d, p3_3d, p12_3d, p13_3d), dtype=float), np.asarray((p1,p2,p3, p12, p13),dtype=float), K, dist)
 
     range_mean = compute_range(tvec, rvec, K, dist)
+
+    # After solving the projection, we project the unknown 3D points
 
     p4_3d = (0.0, 0.0, 1.0)
     p5_3d = (1.0, 1.0, 0.0)
@@ -383,6 +387,8 @@ def solve_projection(p1, p2, p3, K, dist, image, image_thresh, last_position, mo
     cm_pos = (int(projected_points[5, 0, 0]), int(projected_points[5, 0, 1]))
 
     cube_points = np.concatenate((np.reshape(projected_points,(6,2)),np.expand_dims(np.asarray(p1), axis=1).T, np.expand_dims(np.asarray(p2), axis=1).T, np.expand_dims(np.asarray(p3), axis=1).T)).astype(np.float32)
+
+    # We use convex hull of projected points for continuous tracking
 
     conv = cv2.convexHull(cube_points)
     conv = conv.astype(int)
@@ -402,6 +408,7 @@ def solve_projection(p1, p2, p3, K, dist, image, image_thresh, last_position, mo
 
     pos_diff = np.linalg.norm(np.asarray(cm_pos) - np.asarray(last_position))
 
+    # Continuous tracking : if the new position is not good enough, try the other projection
     if (np.sum(np.asarray(last_position) == [0,0])) and (np.sum(np.asarray(last_position) != [0,0]) and (pos_diff > 40)) or (thresh_diff/np.sum(image_thresh/255) > 0.01):
 
         p12_temp = (np.asarray(p1) + np.asarray(p3)) / 2
@@ -443,6 +450,7 @@ def solve_projection(p1, p2, p3, K, dist, image, image_thresh, last_position, mo
             print('Warning : cube is moving very fast or a bad position was computed')
             print('pos diff :', pos_diff)
 
+        # We compare the quality of the two projections and keep the best one
         if ((pos_diff2 < pos_diff) and (np.sum(np.asarray(last_position) != [0,0]))) or thresh_diff2 < thresh_diff:
             print('Cube was inverted to keep coherent position')
             azim = azim2
@@ -495,6 +503,8 @@ def img_analysis(image, last_position, mode='debug', K_mat=None, dist_mat=None):
             image_with_centerpoint: The image with the reconstructed vertices
             cube_found: A boolean, True if everything went fine
     """
+
+    # Preprocessing
     image_no_green = remove_green(image)
 
     gray_img = cv2.cvtColor(image_no_green, cv2.COLOR_BGR2GRAY)
@@ -522,6 +532,8 @@ def img_analysis(image, last_position, mode='debug', K_mat=None, dist_mat=None):
     canny = cv2.Canny(eq_img_thresh.copy(), 30, 200)
     outer_canny = np.zeros(canny.shape, dtype=np.uint8)
 
+    # Keep only the outer part of edge map
+
     for row_num, row in enumerate(canny):
         if sum(row):
             left_border = np.argmax(row)
@@ -542,6 +554,7 @@ def img_analysis(image, last_position, mode='debug', K_mat=None, dist_mat=None):
         cv2.imshow("canny", canny)
         cv2.imshow("outer_canny", outer_canny)
 
+    # Find lines in edge map
     lines = cv2.HoughLines(outer_canny, 1, np.pi/180, 40)
 
     if lines is not None:
