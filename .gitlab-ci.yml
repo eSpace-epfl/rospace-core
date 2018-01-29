@@ -1,7 +1,10 @@
 image: python:2.7
 
 before_script:
-  - pip install numpy sgp4 pytest pdoc
+  - pip install numpy sgp4 pytest pdoc matplotlib scikit-learn
+  - sudo add-apt-repository ppa:timsc/opencv-3.2
+  - sudo apt-get update
+  - sudo apt-get install opencv
   - PYTHONPATH="${PYTHONPATH}:${CI_PROJECT_DIR}/nodes/space_vision/src/"
   - export PYTHONPATH
 
