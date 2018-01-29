@@ -14,10 +14,14 @@ import numpy.polynomial.polynomial as poly
 
 def main():
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description='Analysis of the results file from space_vision.py')
 
-    parser.add_argument('-m', '--measured_data_path', default=None)
-    parser.add_argument('-r', '--real_data_path', default=None)
+    parser.add_argument('-m', '--measured_data_path', default=None, help='Path to folder holding measured_data.txt. '
+                                                                         'For example, if it is in "../folder", use '
+                                                                         ': -m ../folder/')
+    parser.add_argument('-r', '--real_data_path', default=None, help='Path to folder holding real_data.txt. '
+                                                                         'For example, if it is in "../folder", use '
+                                                                         ': -r ../folder/')
 
     args = vars(parser.parse_args())
 

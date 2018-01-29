@@ -26,7 +26,7 @@ import vision_algo.vision_lib as lib
 
 class ImageAnalyser(object):
     """
-    use this class to create a subscriber/publisher which performs image analysis on received images
+    Use this class to create a subscriber/publisher which performs image analysis on received images
     """
 
     def __init__(self, path, mode):
@@ -86,14 +86,18 @@ class ImageAnalyser(object):
 
 
     def data_reader_callback(self, data):
-        """Callback of the data reader from the robot"""
+        """Callback of the data reader from the
+
+            Args:
+                data: The data received from the robot
+        """
         self.real_data = str(data.data)
 
     def callback(self, data):
         """Callback of the image subscriber for the image analysis routine
 
             Args:
-                data: The received data
+                data: The data received from the camera
         """
 
         t_start = time.time()
@@ -151,11 +155,11 @@ def main(args):
     """Main function. Parses arguments given as input ad generates an instance of ImageAnalyser
     to process the given images (if any)"""
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description='Process images given as input to find the target CubeSat')
 
-    parser.add_argument('-s', '--save_path', default=None)
-    parser.add_argument('-i', '--image_path', nargs='+', default=None)
-    parser.add_argument('-m', '--mode', default='test')
+    parser.add_argument('-s', '--save_path', default=None, help='Path to the folder where to save the data. ex: -s ../save_folder ')
+    parser.add_argument('-i', '--image_path', nargs='+', default=None, help='Path to image(s) to be analyzed. ex: -i ../image1.png ../image2.png')
+    parser.add_argument('-m', '--mode', default='test', help='Regulates the number of figures. Either "debug" or "test" (default)' )
 
     args2 = vars(parser.parse_args())
 
