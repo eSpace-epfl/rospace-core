@@ -29,7 +29,16 @@ class ImageAnalyser(object):
     Use this class to create a subscriber/publisher which performs image analysis on received images
     """
 
-    def __init__(self, path, mode):
+    def __init__(self, path, mode, K_mat, dist_mat):
+        """ Creates an instance of ImageAnalyser
+
+            Args:
+                path : path to the save folder
+                mode : either debug or test ( default). Regulates the amount of figures
+                K_mat : Camera matrix
+                dist_mat : Distortion coefficients
+        """
+
         self.image_pub = rospy.Publisher("image_topic_2", Image, queue_size=10)
         '''Image publisher for processed images'''
 
@@ -65,6 +74,12 @@ class ImageAnalyser(object):
 
         self.mode = mode
         '''Mode of the image_analysis callback. Either 'debug' or 'test' '''
+
+        self.K_mat = K_mat
+        '''Camera matrix '''
+
+        self.dist_mat = dist_mat
+        '''Distortion coefficients '''
 
         if path is not None:
             self.save_file = os.path.join(path, 'measured_data.txt')
@@ -114,7 +129,7 @@ class ImageAnalyser(object):
         (rows, cols, channels) = cv_image.shape
         rospy.loginfo("received image with format {} x {} x {}".format(rows,cols,channels))
     
-        d, azim, elev, quat, cm_coo, processed_image, cube_found = lib.img_analysis(cv_image.copy(), self.last_cube_pos, mode=self.mode)
+        d, azim, elev, quat, cm_coo, processed_image, cube_found = lib.img_analysis(cv_image.copy(), self.last_cube_pos, mode=self.mode, K_mat=self.K_mat, dist_mat=self.dist_mat)
 
         if cube_found:
             cube_pos = [d, azim, elev]
@@ -160,11 +175,13 @@ def main(args):
     parser.add_argument('-s', '--save_path', default=None, help='Path to the folder where to save the data. ex: -s ../save_folder ')
     parser.add_argument('-i', '--image_path', nargs='+', default=None, help='Path to image(s) to be analyzed. ex: -i ../image1.png ../image2.png')
     parser.add_argument('-m', '--mode', default='test', help='Regulates the number of figures. Either "debug" or "test" (default)' )
+    parser.add_argument('-k', '--k-mat', default=None, help='Camera matrix')
+    parser.add_argument('-d', '--dist-mat', default=None, help='Distortion coefficients')
 
     args2 = vars(parser.parse_args())
 
     while not rospy.is_shutdown():
-        ic = ImageAnalyser(args2['save_path'], args2['mode'])
+        ic = ImageAnalyser(args2['save_path'], args2['mode'], args2['k_mat'], args2['dist_mat'])
 
         rospy.init_node('space_vision', anonymous=True)
 

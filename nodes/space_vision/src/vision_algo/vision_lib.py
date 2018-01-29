@@ -71,19 +71,18 @@ def find_main_axes(angles, rhos, mode='fast'):
             main_dirs : The angles of the two axis detected"""
 
     if mode=='gmm':
-        best_bic = 1000
+        best_bic = np.inf
         data = np.concatenate((angles, rhos), axis=1)
         for n_comp in range(2, 7):
 
-            g = mixture.GaussianMixture(n_components=6)
+            g = mixture.GaussianMixture(n_components=n_comp)
 
             g.fit(data)
 
             if g.bic(data) < best_bic:
                 best_bic = g.bic(data)
-                print('bic score', best_bic)
 
-                means= g.means_
+                means = g.means_
 
         return means
 
@@ -223,7 +222,6 @@ def coo_to_azim_elev(x, y, K):
     P_ics = np.linalg.inv(K).dot(P)
     azim = P_ics[0]*180/np.pi
     elev = P_ics[1]*180/np.pi
-    #print("pics", P_ics[2])
 
     return azim, elev
 
@@ -282,7 +280,9 @@ def compute_range(tvec, rvec, K, dist, method='fast'):
         rmat = np.asarray(rmat)
 
         return 0.1*np.linalg.norm(rmat*np.expand_dims(np.array((0.5, 0.5, 0.5)), axis=1).T + tvec)
-        #return np.linalg.norm((tvec + 0.5)/10)
+
+        #return np.linalg.norm((tvec + 0.5)/10) #old version
+
     elif method == 'simtri':
         dx, dy = compute_edge_len(rvec, tvec, K, dist)
 
@@ -401,7 +401,7 @@ def solve_projection(p1, p2, p3, K, dist, image, image_thresh, last_position, mo
     azim, elev = coo_to_azim_elev(cm_pos[0], cm_pos[1], K)
 
     pos_diff = np.linalg.norm(np.asarray(cm_pos) - np.asarray(last_position))
-    #print(pos_diff)
+
     if (np.sum(np.asarray(last_position) == [0,0])) and (np.sum(np.asarray(last_position) != [0,0]) and (pos_diff > 40)) or (thresh_diff/np.sum(image_thresh/255) > 0.01):
 
         p12_temp = (np.asarray(p1) + np.asarray(p3)) / 2
@@ -456,7 +456,7 @@ def solve_projection(p1, p2, p3, K, dist, image, image_thresh, last_position, mo
     image = image_temp
     if mode=='debug' or mode=='test':
         for point in projected_points:
-            #print(point)
+
             image = cv2.circle(image,(int(point[0, 0]), int(point[0, 1])), 10, (0, 255, 0))
 
         image = cv2.circle(image, cm_pos,10,(0,0,255))
@@ -475,7 +475,7 @@ def solve_projection(p1, p2, p3, K, dist, image, image_thresh, last_position, mo
     return range_mean, azim, elev, quat, cm_pos, image
 
 
-def img_analysis(image, last_position, mode='debug'):
+def img_analysis(image, last_position, mode='debug', K_mat=None, dist_mat=None):
     """Performs the whole image analysis process to compute the range, azimuth, elevation and pose of the target from
     an image. The image is first processed by removing the green background if it is RGB. Then it is converted to grayscale,
     thresholded and we perform a small opening to remove noise. We then apply a Canny edge detector and keep only
@@ -542,7 +542,7 @@ def img_analysis(image, last_position, mode='debug'):
         cv2.imshow("canny", canny)
         cv2.imshow("outer_canny", outer_canny)
 
-    lines = cv2.HoughLines(outer_canny, 1, np.pi/180, 30)
+    lines = cv2.HoughLines(outer_canny, 1, np.pi/180, 40)
 
     if lines is not None:
         if mode=='debug' or mode=='test':
@@ -563,7 +563,6 @@ def img_analysis(image, last_position, mode='debug'):
 
         angles = lines[:, :, 1]
         rhos = lines[:, :, 0]
-        #print(rhos)
 
         if mode=='debug':
             plt.figure()
@@ -576,24 +575,22 @@ def img_analysis(image, last_position, mode='debug'):
         axes_mode = 'gmm'
         main_dirs = find_main_axes(angles, rhos, mode=axes_mode)
 
+        # The output of find_main_axis is different depending of the mode, so we handle each case separately.
+        # In both cases, we want to keep only two couples rho/theta, i.e. two lines
+
         if axes_mode =='fast':
             main_rhos = np.zeros(main_dirs.shape)
-            cnt = 0
-            for direction in main_dirs:
+            for cnt, direction in enumerate(main_dirs):
 
                 angle_diff = angles - direction
 
                 main_rhos[cnt] = rhos[np.argmin(np.absolute(angle_diff))]
 
-                cnt += 1
         elif axes_mode =='gmm':
             main_rhos = main_dirs[:,1]
             main_dirs = main_dirs[:,0]
 
-            #print(main_dirs)
-            #print(main_rhos)
-
-            cnt=6
+            cnt = main_dirs.shape[0]
 
             dil_img = cv2.morphologyEx(eq_img_thresh, cv2.MORPH_DILATE, kernel=np.ones((5, 5), np.uint8))
 
@@ -617,10 +614,6 @@ def img_analysis(image, last_position, mode='debug'):
                         x_inter = int((h1 - h0) / (m0 - m1))
                         y_inter = int(m0 * x_inter + h0)
 
-                        #temp = cv2.circle(dil_img.copy(),(x_inter, y_inter), 10,(0,0,255))
-                        #cv2.imshow("test2", temp)
-                        #cv2.waitKey(0)
-                        #print(eq_img_thresh[x_inter, y_inter])
                         if x_inter >0 and y_inter >0 and x_inter < eq_img_thresh.shape[1] and y_inter < eq_img_thresh.shape[0]:
                             if dil_img[y_inter,x_inter] !=0:
                                 print('found ok vertex')
@@ -632,7 +625,6 @@ def img_analysis(image, last_position, mode='debug'):
                 if stop:
                     break
 
-            cnt=2
             dir0 = main_dirs[i]
             rho0 = main_rhos[i]
             dir1 = main_dirs[j]
@@ -640,13 +632,10 @@ def img_analysis(image, last_position, mode='debug'):
 
             main_dirs = np.asarray((dir0, dir1))
             main_rhos = np.asarray((rho0, rho1))
-
-
-        #print(main_dirs)
-        #print(main_rhos)
+            # main_dirs and main_rhos are the parameters of the two lines of choice
 
         if mode=='debug' or mode=='test':
-            for i in range(cnt):
+            for i in range(2):
                 rho = main_rhos[i]
                 theta = main_dirs[i]
                 a = np.cos(theta)
@@ -662,15 +651,11 @@ def img_analysis(image, last_position, mode='debug'):
                 cv2.imshow("houghlines", image)
 
     else:
-        #cv2.waitKey(0)
         print("no lines found, reduce threshold")
-
         return 0,0,0,0,(0,0),[], False
 
     if mode=='debug':
         cv2.imshow('thresholded image', eq_img_thresh)
-        #cv2.waitKey(0)
-
 
     v0,v1,v2,image = find_cube_vertices(image, canny, main_dirs, main_rhos, mode)
     if image is None:
@@ -678,18 +663,26 @@ def img_analysis(image, last_position, mode='debug'):
         return 0,0,0,0,(0,0),[], False
 
 
-    foc_mm = 12
-    sens_w = 6.9 #Pointgrey
-    sens_h = 5.5
-    #sens_w = 11.3 # Basler
-    #sens_h= 11.3
-    f_x = foc_mm/sens_w*image.shape[1]
-    f_y = foc_mm/sens_h*image.shape[0]
-    K = np.array([[f_x, 0, image.shape[1]/2],[0, f_y, image.shape[0]/2],[0,0,1]])
+    if K_mat is None:
+        # Default matrix parameters
+        foc_mm = 12
+        sens_w = 6.9 #Pointgrey
+        sens_h = 5.5
+        #sens_w = 11.3 # Basler
+        #sens_h= 11.3
+        f_x = foc_mm/sens_w*image.shape[1]
+        f_y = foc_mm/sens_h*image.shape[0]
+        K = np.array([[f_x, 0, image.shape[1]/2],[0, f_y, image.shape[0]/2],[0,0,1]])
+    else:
+        K = np.array(eval(K_mat))
 
-    #K = np.array([[2356.810245, 0.0, 1106.716358], [0.0, 2359.988119, 1070.114249], [0.0, 0.0, 1.0]]) # Basler
+    if dist_mat is None:
+        # Default distortion coefficients (no distortion)
+        dist = np.asarray([])
+    else:
+        dist = np.array(eval(dist_mat))
 
-    range_mean, azim, elev, quat, cm_pos, image_proc = solve_projection(v0,v1,v2,K, np.asarray([]), image, eq_img_thresh, last_position, mode)
+    range_mean, azim, elev, quat, cm_pos, image_proc = solve_projection(v0,v1,v2,K, dist, image, eq_img_thresh, last_position, mode)
 
     if mode=='debug' or mode=='test':
         image_with_centerpoint = cv2.circle(image_proc,(image.shape[1]/2, image.shape[0]/2), 15, (255, 0 ,0))
