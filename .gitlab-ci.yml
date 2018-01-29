@@ -7,13 +7,13 @@ before_script:
 
 space_vision:
   script:
-    - mkdir docs
-    - pdoc --html --html-dir docs nodes/space_vision/src/
-    - pdoc --html --html-dir docs nodes/space_vision/src/vision_lib
-    - cp -r docs public
+    - mkdir documentation
+    - pdoc --html --html-dir documentation nodes/space_vision/src/
+    - pdoc --html --html-dir documentation nodes/space_vision/src/vision_lib
+    - cp -r documentation public
 
   artifacts:
     paths:
-    - docs/
+    - documentation/
     - public
 
