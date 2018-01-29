@@ -2,6 +2,7 @@ image: python:2.7
 
 before_script:
   - pip install numpy sgp4 pytest pdoc matplotlib scikit-learn
+  - apt-get install software-properties-common python-software-properties
   - add-apt-repository ppa:timsc/opencv-3.2
   - apt-get update
   - apt-get install opencv
