@@ -1,6 +1,8 @@
 image: osrf/ros:lunar-desktop-zesty
 
 before_script:
+  - apt-get -qq update
+  - apt-get -qq install software-properties-common -y
   - add-apt-repository ppa:timsc/opencv-3.2
   - apt-get -qq update
   - apt-get -qq install opencv pip -y
