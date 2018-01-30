@@ -1,4 +1,4 @@
-image: ros:lunar-desktop-zesty
+image: osrf/ros:lunar-desktop-zesty
 
 before_script:
   - pip install numpy sgp4 pytest pdoc matplotlib scikit-learn
