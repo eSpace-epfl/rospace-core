@@ -1,12 +1,12 @@
-image: python:2.7
+image: ros:lunar-desktop-zesty
 
 before_script:
   - pip install numpy sgp4 pytest pdoc matplotlib scikit-learn
-  - apt-get update
-  - apt-get install software-properties-common python-software-properties -y
+  - apt-get -qq update
+  - apt-get -qq install software-properties-common python-software-properties -y
   - add-apt-repository ppa:timsc/opencv-3.2
-  - apt-get update
-  - apt-get install opencv -y
+  - apt-get -qq update
+  - apt-get -qq install opencv -y
   - PYTHONPATH="${PYTHONPATH}:${CI_PROJECT_DIR}/nodes/space_vision/src/"
   - export PYTHONPATH
 
