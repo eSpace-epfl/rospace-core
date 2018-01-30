@@ -1,4 +1,4 @@
-image: osrf/ros:lunar-desktop-zesty
+image: osrf/ros:lunar-desktop-xenial
 
 before_script:
   - apt-get -qq update
