@@ -6,7 +6,7 @@ before_script:
   - add-apt-repository ppa:timsc/opencv-3.2
   - apt-get -qq update
   - apt-get -qq install libopencv-dev python-pip -y
-  - pip install numpy sgp4 pytest pdoc matplotlib scikit-learn
+  - pip install numpy sgp4 pytest pdoc matplotlib scikit-learn scipy numy
   - PYTHONPATH="${PYTHONPATH}:${CI_PROJECT_DIR}/nodes/space_vision/src/"
   - export PYTHONPATH
 
