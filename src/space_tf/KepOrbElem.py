@@ -1,3 +1,12 @@
+# @copyright Copyright (c) 2017, Michael Pantic (michael.pantic@gmail.com)
+# @copyright Copyright (c) 2017, Davide Frey (frey.davide.ae@gmail.com)
+#
+# @license zlib license
+#
+# This file is licensed under the terms of the zlib license.
+# See the LICENSE.md file in the root of this repository
+# for complete details.
+
 """
 Module that contains Classes for Keplerian Orbital Elements.
 
@@ -7,9 +16,6 @@ References:
     [2] Analytical Mechanics of Space Systems, H. Schaub and J.L. Junkins, AIAA Education Series, 2003
     [3] New State Transition Matrices for Relative Motion of Spacecraft Formations in Perturbed Orbits,
         A. Koenig, T. Guffanti, S. D'Amico, AIAA 2016-5635
-
-    Author: Michael Pantic
-    License: TBD
 """
 from . import *
 from threading import RLock
