@@ -1,0 +1,22 @@
+image: osrf/ros:lunar-desktop-xenial
+
+before_script:
+  - apt-get -qq update
+  - apt-get -qq install software-properties-common -y
+  - add-apt-repository ppa:timsc/opencv-3.2
+  - apt-get -qq update
+  - apt-get -qq install libopencv-dev python-pip -y
+  - pip install numpy sgp4 pytest pdoc matplotlib scikit-learn scipy numpy
+  - PYTHONPATH="${PYTHONPATH}:${CI_PROJECT_DIR}/nodes/space_vision/src/"
+  - export PYTHONPATH
+
+space_vision:
+  script:
+    - pdoc --html --html-dir docs nodes/space_vision/src/vision_algo/
+    - cp -r docs public
+
+  artifacts:
+    paths:
+    - docs/
+    - public
+
