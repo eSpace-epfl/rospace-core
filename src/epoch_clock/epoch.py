@@ -56,7 +56,9 @@ class Epoch:
     def changeFrequency(self, new_frequency):
         # Only propagator node should change this! Do not change!
         Epoch.publish_frequency = new_frequency
+        rospy.set_param('/publish_freq', new_frequency)
 
     def changeStep(self, new_step):
         # Only propagator node should change this! Do not change!
         Epoch.time_step_size = new_step
+        rospy.set_param('/time_step_size', new_step)
