@@ -333,6 +333,7 @@ class KepOrbElem(BaseState):
 
         # 11. Calculate arg. of perigee
         P = E / (n * self.e)
+
         self.w = np.arccos(np.dot(N, P))
         if E[2] < 0:
             self.w = 2 * np.pi - self.w
@@ -402,9 +403,29 @@ class KepOrbElem(BaseState):
                                                                                        self.E,
                                                                                        self.m)
 
-    def from_osc_elems(self, osc):
+    def from_osc_elems(self, osc, mode="ore"):
         """ Initialize mean elements from a set of osculating elements"""
-        self.osc_elems_transformation_ore(osc, True)
+        self.osc_elems_transformation_redir(osc, True, mode)
+
+    def osc_elems_transformation_redir(self,other, dir, mode):
+
+        if mode == "ore":
+            self.osc_elems_transformation_ore(other,dir)
+        elif mode == "schaub":
+            self.osc_elems_transformation(other, dir)
+        elif mode == "null":
+            self.osc_elems_transformation_null(other, dir)
+        else:
+            raise("Osculating transform mode not know")
+
+    def osc_elems_transformation_null(self,other, dir):
+        self.a = other.a
+        self.e = other.e
+        self.v = other.v
+        self.i = other.i
+        self.O = other.O
+        self.w = other.w
+
 
     def osc_elems_transformation_ore(self, other, dir):
 
@@ -412,7 +433,7 @@ class KepOrbElem(BaseState):
         if KepOrbElem.vm is None:
             KepOrbElem.vm =  orekit.initVM()
             setup_orekit_curdir()
-            KepOrbElem.provider = GravityFieldFactory.getUnnormalizedProvider(30,30)
+            KepOrbElem.provider = GravityFieldFactory.getUnnormalizedProvider(6,6)
 
         KepOrbElem.vm.attachCurrentThread()
 
@@ -462,6 +483,20 @@ class KepOrbElem(BaseState):
             self.w = newOrbit.getPerigeeArgument()
             self.O = newOrbit.getRightAscensionOfAscendingNode()
             self.v = newOrbit.getAnomaly(PositionAngle.TRUE)
+
+            # correct ranges
+
+            if self.i < 0:
+                self.i += 2*np.pi
+
+            if self.w < 0:
+                self.w += 2*np.pi
+
+            if self.O < 0:
+                self.O += 2*np.pi
+
+            if self.v < 0:
+                self.v += 2*np.pi
 
 
         finally:
@@ -516,7 +551,23 @@ class KepOrbElem(BaseState):
             2.0 * other.w + other.v) + other.e * np.cos(2.0 * other.w + 3.0 * other.v)
         d_i = (other.e * d_e1) / (eta ** 2 * np.tan(other.i)) + fi_1 * i_1
 
+
         # formula G.306
+        if other.m > 2*np.pi:
+            other.m = other.m - 2*np.pi
+
+        if other.w > 2*np.pi:
+            other.w = other.w - 2*np.pi
+
+        if other.O > 2 * np.pi:
+            other.O = other.O - 2 * np.pi
+
+        if other.w < 0:
+            other.w = other.w + 2 * np.pi
+
+        if other.O < 0:
+            other.O = other.O + 2 * np.pi
+
         MwO = other.m + other.w + other.O + \
               gma_2_p / 8.0 * eta ** 3 * (1.0 - 11.0 * c_i ** 2 - 40.0 * (c_i ** 4 / (1.0 - 5.0 * c_i ** 2))) \
               - gma_2_p / 16.0 * (2.0 + other.e ** 2 - 11 * (2.0 + 3.0 * other.e ** 2) * c_i ** 2 \
@@ -533,6 +584,8 @@ class KepOrbElem(BaseState):
               - gma_2_p / 2.0 * c_i * (6.0 * (other.v - other.m + other.e * np.sin(other.v)) \
                                        - 3.0 * np.sin(2.0 * other.w + 2.0 * other.v) - 3.0 * other.e * np.sin(
             2.0 * other.w + other.v) - other.e * np.sin(2.0 * other.w + 3.0 * other.v))
+
+        print other.m, other.w, other.O, MwO
 
         # formula G.307
         edM = gma_2_p / 8.0 * other.e * eta ** 3 * (1.0 - 11.0 * c_i ** 2 - 40.0 * (c_i ** 4 / (1 - 5 * c_i ** 2))) \
@@ -552,6 +605,9 @@ class KepOrbElem(BaseState):
         d_2 = (other.e + d_e) * np.cos(other.m) - edM * np.sin(other.m)  # G.310
 
         m = np.arctan2(d_1, d_2)  # G.311
+        if m<0:
+            m=2*np.pi+m
+
         self.e = np.sqrt(d_1 ** 2 + d_2 ** 2)  # G.312
 
         d_3 = (np.sin(other.i / 2.0) + np.cos(other.i / 2.0) * d_i / 2.0) * np.sin(other.O) + np.sin(
@@ -560,10 +616,14 @@ class KepOrbElem(BaseState):
             other.i / 2.0) * dO * np.sin(other.O)  # G.314
 
         self.O = np.arctan2(d_3, d_4)  # G.315
+
+        if self.O < 0:
+            self.O = 2*np.pi+self.O
+
         self.i = 2 * np.arcsin(np.sqrt(d_3 ** 2 + d_4 ** 2))  # G.316
         self.w = MwO - m - self.O
 
-        if self.w > 2*np.pi:
+        while self.w > 2*np.pi:
             self.w = self.w - 2*np.pi
 
         self.m = m  # assign m latest, as other properties might be used for ocnversion!
@@ -578,6 +638,6 @@ class OscKepOrbElem(KepOrbElem):
     def __init__(self):
         super(OscKepOrbElem, self).__init__()
 
-    def from_mean_elems(self, mean):
+    def from_mean_elems(self, mean, mode="ore"):
         """ Initialize osculating elements from a set of mean elements"""
-        self.osc_elems_transformation_ore(mean, False)
+        self.osc_elems_transformation_redir(mean, False, mode)
