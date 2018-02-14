@@ -2,7 +2,7 @@
 
 <!-- Launch Epoch Clock without params (=realtime, start from now) -->
     <node pkg="epoch_clock" name="epoch_clock_sim" type="epoch_clock.py" output="screen">
-        <param name="realtime_factor" value="250" />
+        <param name="realtime_factor" value="100" />
         <param name="init_epoch" value="20170915T12:20:00" />
     </node>
 

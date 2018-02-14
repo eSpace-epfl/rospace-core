@@ -21,13 +21,21 @@ class BaseRelativeOrbitalFilter:
         #self.x = np.array([[0.002, 0.007, 7.0e-7, 1.90e-5, 3.225e-6, -0.0052202]]).T
         #self.x = np.array([[-1.04166667e-05, -1.38888889e-03, 2.08333333e-05, 0, -2.08333333e-05, 0.0]]).T
 
-        self.x = np.array([[-5000, -20000, 0, 0, 0, 0.0]]).T
-        self.x = self.x / (7050.0*1000)
-        self.P = np.diag([0.01,0.01,0.01,0.01,0.01,0.01])
-        self.Q = np.diag([0.01, 0.01, 0.001, 0.001, 0.001, 0.001])
-        self.R = np.array([[0.0001, 0],[0, 0.0001]])
+        self.x = np.array([[-150, -20000, 300, 0.0, -300, 0.0]]).T
+        self.P = np.diag(np.array([50, 200, 100, 100, 100, 100]))
+
+        scaling = 1.0/(7050.0*1000)
+
+
+        self.x = self.x*scaling
+        self.P = self.P*scaling**2
+
+        self.Q = self.P.copy()/100# np.diag([0.01, 0.01, 0.00000001, 0.00000001, 0.00000001, 0.000000001])
+
+        self.R = np.array([[0.01, 0],[0, 0.01]])
 
         self.t = rospy.Time(0, 0)
+        self.t_own = rospy.Time(0, 0)
 
         self.time_c = rospy.Time(0, 0)
         self.oe_c = stf.KepOrbElem()
@@ -69,11 +77,17 @@ class BaseRelativeOrbitalFilter:
         target_osc_oe = stf.OscKepOrbElem()
         target_osc_oe.from_mean_elems(self.oe_t)
 
+        own_osc_oe = stf.OscKepOrbElem()
+        own_osc_oe.from_mean_elems(self.oe_c)
+
         cart_c = stf.Cartesian()
-        cart_c.from_keporb(self.oe_c)
+        cart_c.from_keporb(own_osc_oe)
 
         cart_t = stf.Cartesian()
         cart_t.from_keporb(target_osc_oe)
+
+        print "H(X),1=",cart_t.R*1000, self.t
+        print "H(X),2=",cart_c.R*1000, self.t_own
 
         p_teme = (cart_t.R - cart_c.R) * 1000
         p_body = np.dot(self.R_body[0:3, 0:3].T, p_teme)
@@ -111,7 +125,7 @@ class BaseRelativeOrbitalFilter:
         msg.color.g = 1.0
 
         self.pub.publish(msg)
-        print "H(x):", p_body
+        print "H(x):", p_body, self.t
 
         z = np.zeros([2,1])
         z[0] = alpha
@@ -119,6 +133,9 @@ class BaseRelativeOrbitalFilter:
         return [z, np.linalg.norm(p_body)]
 
     def get_H(self):
+
+        own_osc_oe = stf.OscKepOrbElem()
+        own_osc_oe.from_mean_elems(self.oe_c)
 
         a_c = self.oe_c.a
         e_c = self.oe_c.e
@@ -238,6 +255,8 @@ class BaseRelativeOrbitalFilter:
             print "!!!!!!!!!!!!!!!!!!!!!!!!!!! ignore"
             return
 
+        self.t_own = chaser_oe.header.stamp
+
         oe_c_osc = stf.OscKepOrbElem()
         oe_c_osc.from_message(chaser_oe.position)
 
@@ -271,7 +290,7 @@ class BaseRelativeOrbitalFilter:
 
     # Performs measurement update
     def callback_aon(self, meas_msg):
-        return
+        print "CALLLBACK"
         if self.t == 0 or self.R_body is None:
             #discard measurement
             return
@@ -298,7 +317,7 @@ class BaseRelativeOrbitalFilter:
 
 
 
-        print z_k, h_xk, abs(y) > np.pi
+        print "UPDATE:", z_k, h_xk, abs(y) > np.pi
 
         H = self.get_H()
 
@@ -309,9 +328,12 @@ class BaseRelativeOrbitalFilter:
         # NOTE: may fail if S is close to be singular - pseudo inverse?
         K = self.P.dot(H.T).dot(np.linalg.inv(S))
 
+
         self.x = self.x + K.dot(y)
         self.residual = y
         print "Inno=", np.linalg.norm(K.dot(y))
+        print "Inno=", K.dot(y).T*7050*1000
+        print "Inno=", (self.x * 7050 * 1000).T
         self.P = (np.eye(6)-K.dot(H)).dot(self.P)
 
         # update target location

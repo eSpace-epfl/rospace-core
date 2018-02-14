@@ -1,0 +1,80 @@
+<launch>
+	<group ns="scenario">
+		<rosparam command="load" file="/home/pantic/cso_ws/eval/orbit_sampling/scenarios_-4000_-60000/1003.scenario" />
+
+<!--<rosparam command="load" file="/home/pantic/cso_ws/eval/orbit_sampling/scenarios_-4000_-60000/1234.scenario" />-->
+	</group>
+
+	<group ns="filter_init">
+		<rosparam param="R">[4e-6, 4e-6, 1e-2]</rosparam>
+		<rosparam param="Q">[1e-11, 1e-10, 1e-12, 1e-12, 1e-11, 1e-11]</rosparam>
+		<rosparam command="load" file="/home/pantic/cso_ws/eval/orbit_sampling/scenarios_-4000_-60000/sample_covariance.txt" />
+	</group>
+
+    <arg name="epoch" value="20170915T12:20:00" />
+
+    <!-- Launch Epoch Clock without params (=realtime, start from now) -->
+    <node pkg="epoch_clock" name="epoch_clock_sim" type="epoch_clock.py" output="screen">
+        <param name="realtime_factor" value="120" />
+        <param name="frequency" value="5" />
+        <param name="init_epoch" value="20170915T12:20:00" />
+    </node>
+
+   <!--Launch main propagator-->
+    <node pkg="orekit_node" name="orekit_node" type="orekit_node_statevector.py" output="screen">
+        <remap from="oe_chaser" to="/cso/oe" />
+        <remap from="pose_chaser" to="/cso/pose" />
+
+        <remap from="oe_target" to="/target/oe" />
+        <remap from="pose_target" to="/target/pose" />
+	
+	<remap from="~chaser_init_R" to="/scenario/chaser_state_vect/Rx"/>
+	<remap from="~chaser_init_V" to="/scenario/chaser_state_vect/V"/>
+
+
+	<remap from="~target_init_R" to="/scenario/target_state_vect/Rx"/>
+	<remap from="~target_init_V" to="/scenario/target_state_vect/V"/>
+
+	    <param name="oe_epoch" value="$(arg epoch)" />
+   </node>
+
+
+    <group ns="cso">
+        <!-- Load Configuration File for sensors etc -->
+        <rosparam command="load" file="$(find cso_gnc_sim)/cfg/cso.yaml" />
+
+
+         <!-- Launch AON Sensor -->
+        <node pkg="space_sim_aon" name="node_aon" type="sim_aon_node.py" output="screen">
+            <param name="publish_rate" value="0.01" />
+            <remap from="~sensor" to="/cso/sensors/AON" />
+            <remap from="chaser_oe" to="oe" />
+            <remap from="target_oe" to="/target/oe" />
+        </node>
+
+          <!-- Launch Filter -->
+        <node pkg="cso_gnc_target_estimator" name="target_estimator" type="cso_gnc_target_estimator_node.py" output="screen">
+	    
+            <remap from="chaser_oe" to="oe" />
+            <remap from="target_oe" to="/target/oe" />
+	    <remap from="~Q" to="/filter_init/Q" />
+	    <remap from="~R" to="/filter_init/R" />
+	    <remap from="~P" to="/filter_init/P" />
+    	    <remap from="~x" to="/scenario/roe" />
+        </node>
+    </group>
+
+
+  <group ns="target">
+
+
+    <!-- Launch REL node -->
+    <node name="rel_pub" pkg="rel_node" type="rel_node.py" output="screen" >
+        <remap from="target_oe" to="/target/oe" />
+        <remap from="chaser_oe" to="/cso/oe" />
+    </node>
+
+    </group>
+
+
+</launch>

@@ -67,10 +67,11 @@ class AONSensorNode:
         if visible and (target_oe.header.stamp - self.last_publish_time).to_sec() > 1.0/self.rate:
             msg = AzimutElevationStamped()
             msg.header.stamp = target_oe.header.stamp
-            msg.value.azimut = value[0]
-            msg.value.elevation = value[1]
-            print "A",p_body
-            print "B", target_oe.header.stamp, value[0], value[1]
+            msg.value.azimut = value[0] + np.asscalar(np.random.normal(sensor_obj.mu, sensor_obj.sigma, 1))
+            msg.value.elevation = value[1] + np.asscalar(np.random.normal(sensor_obj.mu, sensor_obj.sigma, 1))
+            msg.range = np.linalg.norm(p_body)
+            msg.R = tf_chaser_teme.R
+            msg.V = tf_chaser_teme.V
             self.pub.publish(msg)
             self.last_publish_time = target_oe.header.stamp
 
