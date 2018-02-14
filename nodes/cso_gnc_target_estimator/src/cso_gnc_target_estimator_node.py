@@ -8,6 +8,7 @@ from geometry_msgs.msg import PointStamped
 
 filter = None
 import space_tf as stf
+import scipy
 import tf
 
 import message_filters
@@ -15,10 +16,12 @@ import message_filters
 if __name__ == '__main__':
     rospy.init_node("cso_gnc_target_estimator", anonymous=True)
 
+    P_roe = np.array(rospy.get_param("~P")).reshape((6, 6), order='C')
+    P_bias = np.diag([1e-6, 1e-6, 1e-6])
+    P_emp = np.diag([1e-14, 1e-14, 1e-14])
 
-    P_init = np.array(rospy.get_param("~P")).reshape((6, 6), order='C')
 
-
+    P_init = scipy.linalg.block_diag(P_roe, P_bias, P_emp)
 
     R_init = np.diag(np.array(rospy.get_param("~R")).astype(np.float))
 
@@ -36,7 +39,8 @@ if __name__ == '__main__':
     roe_init.dEx = float(x_dict["dEx"])
     roe_init.dEy = float(x_dict["dEy"])
 
-    x_init = roe_init.as_vector().reshape(6)
+    x_init = np.zeros(P_init.shape[0])
+    x_init[0:6] = roe_init.as_vector().reshape(6)
 
     filter = UKFRelativeOrbitalFilter(x=x_init,
                                       P=P_init,

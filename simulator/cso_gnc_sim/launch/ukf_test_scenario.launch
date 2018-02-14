@@ -6,7 +6,7 @@
 	</group>
 
 	<group ns="filter_init">
-		<rosparam param="R">[4e-6, 4e-6, 1e-2]</rosparam>
+		<rosparam param="R">[4e-6, 4e-6, 1e2]</rosparam>
 		<rosparam param="Q">[1e-11, 1e-10, 1e-12, 1e-12, 1e-11, 1e-11]</rosparam>
 		<rosparam command="load" file="/home/pantic/cso_ws/eval/orbit_sampling/scenarios_-4000_-60000/sample_covariance.txt" />
 	</group>

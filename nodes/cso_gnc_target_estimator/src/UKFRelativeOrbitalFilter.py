@@ -18,15 +18,23 @@ class UKFRelativeOrbitalFilter:
     # [2] Improved maneuver-free approach to angles only navigation
     #       for space rendez-vous" by Sullivan/Koenig/D'Amico
 
-    def __init__(self, x, P, Q, R, mode):
+    def __init__(self, x, P, Q, R, mode="ore", enable_emp=True, enable_bias=True):
+
+        self.n_total = len(x)
+        self.n_bias = len(np.diag(R))
+        print self.n_total
+        print self.n_bias
+        self.emp = enable_emp
+        self.bias = enable_bias
+        self.augment_range = False
 
         self.ukf = UnscentedKalmanFilter(
-            12,
-            3,
+            self.n_total,
+            self.n_bias,
             120,
-            lambda x: self.hx(x),
+            lambda x : self.hx_aonr(x),
             lambda x, dt: self.fx(x,dt),
-            MerweScaledSigmaPoints(12,1e-3,2,0),
+            MerweScaledSigmaPoints(self.n_total,1e-3,2,0),
             scipy.linalg.cholesky,
             None,
             None, #lambda sigma, weights: self.obs_mean(sigma, weights),
@@ -34,15 +42,15 @@ class UKFRelativeOrbitalFilter:
             None) #lambda a, b: self.obs_residual(a, b))
 
 
-        
 
-        self.ukf.x = np.concatenate([x, [0,0,0], [0,0,0]])
 
-        self.ukf.P = np.zeros((12,12))
-        self.ukf.P[0:6,0:6] = P
-        self.ukf.P[6:9,6:9] = np.diag([1e-6, 1e-6, 1e-1])
-        self.ukf.P[9:12, 9:12] = np.diag([1e-14, 1e-14, 1e-14])
+
+        self.ukf.x = x
+        self.ukf.P = P
+
+
         self.mode = mode
+
         self.stm_matrix = RelativeOrbitalSTM()
         self.ukf.Q = np.diag(np.diag(self.ukf.P)) /50000.0
 
@@ -62,84 +70,10 @@ class UKFRelativeOrbitalFilter:
         self.J2_term = (3.0 / 4.0) * (stf.Constants.J_2 * (stf.Constants.R_earth ** 2) * np.sqrt(stf.Constants.mu_earth))
         self.update_lock = Lock()
 
-    def obs_mean(self,sigma,weights):
-
-        sum_sin = np.zeros(2)
-
-        sum_cos = np.zeros(2)
-        mean = np.zeros(2)
-
-        for i in range(0, len(sigma)):
-            s = sigma[i]
-            sum_sin[0] += np.sin(s[0])*weights[i]
-            sum_sin[1] += np.sin(s[1])*weights[i]
-            sum_cos[0] += np.cos(s[0])*weights[i]
-            sum_cos[1] += np.cos(s[1])*weights[i]
-            print i, weights[i]
-
-        mean[0] = np.arctan2(sum_sin[0], sum_cos[0])
-        mean[1] = np.arctan2(sum_sin[1], sum_cos[1])
-        return mean
-
-    def obs_residual(self, a, b):
-        c = np.zeros(a.shape)
-
-        for i in range(0, len(c)):
-            c[i] = a[i] - b[i]
-            if c[i] > np.pi:
-                c[i] -= 2 * np.pi
-            if c[i] < -np.pi:
-                c[i] = 2 * np.pi
-        return c
-
-    def calc_angle(self, target_osc_oe, chaser_osc_oe, bias):
-
-        cart_c = stf.Cartesian()
-        cart_c.from_keporb(chaser_osc_oe)
-
-        cart_t = stf.Cartesian()
-        cart_t.from_keporb(target_osc_oe)
-
-        # calculate observation
-        p_teme = (cart_t.R - cart_c.R) * 1000
-        p_body = np.dot(self.R_body[0:3, 0:3].T, p_teme)
-        r = np.linalg.norm(p_body)+ bias[2]
-
-        # calculate angles
-        alpha = np.arcsin(p_body[1] / np.linalg.norm(p_body))+ bias[0]
-        eps = np.arctan(p_body[0]/p_body[2])+ bias[1]
-
-        return np.array([alpha, eps, r])
-
-    def hx_aon(self, x):
-        """" Measurement Function
-        Converts state vector x into a measurement vector
-        """
-        oe_t = self.get_target_oe(x[0:6])
-
-        # get osculating state vectors
-        target_osc_oe = stf.OscKepOrbElem()
-        target_osc_oe.from_mean_elems(oe_t, self.mode)
-
-        bias = x[6:8]
-
-        cart_c = stf.Cartesian()
-        cart_c.from_keporb(self.oe_c_osc)
-
-        cart_t = stf.Cartesian()
-        cart_t.from_keporb(target_osc_oe)
-
-        # calculate observation
-        p_teme = (cart_t.R - cart_c.R) * 1000
-        p_body = np.dot(self.R_body[0:3, 0:3].T, p_teme)
-
-        # calculate angles
-        alpha = np.arcsin(p_body[1] / np.linalg.norm(p_body)) + bias[0]
-        eps = np.arctan(p_body[0] / p_body[2]) + bias[1]
-
-        return np.array([alpha, eps])
 
     def hx_aonr(self, x):
+
+        has_range = self.n_bias == 3
         """" Measurement Function
         Converts state vector x into a measurement vector
         """
@@ -149,7 +83,7 @@ class UKFRelativeOrbitalFilter:
         target_osc_oe = stf.OscKepOrbElem()
         target_osc_oe.from_mean_elems(oe_t, self.mode)
 
-        bias = x[6:9]
+
 
         cart_c = stf.Cartesian()
         cart_c.from_keporb(self.oe_c_osc)
@@ -158,15 +92,23 @@ class UKFRelativeOrbitalFilter:
         cart_t.from_keporb(target_osc_oe)
 
         # calculate observation
+        if has_range:
+            bias = x[6:9]
+        else:
+            bias = x[6:8]
+
         p_teme = (cart_t.R - cart_c.R) * 1000
         p_body = np.dot(self.R_body[0:3, 0:3].T, p_teme)
-        r = np.linalg.norm(p_body) + bias[2]
 
         # calculate angles
         alpha = np.arcsin(p_body[1] / np.linalg.norm(p_body)) + bias[0]
         eps = np.arctan(p_body[0] / p_body[2]) + bias[1]
 
-        return np.array([alpha, eps, r])
+        if has_range:
+            r = np.linalg.norm(p_body) + bias[2]
+            return np.array([alpha, eps, r])
+        else:
+            return np.array([alpha, eps])
 
 
 
@@ -174,24 +116,25 @@ class UKFRelativeOrbitalFilter:
         """" State transition function
         Calculates the next state according to dt and current state
         """
-        x_old = x.copy()
+
         t_step = 10.0
-        while dt > 10.0:
+        while dt > 0.0:
+
+            if dt <t_step:
+                t_step = dt
+
             dx = self.get_Dx(x, t_step, self.tau_b, self.tau_emp)
             b_oe = self.stm_matrix.get_B_oe(self.oe_c.as_array_true())
 
-            x[0:6] = x[0:6] + dx[0:6]+ np.dot(b_oe*dt, x[9:12])
-            x[6:9] = x[6:9] * dx[6:9]
-            x[9:12] = x[9:12] * dx[9:12]
+            x[0:6] = x[0:6] + dx[0:6]
+
+            if self.bias:
+                x[6:6+self.n_bias] = x[6:6+self.n_bias] * dx[6:6+self.n_bias]
+
+            if self.emp:
+                x[0:6] = x[0:6] + np.dot(b_oe*dt, x[6+self.n_bias:6+self.n_bias+3])
+                x[6 + self.n_bias:6 + self.n_bias + 3] =x[6+self.n_bias:6+self.n_bias+3] * dx[6+self.n_bias:6+self.n_bias+3]
             dt -= t_step
-
-
-        dx = self.get_Dx(x, dt, self.tau_b, self.tau_emp)
-        b_oe = self.stm_matrix.get_B_oe(self.oe_c.as_array_true())
-
-        x[0:6] = x[0:6] + dx[0:6] + np.dot(b_oe*dt, x[9:12])
-        x[6:9] = x[6:9] * dx[6:9]
-        x[9:12] = x[9:12] * dx[9:12]
 
         return x
 
@@ -258,60 +201,19 @@ class UKFRelativeOrbitalFilter:
 
         psi = lambda tau: np.exp(-delta_t/tau)
 
-        d_x_B = np.array([1,1,1]) * psi(tau_b)
+        d_x_B = np.ones(self.n_bias)* psi(tau_b)
         d_x_emp = np.array([1, 1, 1]) * psi(tau_emp)
 
-        d_x = np.zeros(12)
+        d_x = np.zeros(self.n_total)
         d_x[0:6] = d_x_oe
-        d_x[6:9] = d_x_B
-        d_x[9:12] = d_x_emp
+
+        if self.bias:
+            d_x[6:6+self.n_bias] = d_x_B
+
+        if self.emp:
+            d_x[6+self.n_bias:6+self.n_bias+3] = d_x_emp
+
         return d_x
-
-
-    # Performs prediction step
-    def callback_state(self, target_oe, chaser_oe):
-        self.update_lock.acquire()
-        # get current time
-        t_msg = float(chaser_oe.header.stamp.secs) + float(chaser_oe.header.stamp.nsecs)*1e-9
-
-        oe_c_osc = stf.OscKepOrbElem()
-        oe_c_osc.from_message(chaser_oe.position)
-
-        oe_t_osc = stf.OscKepOrbElem()
-        oe_t_osc.from_message(target_oe.position)
-
-        self.oe_c_osc = oe_c_osc
-        self.oe_t_osc = oe_t_osc
-
-        self.oe_c = stf.KepOrbElem()
-        self.oe_c.from_osc_elems(oe_c_osc, self.mode)
-
-
-
-        dt = t_msg - self.t_ukf
-        # if self.t_ukf == 0.0 and dt > 0.0:
-          #  self.ukf.predict(dt)
-          #  rospy.loginfo("Executed predict with dt %f (state0)", dt)
-          #  self.t_ukf = t_msg
-        # elif dt > 15: # update every 10s
-           # self.ukf.predict(dt)
-           # rospy.loginfo("Executed predict with dt %f (state)", dt)
-           # self.t_ukf = t_msg
-         #pass
-
-
-
-
-        # store orientation
-        self.R_body = transformations.quaternion_matrix([chaser_oe.orientation.x,
-                                                    chaser_oe.orientation.y,
-                                                    chaser_oe.orientation.z,
-                                                    chaser_oe.orientation.w])
-
-        self.t_oe_c = t_msg
-        # update target location
-        self.update_lock.release()
-
 
     # Performs measurement update
     def callback_aon(self,target_oe, chaser_oe, meas_msg):
@@ -351,23 +253,45 @@ class UKFRelativeOrbitalFilter:
         self.t_ukf = t_msg
 
 
-        # perform measurement update
-        z = np.zeros(3)
+
+        # augment range
+        target_est_oe = self.get_target_oe(self.ukf.x)
+        target_est_osc = stf.OscKepOrbElem()
+        target_est_osc.from_mean_elems(target_est_oe, self.mode)
+        target_est_cart = stf.Cartesian()
+        target_est_cart.from_keporb(target_est_osc)
+
+
+        chaser_true_cart = stf.Cartesian()
+        chaser_true_cart.from_keporb(self.oe_c_osc)
+
+        z = np.zeros(self.n_bias)
+
+        print self.n_bias
+
+        if self.n_bias == 3:
+            if self.augment_range:
+                z[2] = np.linalg.norm(chaser_true_cart.R - target_est_cart.R)*1000
+            else:
+                z[2] = meas_msg.range
+
         z[0] = meas_msg.value.azimut
         z[1] = meas_msg.value.elevation
-        z[2] = meas_msg.range
 
         self.ukf.update(z)
 
-        hx = self.hx(self.ukf.x)
+        #hx = self.hx_aonr(self.ukf.x, [has_range])
 
-        diff = hx-z
-        rospy.loginfo("Executed update with z_diff " + str(diff))
+       # diff = hx-z
+       # rospy.loginfo("Executed update with z_diff " + str(diff))
 
-        print self.ukf.x[6:9]
-        print self.ukf.x[9:12]
+        if self.bias:
+            print self.ukf.x[6:6+self.n_bias]
 
-        target_est_oe =self.get_target_oe(self.ukf.x+0.01)
+        if self.emp:
+            print self.ukf.x[6+self.n_bias:6+self.n_bias+3]
+
+        target_est_oe =self.get_target_oe(self.ukf.x)
         target_est_osc = stf.OscKepOrbElem()
         target_est_osc.from_mean_elems(target_est_oe, self.mode)
         target_est_cart = stf.Cartesian()
