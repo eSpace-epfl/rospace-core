@@ -69,9 +69,9 @@ class AONSensorNode:
             msg.header.stamp = target_oe.header.stamp
             msg.value.azimut = value[0] + np.asscalar(np.random.normal(sensor_obj.mu, sensor_obj.sigma, 1))
             msg.value.elevation = value[1] + np.asscalar(np.random.normal(sensor_obj.mu, sensor_obj.sigma, 1))
-            msg.range = np.linalg.norm(p_body)
-            msg.R = tf_chaser_teme.R
-            msg.V = tf_chaser_teme.V
+            msg.range = np.linalg.norm(p_body) + np.asscalar(np.random.normal(0, 1e-2, 1))
+            msg.R = tf_target_teme.R
+            msg.V = tf_target_teme.V
             self.pub.publish(msg)
             self.last_publish_time = target_oe.header.stamp
 

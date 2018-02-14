@@ -49,15 +49,16 @@ if __name__ == '__main__':
     [t_ukf, x, P] = filter.get_state()
 
     # sensor subscribers
-    rospy.Subscriber("aon", AzimutElevationStamped, filter.callback_aon)
+    #rospy.Subscriber("aon", AzimutElevationStamped, filter.callback_aon)
 
     # own state subscriber
     #rospy.Subscriber("oe", SatelitePose, filter.callback_state)
 
     target_oe_sub = message_filters.Subscriber('target_oe', SatelitePose)
     chaser_oe_sub = message_filters.Subscriber('chaser_oe', SatelitePose)
-    ts = message_filters.TimeSynchronizer([target_oe_sub, chaser_oe_sub], 10)
-    ts.registerCallback(filter.callback_state)
+    aon_sub = message_filters.Subscriber('aon', AzimutElevationStamped)
+    ts = message_filters.TimeSynchronizer([target_oe_sub, chaser_oe_sub, aon_sub], 10)
+    ts.registerCallback(filter.callback_aon)
     # filter publisher
     r = rospy.Rate(10)
 

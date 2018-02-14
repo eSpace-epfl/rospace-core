@@ -8,6 +8,7 @@ class RelativeOrbitalSTM:
     def __init__(self):
         self.J2_term = (3.0 / 4.0) * (stf.Constants.J_2 * (stf.Constants.R_earth ** 2) * np.sqrt(stf.Constants.mu_earth))
 
+
     def get_matrix(self, alpha_c, dt):
         J_qns = self.get_J_qns(alpha_c)
 
@@ -69,6 +70,55 @@ class RelativeOrbitalSTM:
         J_qns[2, 2:4] = [np.cos(w), np.sin(w)]
         J_qns[3, 2:4] = [-np.sin(w), np.cos(w)]
         return J_qns
+
+    def get_B_oe(self, alpha_c):
+        a = alpha_c[0]
+        e = alpha_c[2]
+        i = alpha_c[4]
+        w = alpha_c[3]
+        f_m = alpha_c[1] # true anomaly at t
+        phi_m = alpha_c[1]+alpha_c[3] # true argument of lattitude at t
+        n = np.sqrt(stf.Constants.mu_earth) / np.power(alpha_c[0], 1.5)
+
+        # substitutions
+        eta = np.sqrt(1.0 - e ** 2.0)
+
+        k = 1+e*np.cos(f_m)
+        e_x = e * np.cos(w)
+        e_y = e * np.sin(w)
+
+        B_oe = np.zeros((6,3))
+        B_oe[0,:] = [2/eta**2*e*np.sin(f_m), (2*k)/eta**2, 0]
+
+        B_oe[1,0] = ((eta-1)*k*np.cos(f_m)-2*eta*e)/(e*k)
+        B_oe[1,1] = (-(eta-1)*(k+1)*np.sin(f_m))/(e*k)
+
+        B_oe[2,0] = np.sin(phi_m)
+        B_oe[2,1] = ((k+1)*np.cos(phi_m)+e_x)/k
+        B_oe[2,2] = (e_y*np.sin(phi_m))/(k*np.tan(i))
+
+        B_oe[3, 0] = -np.cos(phi_m)
+        B_oe[3, 1] = ((k + 1) * np.sin(phi_m) + e_y) / k
+        B_oe[3, 2] = -(e_x * np.sin(phi_m)) / (k * np.tan(i))
+
+        B_oe[4,:] = [0, 0, np.cos(phi_m)/k]
+        B_oe[5, :] = [0, 0, np.sin(phi_m) / k]
+
+        return -eta/(a*n)*B_oe
+
+
+    def get_Phi_emp(self, tau_emp, delta_t):
+        psi = np.exp(-delta_t/tau_emp)
+        B_emp = np.diag([1, 1, 1]* psi)
+        return B_emp
+
+
+    def get_Phi_b(self, tau_b, delta_t):
+        psi = np.exp(-delta_t / tau_b)
+        B_emp = np.diag([1, 1] * psi)
+        return B_emp
+
+
 
 
 

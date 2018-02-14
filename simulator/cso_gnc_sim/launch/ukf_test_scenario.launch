@@ -1,6 +1,6 @@
 <launch>
 	<group ns="scenario">
-		<rosparam command="load" file="/home/pantic/cso_ws/eval/orbit_sampling/scenarios_-4000_-60000/1003.scenario" />
+		<rosparam command="load" file="/home/pantic/cso_ws/eval/orbit_sampling/scenarios_-4000_-60000/60.scenario" />
 
 <!--<rosparam command="load" file="/home/pantic/cso_ws/eval/orbit_sampling/scenarios_-4000_-60000/1234.scenario" />-->
 	</group>
