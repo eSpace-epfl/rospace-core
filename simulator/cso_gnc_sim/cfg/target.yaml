@@ -2,8 +2,11 @@ name: "TARGET-v0"
 
 propagator_settings:
   name: "TARGET"
-  mass: 0.82 # kg
   orbitProp:
+    State:
+      type: 'Keplerian'
+      settings:
+        mass: 0.82 # kg
     Gravity:
       type: "GravityPertAndGeoid"
       settings: # Spherical Harmonics Field Coeffs
@@ -12,44 +15,43 @@ propagator_settings:
     Thrust:
       type: None
       settings: ""
-    SatModel: # Satellite model for drag and solar pressure
-      satShape: # Settings for creation of spacecraft model
-        type: None #"FacetsAndFixedSolarArray"
-        settings:
-          Facets: ## area in [m2]
-            front:
-              area: 0.0001
-              nVector: 1 0 0  
-            back: 
-              area: 0.0001
-              nVector: -1 0 0
-            left: 
-              area: 0.0001
-              nVector: 0 -1 0
-            right:
-              area: 0.0001
-              nVector: 0 1 0
-            top:
-              area: 0.0001
-              nVector: 0 0 -1
-            bottom: 
-              area: 0.0001
-              nVector: 0 0 1
-          SolarArea: 0.0
-          SolarDir: 0 0 -1
-          absCoeff: 0.98
-          refCoeff: 0.02
-          dragCoeff: 1.05
-          liftRatio: 0.0 
-      solarModel: # Solar pressure force model
-        type: None #"SolarPressureBoxModel"
-        settings:
-          abs_Estimated: False # false = fixed
-          ref_Estimated: False # false = fixed 
-      dragModel: # Drag force model
-        type: None #"DragDTM2000"
-        settings:
-          cD_Estimated: False # if false cD fixed
+    SatShape: # Settings for creation of spacecraft model
+      type: None #"FacetsAndFixedSolarArray"
+      settings:
+        Facets: ## area in [m2]
+          front:
+            area: 0.0001
+            nVector: 1 0 0  
+          back: 
+            area: 0.0001
+            nVector: -1 0 0
+          left: 
+            area: 0.0001
+            nVector: 0 -1 0
+          right:
+            area: 0.0001
+            nVector: 0 1 0
+          top:
+            area: 0.0001
+            nVector: 0 0 -1
+          bottom: 
+            area: 0.0001
+            nVector: 0 0 1
+        SolarArea: 0.0
+        SolarDir: 0 0 -1
+        absCoeff: 0.98
+        refCoeff: 0.02
+        dragCoeff: 1.05
+        liftRatio: 0.0 
+    SolarModel: # Solar pressure force model
+      type: None #"SolarPressureBoxModel"
+      settings:
+        abs_Estimated: False # false = fixed
+        ref_Estimated: False # false = fixed 
+    DragModel: # Drag force model
+      type: None #"DragDTM2000"
+      settings:
+        cD_Estimated: False # if false cD fixed
     integrator: # Steps have to be floats
       minStep: 0.01
       maxStep: 1000.0
