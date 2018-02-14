@@ -1,0 +1,52 @@
+# Note: these tests are quite preliminary....
+
+import unittest
+import sys
+import time
+import os
+
+from copy import deepcopy
+import numpy as np
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + "/../src/")  # hack...
+from space_tf import *
+
+class OrekitOscMeanTest(unittest.TestCase):
+
+    def test_1(self):
+        bla = KepOrbElem()
+        bla.a = 7000
+        bla.v = 0
+        bla.i = np.deg2rad(16)
+        bla.e = 0
+        bla.w = np.deg2rad(60)
+        bla.O = np.deg2rad(25)
+
+
+        bla.osc_elems_transformation_ore(None, False)
+
+if __name__ == '__main__':
+    time.sleep(0)
+    print "Wait end"
+
+    for i in range(0,50):
+        bla = KepOrbElem()
+        bla.a = 7000
+        bla.v = 1
+        bla.i = np.deg2rad(98)
+        bla.e = 0.00001
+        bla.w = np.deg2rad(60)
+        bla.O = np.deg2rad(25)
+
+        blu = KepOrbElem()
+        bli = KepOrbElem()
+        blu.osc_elems_transformation_ore(bla, False)
+        bli.osc_elems_transformation(bla, False)
+
+        print bla
+        print ""
+        print blu
+        print ""
+        print bli
+       # unittest.main()
+

@@ -76,8 +76,13 @@ class QNSRelOrbElements(BaseState):
 
         # calculate values
         dl_pre = (t.m + t.w) - (c.m + c.w)
-        if dl_pre > 2*np.pi:
+
+
+        if dl_pre > np.pi:
             dl_pre -= 2*np.pi
+
+        if dl_pre < -np.pi:
+            dl_pre += 2*np.pi
 
         self.time = target.time
         self.frame = target.frame
