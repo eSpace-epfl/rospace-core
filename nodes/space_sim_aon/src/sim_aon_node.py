@@ -65,13 +65,16 @@ class AONSensorNode:
         visible, value = sensor_obj.get_measurement(p_body)
 
         if visible and (target_oe.header.stamp - self.last_publish_time).to_sec() > 1.0/self.rate:
+
             msg = AzimutElevationStamped()
             msg.header.stamp = target_oe.header.stamp
-            msg.value.azimut = value[0] + np.asscalar(np.random.normal(sensor_obj.mu, sensor_obj.sigma, 1))
-            msg.value.elevation = value[1] + np.asscalar(np.random.normal(sensor_obj.mu, sensor_obj.sigma, 1))
-            msg.range = np.linalg.norm(p_body) + np.asscalar(np.random.normal(0, 1e-1, 1))
-            msg.R = tf_target_teme.R
-            msg.V = tf_target_teme.V
+            msg.value.azimut = value[0] + np.asscalar(np.random.normal(sensor_obj.mu[0], sensor_obj.sigma[0], 1))
+            msg.value.elevation = value[1] + np.asscalar(np.random.normal(sensor_obj.mu[1], sensor_obj.sigma[1], 1))
+
+            if(len(sensor_obj.mu) == 3):
+                msg.range = np.linalg.norm(p_body) + np.asscalar(np.random.normal(sensor_obj.mu[2], sensor_obj.sigma[2], 1))
+            #msg.R = tf_target_teme.R
+            #msg.V = tf_target_teme.V
             self.pub.publish(msg)
             self.last_publish_time = target_oe.header.stamp
 
@@ -88,8 +91,13 @@ if __name__ == '__main__':
     sensor_obj.fov_x = float(sensor_cfg["fov_x"])
     sensor_obj.fov_y = float(sensor_cfg["fov_y"])
     sensor_obj.max_range = float(sensor_cfg["max_range"])
-    sensor_obj.mu = float(sensor_cfg["mu"])
-    sensor_obj.sigma = float(sensor_cfg["sigma"])
+   # sensor_obj.mu = np.array(sensor_cfg["mu"])
+   # sensor_obj.sigma = np.array(sensor_cfg["sigma"])
+    #print sensor_obj.mu
+    sensor_obj.mu = [float(x) for x in str(sensor_cfg["mu"]).split(" ")]
+    sensor_obj.sigma = [float(x) for x in str(sensor_cfg["sigma"]).split(" ")]
+    print sensor_obj.mu
+    print sensor_obj.sigma[0]
 
     pub_rate = float(rospy.get_param("~publish_rate", 1))
 

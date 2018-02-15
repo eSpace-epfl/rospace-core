@@ -11,6 +11,7 @@ from threading import Lock
 from copy import copy
 from filterpy.kalman import UnscentedKalmanFilter, JulierSigmaPoints, MerweScaledSigmaPoints
 import scipy
+from space_msgs.msg import FilterState
 class UKFRelativeOrbitalFilter:
     # used references:
     # [1] the other one... TODO
@@ -18,7 +19,7 @@ class UKFRelativeOrbitalFilter:
     # [2] Improved maneuver-free approach to angles only navigation
     #       for space rendez-vous" by Sullivan/Koenig/D'Amico
 
-    def __init__(self, x, P, Q, R, mode="ore", enable_emp=True, enable_bias=True):
+    def __init__(self, x, P, Q, R, mode="ore", enable_emp=True, enable_bias=True, augment_range = False):
 
         self.n_total = len(x)
         self.n_bias = len(np.diag(R))
@@ -26,7 +27,7 @@ class UKFRelativeOrbitalFilter:
         print self.n_bias
         self.emp = enable_emp
         self.bias = enable_bias
-        self.augment_range = False
+        self.augment_range = augment_range
 
         self.ukf = UnscentedKalmanFilter(
             self.n_total,
@@ -44,7 +45,7 @@ class UKFRelativeOrbitalFilter:
 
 
 
-
+        self.debug_pub = rospy.Publisher("state", FilterState, queue_size=10)
         self.ukf.x = x
         self.ukf.P = P
 
@@ -69,11 +70,12 @@ class UKFRelativeOrbitalFilter:
         # constant term
         self.J2_term = (3.0 / 4.0) * (stf.Constants.J_2 * (stf.Constants.R_earth ** 2) * np.sqrt(stf.Constants.mu_earth))
         self.update_lock = Lock()
-
+        print "SETUP DONE"
 
     def hx_aonr(self, x):
 
         has_range = self.n_bias == 3
+
         """" Measurement Function
         Converts state vector x into a measurement vector
         """
@@ -117,7 +119,7 @@ class UKFRelativeOrbitalFilter:
         Calculates the next state according to dt and current state
         """
 
-        t_step = 10.0
+        t_step = 100.0
         while dt > 0.0:
 
             if dt <t_step:
@@ -217,6 +219,7 @@ class UKFRelativeOrbitalFilter:
 
     # Performs measurement update
     def callback_aon(self,target_oe, chaser_oe, meas_msg):
+        print "CALLBACK"
         self.update_lock.acquire()
 
 
@@ -249,6 +252,7 @@ class UKFRelativeOrbitalFilter:
             return
 
         self.ukf.predict(dt)
+        self.publish_filter_state()
         rospy.loginfo("Executed predict with dt %f", dt)
         self.t_ukf = t_msg
 
@@ -278,20 +282,39 @@ class UKFRelativeOrbitalFilter:
         z[0] = meas_msg.value.azimut
         z[1] = meas_msg.value.elevation
 
+        residual_pre = np.array(self.hx_aonr(self.ukf.x))-z
+
         self.ukf.update(z)
 
-        #hx = self.hx_aonr(self.ukf.x, [has_range])
+        residual_post = np.array(self.hx_aonr(self.ukf.x))-z
 
-       # diff = hx-z
-       # rospy.loginfo("Executed update with z_diff " + str(diff))
+        self.publish_filter_state(z, residual_pre, residual_post)
+        self.update_lock.release()
 
-        if self.bias:
-            print self.ukf.x[6:6+self.n_bias]
 
-        if self.emp:
-            print self.ukf.x[6+self.n_bias:6+self.n_bias+3]
 
-        target_est_oe =self.get_target_oe(self.ukf.x)
+    def publish_filter_state(self, meas=None, pre_residual=None, post_residual=None):
+        fs = FilterState()
+        fs.header.stamp = rospy.Time.from_seconds(self.t_ukf)
+
+
+        # set state
+        fs.x = self.ukf.x
+        fs.chaser_mean_a = self.oe_c.a*1000.0
+        fs.roe_scaled = self.ukf.x[0:6]*self.oe_c.a*1000
+        fs.std_roe = np.sqrt(np.diag(self.ukf.P[0:6,0:6]))*(self.oe_c.a*1000.0)
+        fs.P = self.ukf.P.flatten("C")
+
+        #if there is a measurement, set it
+        if meas is not None:
+            fs.measurement = meas
+            fs.pre_residual = pre_residual
+            fs.post_residual = post_residual
+
+
+
+        # calculate differences
+        target_est_oe = self.get_target_oe(self.ukf.x)
         target_est_osc = stf.OscKepOrbElem()
         target_est_osc.from_mean_elems(target_est_oe, self.mode)
         target_est_cart = stf.Cartesian()
@@ -303,12 +326,39 @@ class UKFRelativeOrbitalFilter:
         chaser_true_cart = stf.Cartesian()
         chaser_true_cart.from_keporb(self.oe_c_osc)
 
-        print np.linalg.norm(chaser_true_cart.R - target_true_cart.R)
-        print np.linalg.norm(chaser_true_cart.R - target_est_cart.R)
-        print np.linalg.norm(target_true_cart.R - target_est_cart.R)
+        # calculate true current ROE, scaled
+        true_roe = stf.QNSRelOrbElements()
+        target_true_mean = stf.KepOrbElem()
+        target_true_mean.from_osc_elems(self.oe_t_osc, "ore") # always use ore for evaluation
 
+        true_roe.from_keporb(target_true_mean, self.oe_c)
 
-        self.update_lock.release()
+        fs.roe_scaled_true = true_roe.as_scaled(self.oe_c.a).as_vector()
+
+        # set target/target estimated and chaser positions
+        fs.chaser_true_R = chaser_true_cart.R
+        fs.chaser_true_V = chaser_true_cart.V
+        fs.target_true_R = target_true_cart.R
+        fs.target_true_V = target_true_cart.V
+        fs.target_est_R = target_est_cart.R
+        fs.target_est_V = target_est_cart.V
+
+        # calculate LVLH position with CHASER as LVLH origin (THIS IS FLIPPED ON PURPOSE)
+        target_lvlh_est = stf.CartesianLVLH()
+        target_lvlh_est.from_cartesian_pair( target_est_cart, chaser_true_cart)
+
+        target_lvlh_true = stf.CartesianLVLH()
+        target_lvlh_true.from_cartesian_pair( target_true_cart, chaser_true_cart)
+
+        fs.diff_R_lvlh_est = target_lvlh_est.R
+        fs.diff_V_lvlh_est = target_lvlh_est.V
+
+        fs.diff_R_lvlh_true = target_lvlh_true.R
+        fs.diff_V_lvlh_true = target_lvlh_true.V
+
+        print np.linalg.norm(target_true_cart.R-target_est_cart.R)
+
+        self.debug_pub.publish(fs)
 
     def get_state(self):
         self.update_lock.acquire()

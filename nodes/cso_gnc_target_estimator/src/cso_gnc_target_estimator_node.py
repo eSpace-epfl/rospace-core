@@ -16,18 +16,23 @@ import message_filters
 if __name__ == '__main__':
     rospy.init_node("cso_gnc_target_estimator", anonymous=True)
 
-    P_roe = np.array(rospy.get_param("~P")).reshape((6, 6), order='C')
-    P_bias = np.diag([1e-6, 1e-6, 1e-6])
-    P_emp = np.diag([1e-14, 1e-14, 1e-14])
+    P_roe = np.array(rospy.get_param("~P")).astype(np.float).reshape((6, 6), order='C')
+    P_bias = np.diag(np.array(rospy.get_param("~P_bias")).astype(np.float))
+    P_emp = np.diag(np.array(rospy.get_param("~P_emp")).astype(np.float))
 
 
     P_init = scipy.linalg.block_diag(P_roe, P_bias, P_emp)
 
     R_init = np.diag(np.array(rospy.get_param("~R")).astype(np.float))
 
-    Q_init = np.diag(np.diag(P_init))/1000
+    #Q_init = np.diag(np.diag(P_init))/1000
 
-    #Q_init = np.diag(np.array(rospy.get_param("~Q")).astype(np.float))
+    Q_init = np.diag(np.array(rospy.get_param("~Q")).astype(np.float))
+
+    enable_bias = bool(rospy.get_param("~enable_bias"))
+    enable_emp  = bool(rospy.get_param("~enable_emp"))
+    augment_range = bool(rospy.get_param("~augment_range"))
+    mode = rospy.get_param("~mode")
 
     print R_init
     x_dict = rospy.get_param("~x")
@@ -45,10 +50,14 @@ if __name__ == '__main__':
     filter = UKFRelativeOrbitalFilter(x=x_init,
                                       P=P_init,
                                       R=R_init,
-                                      Q=Q_init)
+                                      Q=Q_init,
+                                      enable_bias= enable_bias,
+                                      enable_emp=enable_emp,
+                                      mode=mode,
+                                      augment_range=augment_range)
 
-    pub = rospy.Publisher("state", RelOrbElemWithCovarianceStamped, queue_size=10)
-    pub_tar_oe = rospy.Publisher("state_oe", SatelitePose, queue_size=10)
+    #pub = rospy.Publisher("state", RelOrbElemWithCovarianceStamped, queue_size=10)
+    #pub_tar_oe = rospy.Publisher("state_oe", SatelitePose, queue_size=10)
     # get first state before subscribers start
     [t_ukf, x, P] = filter.get_state()
 
@@ -81,7 +90,7 @@ if __name__ == '__main__':
         msg.relorbit.relorbit.dIy = x[5]
         # flatten matrix in row-major order ("style C")
         msg.relorbit.covariance = P.flatten("C")
-        pub.publish(msg)
+        #pub.publish(msg)
 
         r.sleep()
 

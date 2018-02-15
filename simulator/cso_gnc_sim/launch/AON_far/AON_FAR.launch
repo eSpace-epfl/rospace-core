@@ -1,17 +1,16 @@
 <launch>
 	<group ns="scenario">
-		<rosparam command="load" file="/home/pantic/cso_ws/eval/orbit_sampling/scenarios/289.scenario" />
+		<rosparam command="load" file="/home/pantic/cso_ws/eval/orbit_sampling/scenarios_-4000_-60000/1234.scenario" />
 
-<!--<rosparam command="load" file="/home/pantic/cso_ws/eval/orbit_sampling/scenarios_-4000_-60000/1234.scenario" />-->
 	</group>
 
 
 	<group ns="filter_init">
-		<rosparam param="R">[4e-6, 4e-6]</rosparam>
-        <rosparam param="P_bias">[1e-6, 1e-6]</rosparam>
+		<rosparam param="R">[24e-6, 24e-6]</rosparam> <!-- 5 arcsecs -->
+        <rosparam param="P_bias">[4e-4, 4e-4]</rosparam> <!-- 1 arcsec -->
         <rosparam param="P_emp">[1e-14, 1e-14, 1e-14]</rosparam>
 		<rosparam param="Q">[1e-11, 1e-10, 1e-12, 1e-12, 1e-11, 1e-11]</rosparam>
-		<rosparam command="load" file="/home/pantic/cso_ws/eval/orbit_sampling/scenarios/sample_covariance.txt" />
+		<rosparam command="load" file="/home/pantic/cso_ws/eval/orbit_sampling/scenarios_-4000_-60000/sample_covariance.txt" />
 	</group>
 
     <arg name="epoch" value="20170915T12:20:00" />
@@ -51,10 +50,10 @@
         <node pkg="space_sim_aon" name="node_aon" type="sim_aon_node.py" output="screen">
             <param name="publish_rate" value="0.01" />
             <param name="~sensor/max_range" value="40000" />
-            <param name="~sensor/fov_x" value="6.25" />
+            <param name="~sensor/fov_x" value="6.28" />
             <param name="~sensor/fov_y" value="6.28" />
-            <param name="~sensor/mu" value="0.0 0.0" />
-            <param name="~sensor/sigma" value="1e-6 1e-6" />
+            <param name="~sensor/mu" value="1e-6 0.0" />
+            <param name="~sensor/sigma" value="9.6e-6 9.6e-6" />
             <param name="~sensor/position" value="0.0 0.0 0.0" />
             <param name="~sensor/pose" value="0 0 0 1" />
 

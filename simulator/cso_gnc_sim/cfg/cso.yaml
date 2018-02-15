@@ -45,8 +45,8 @@ sensors:
     fov_x: 6.28
     fov_y: 6.28
     max_range: 400000
-    mu: 0
-    sigma: 1e-6
+    mu: [0.0 0.0 0.0]
+    sigma: [1e-6 1e-6 1.0]
 
   NAC:
     position: 0.355 -0.01 -0.095
