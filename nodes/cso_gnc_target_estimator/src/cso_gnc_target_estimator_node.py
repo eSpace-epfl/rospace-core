@@ -15,23 +15,40 @@ import message_filters
 
 if __name__ == '__main__':
     rospy.init_node("cso_gnc_target_estimator", anonymous=True)
+    enable_bias = bool(rospy.get_param("~enable_bias"))
+    enable_emp = bool(rospy.get_param("~enable_emp"))
+    augment_range = bool(rospy.get_param("~augment_range"))
 
     P_roe = np.array(rospy.get_param("~P")).astype(np.float).reshape((6, 6), order='C')
-    P_bias = np.diag(np.array(rospy.get_param("~P_bias")).astype(np.float))
-    P_emp = np.diag(np.array(rospy.get_param("~P_emp")).astype(np.float))
+
+    if enable_bias:
+        P_bias = np.diag(np.array(rospy.get_param("~P_bias")).astype(np.float))
+    else:
+        P_bias = np.array((0,0))
+
+    if enable_emp:
+        P_emp = np.diag(np.array(rospy.get_param("~P_emp")).astype(np.float))
+    else:
+        P_emp = np.array((0,0))
 
 
-    P_init = scipy.linalg.block_diag(P_roe, P_bias, P_emp)
+    if enable_emp and enable_bias:
+        P_init = scipy.linalg.block_diag(P_roe, P_bias, P_emp)
+
+    elif enable_emp and not enable_bias:
+        P_init = scipy.linalg.block_diag(P_roe, P_emp)
+    elif not enable_emp and enable_bias:
+        P_init = scipy.linalg.block_diag(P_roe, P_bias)
+    else:
+        P_init = P_roe
+
 
     R_init = np.diag(np.array(rospy.get_param("~R")).astype(np.float))
 
     #Q_init = np.diag(np.diag(P_init))/1000
 
-    Q_init = np.diag(np.array(rospy.get_param("~Q")).astype(np.float))
+    Q_factor = float(rospy.get_param("~Q_factor"))
 
-    enable_bias = bool(rospy.get_param("~enable_bias"))
-    enable_emp  = bool(rospy.get_param("~enable_emp"))
-    augment_range = bool(rospy.get_param("~augment_range"))
     mode = rospy.get_param("~mode")
 
     print R_init
@@ -50,7 +67,7 @@ if __name__ == '__main__':
     filter = UKFRelativeOrbitalFilter(x=x_init,
                                       P=P_init,
                                       R=R_init,
-                                      Q=Q_init,
+                                      Q_factor=Q_factor,
                                       enable_bias= enable_bias,
                                       enable_emp=enable_emp,
                                       mode=mode,

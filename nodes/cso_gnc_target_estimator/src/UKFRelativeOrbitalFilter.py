@@ -19,19 +19,22 @@ class UKFRelativeOrbitalFilter:
     # [2] Improved maneuver-free approach to angles only navigation
     #       for space rendez-vous" by Sullivan/Koenig/D'Amico
 
-    def __init__(self, x, P, Q, R, mode="ore", enable_emp=True, enable_bias=True, augment_range = False):
+    def __init__(self, x, P, Q_factor, R, mode="ore", enable_emp=True, enable_bias=True, augment_range = False):
 
         self.n_total = len(x)
         self.n_bias = len(np.diag(R))
-        print self.n_total
-        print self.n_bias
+        self.n_sensor = len(np.diag(R))
+
+        if not enable_bias:
+            self.n_bias= 0
+
         self.emp = enable_emp
         self.bias = enable_bias
         self.augment_range = augment_range
 
         self.ukf = UnscentedKalmanFilter(
             self.n_total,
-            self.n_bias,
+            self.n_sensor,
             120,
             lambda x : self.hx_aonr(x),
             lambda x, dt: self.fx(x,dt),
@@ -53,13 +56,13 @@ class UKFRelativeOrbitalFilter:
         self.mode = mode
 
         self.stm_matrix = RelativeOrbitalSTM()
-        self.ukf.Q = np.diag(np.diag(self.ukf.P)) /50000.0
+        self.ukf.Q = np.diag(np.concatenate([np.diag(self.ukf.P[0:6]), np.zeros(self.n_bias+3)])) /Q_factor
 
         self.ukf.R = R
         self.t_ukf = 0.0
         self.t_oe_c = 0.0
 
-        self.tau_b = 27000
+        self.tau_b = 99999999999
         self.tau_emp = 400
 
         self.oe_c = stf.KepOrbElem()
@@ -104,7 +107,8 @@ class UKFRelativeOrbitalFilter:
 
         # calculate angles
         alpha = np.arcsin(p_body[1] / np.linalg.norm(p_body)) + bias[0]
-        eps = np.arctan(p_body[0] / p_body[2]) + bias[1]
+        #alpha = np.arctan2(p_body[2], p_body[1]) + bias[9]
+        eps = np.arctan2(p_body[0], p_body[2]) + bias[1]
 
         if has_range:
             r = np.linalg.norm(p_body) + bias[2]
@@ -219,7 +223,7 @@ class UKFRelativeOrbitalFilter:
 
     # Performs measurement update
     def callback_aon(self,target_oe, chaser_oe, meas_msg):
-        print "CALLBACK"
+
         self.update_lock.acquire()
 
 
@@ -269,11 +273,11 @@ class UKFRelativeOrbitalFilter:
         chaser_true_cart = stf.Cartesian()
         chaser_true_cart.from_keporb(self.oe_c_osc)
 
-        z = np.zeros(self.n_bias)
+        z = np.zeros(self.n_sensor)
 
-        print self.n_bias
 
-        if self.n_bias == 3:
+
+        if self.n_sensor == 3:
             if self.augment_range:
                 z[2] = np.linalg.norm(chaser_true_cart.R - target_est_cart.R)*1000
             else:
@@ -356,7 +360,9 @@ class UKFRelativeOrbitalFilter:
         fs.diff_R_lvlh_true = target_lvlh_true.R
         fs.diff_V_lvlh_true = target_lvlh_true.V
 
-        print np.linalg.norm(target_true_cart.R-target_est_cart.R)
+        fs.diff_lvlh = np.linalg.norm(target_true_cart.R-target_est_cart.R)
+
+        #print self.mode+" "+str(np.linalg.norm(target_true_cart.R-target_est_cart.R))
 
         self.debug_pub.publish(fs)
 

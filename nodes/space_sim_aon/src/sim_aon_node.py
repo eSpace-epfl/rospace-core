@@ -72,6 +72,7 @@ class AONSensorNode:
             msg.value.elevation = value[1] + np.asscalar(np.random.normal(sensor_obj.mu[1], sensor_obj.sigma[1], 1))
 
             if(len(sensor_obj.mu) == 3):
+                print "BIAAS",sensor_obj.mu[2]
                 msg.range = np.linalg.norm(p_body) + np.asscalar(np.random.normal(sensor_obj.mu[2], sensor_obj.sigma[2], 1))
             #msg.R = tf_target_teme.R
             #msg.V = tf_target_teme.V
