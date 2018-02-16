@@ -11,6 +11,7 @@ float64[] diff_V_lvlh_true
 
 float64[] diff_R_lvlh_est
 float64[] diff_V_lvlh_est
+float64 diff_lvlh
 
 float64[] chaser_true_R
 float64[] chaser_true_V
