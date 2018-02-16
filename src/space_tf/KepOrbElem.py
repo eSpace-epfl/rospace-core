@@ -585,7 +585,7 @@ class KepOrbElem(BaseState):
                                        - 3.0 * np.sin(2.0 * other.w + 2.0 * other.v) - 3.0 * other.e * np.sin(
             2.0 * other.w + other.v) - other.e * np.sin(2.0 * other.w + 3.0 * other.v))
 
-        print other.m, other.w, other.O, MwO
+
 
         # formula G.307
         edM = gma_2_p / 8.0 * other.e * eta ** 3 * (1.0 - 11.0 * c_i ** 2 - 40.0 * (c_i ** 4 / (1 - 5 * c_i ** 2))) \
