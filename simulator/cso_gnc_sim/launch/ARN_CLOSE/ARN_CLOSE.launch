@@ -7,13 +7,13 @@
 	</group>
 
     <node pkg="rosbag" type="record" name="rosbag_record_diag"
-       args="record -a --duration=10000 -O /home/pantic/cso_ws/eval/data/ARN_CLOSE/$(arg scenario).bag" required="true"/>
+       args="record -a --duration=36000 -O /home/pantic/cso_ws/eval/data/ARN_CLOSE/$(arg scenario).bag" required="true"/>
 
 
 
-
+    <!-- http://www.tsi.lv/sites/default/files/editor/science/Conferences/SPACE/beach.pdf (TRIDAR) -->
 	<group ns="filter_init">
-        <rosparam param="R">[8.72665e-5, 8.72665e-5, 0.0025]</rosparam> <!-- 18 arcsecs -->
+        <rosparam param="R">[8.72665e-5, 8.72665e-5, 0.000625]</rosparam> <!-- 18 arcsecs -->
         <rosparam param="P_bias">[8.72665e-1, 8.72665e-1, 0.1]</rosparam> <!-- 50 arcsec -->
 
         <rosparam param="P_emp">[1e-14, 1e-14, 1e-14]</rosparam>
@@ -57,11 +57,11 @@
          <!-- Launch AON Sensor -->
         <node pkg="space_sim_aon" name="node_aon" type="sim_aon_node.py" output="screen">
             <param name="publish_rate" value="0.01" />
-            <param name="~sensor/max_range" value="40000" />
+            <param name="~sensor/max_range" value="1500" />
             <param name="~sensor/fov_x" value="6.28" />
             <param name="~sensor/fov_y" value="6.28" />
             <param name="~sensor/mu" value="0.05 0.0 0.05" />
-            <param name="~sensor/sigma" value="8.72665e-5 8.72665e-5 0.10" />
+            <param name="~sensor/sigma" value="8.72665e-5 8.72665e-5 0.000625" />
 
             <param name="~sensor/position" value="0.0 0.0 0.0" />
             <param name="~sensor/pose" value="0 0 0 1" />

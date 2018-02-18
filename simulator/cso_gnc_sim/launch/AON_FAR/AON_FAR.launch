@@ -55,7 +55,7 @@
          <!-- Launch AON Sensor -->
         <node pkg="space_sim_aon" name="node_aon" type="sim_aon_node.py" output="screen">
             <param name="publish_rate" value="0.01" />
-            <param name="~sensor/max_range" value="40000" />
+            <param name="~sensor/max_range" value="30000" />
             <param name="~sensor/fov_x" value="6.28" />
             <param name="~sensor/fov_y" value="6.28" />
 

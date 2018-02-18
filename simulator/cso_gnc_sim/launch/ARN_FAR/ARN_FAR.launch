@@ -13,7 +13,7 @@
 
 
 	<group ns="filter_init">
-		<rosparam param="R">[8.72665e-5, 8.72665e-5, 3]</rosparam> <!-- 18 arcsecs -->
+		<rosparam param="R">[8.72665e-5, 8.72665e-5, 25]</rosparam> <!-- 18 arcsecs -->
         <rosparam param="P_bias">[8.72665e-1, 8.72665e-1, 3.6e3]</rosparam> <!-- 50 arcsec -->
         <rosparam param="P_emp">[1e-14, 1e-14, 1e-14]</rosparam>
 		<rosparam param="Q">[1e-11, 1e-10, 1e-12, 1e-12, 1e-11, 1e-11]</rosparam>
@@ -56,11 +56,11 @@
          <!-- Launch AON Sensor -->
         <node pkg="space_sim_aon" name="node_aon" type="sim_aon_node.py" output="screen">
             <param name="publish_rate" value="0.01" />
-            <param name="~sensor/max_range" value="40000" />
+            <param name="~sensor/max_range" value="20000" />
             <param name="~sensor/fov_x" value="6.28" />
             <param name="~sensor/fov_y" value="6.28" />
             <param name="~sensor/mu" value="0.05 0.0 10" />
-            <param name="~sensor/sigma" value="8.72665e-5 8.72665e-5 3" />
+            <param name="~sensor/sigma" value="8.72665e-5 8.72665e-5 25" />
             <param name="~sensor/position" value="0.0 0.0 0.0" />
             <param name="~sensor/pose" value="0 0 0 1" />
 

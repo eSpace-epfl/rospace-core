@@ -261,38 +261,38 @@ class UKFRelativeOrbitalFilter:
         self.t_ukf = t_msg
 
 
-
-        # augment range
-        target_est_oe = self.get_target_oe(self.ukf.x)
-        target_est_osc = stf.OscKepOrbElem()
-        target_est_osc.from_mean_elems(target_est_oe, self.mode)
-        target_est_cart = stf.Cartesian()
-        target_est_cart.from_keporb(target_est_osc)
-
-
-        chaser_true_cart = stf.Cartesian()
-        chaser_true_cart.from_keporb(self.oe_c_osc)
-
-        z = np.zeros(self.n_sensor)
+        if meas_msg.valid:
+            # augment range
+            target_est_oe = self.get_target_oe(self.ukf.x)
+            target_est_osc = stf.OscKepOrbElem()
+            target_est_osc.from_mean_elems(target_est_oe, self.mode)
+            target_est_cart = stf.Cartesian()
+            target_est_cart.from_keporb(target_est_osc)
 
 
+            chaser_true_cart = stf.Cartesian()
+            chaser_true_cart.from_keporb(self.oe_c_osc)
 
-        if self.n_sensor == 3:
-            if self.augment_range:
-                z[2] = np.linalg.norm(chaser_true_cart.R - target_est_cart.R)*1000
-            else:
-                z[2] = meas_msg.range
+            z = np.zeros(self.n_sensor)
 
-        z[0] = meas_msg.value.azimut
-        z[1] = meas_msg.value.elevation
 
-        residual_pre = np.array(self.hx_aonr(self.ukf.x))-z
 
-        self.ukf.update(z)
+            if self.n_sensor == 3:
+                if self.augment_range:
+                    z[2] = np.linalg.norm(chaser_true_cart.R - target_est_cart.R)*1000
+                else:
+                    z[2] = meas_msg.range
 
-        residual_post = np.array(self.hx_aonr(self.ukf.x))-z
+            z[0] = meas_msg.value.azimut
+            z[1] = meas_msg.value.elevation
 
-        self.publish_filter_state(z, residual_pre, residual_post)
+            residual_pre = np.array(self.hx_aonr(self.ukf.x))-z
+
+            self.ukf.update(z)
+
+            residual_post = np.array(self.hx_aonr(self.ukf.x))-z
+
+            self.publish_filter_state(z, residual_pre, residual_post)
         self.update_lock.release()
 
 
