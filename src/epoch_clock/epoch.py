@@ -63,4 +63,4 @@ class Epoch:
         """Changes ROS parameter for step size"""
         # Only propagator node should change this! Do not change!
         Epoch.time_step_size = new_step
-        rospy.set_param('/time_step_size', new_step)
+        rospy.set_param('/time_step_size', str(new_step))
