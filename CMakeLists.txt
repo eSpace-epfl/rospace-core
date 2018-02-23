@@ -13,35 +13,45 @@ set(BUILD_PKG_DIR ${CMAKE_SOURCE_DIR}/orbdyn-tools/orekit_wrapper)
 set(BUILD_WRAPPER_DIR ${CMAKE_BINARY_DIR}/orbdyn-tools/orekit_wrapper)
 # set(LIB_DIR https://anaconda.org/conda-forge/orekit/9.0/download/linux-64/orekit-9.0-py27_0.tar.bz2)
 set(LIB_DIR https://www.dropbox.com/s/xsr895ybmg9idfw/orekit.tar.bz2?dl=1)
+set(DATA_ZIP_DIR https://www.orekit.org/forge/attachments/download/677/orekit-data.zip)
 
 ## Check if library already in loaded if not copy from build space or
 ## download from anaconda
-if(EXISTS "${CATKIN_DEVEL_PREFIX}/lib/python2.7/dist-packages/orekit")
+if(EXISTS "${CATKIN_DEVEL_PREFIX}/lib/python2.7/dist-packages/orekit/_orekit.so")
 	message(STATUS "Orekit library already loaded in devel space.")
 
-elseif(EXISTS "${BUILD_WRAPPER_DIR}/src/orekit")
-	message(STATUS "Orekit library alredy downloaded, but not in devel space. Library will be copied from build to devel directory.")
+elseif(EXISTS "${BUILD_WRAPPER_DIR}/src/orekit/_orekit.so" AND EXISTS "${BUILD_WRAPPER_DIR}/src/orekit-data.zip")
+	message(STATUS "Orekit library already downloaded, but not in devel space. Library will be copied from build to devel directory.")
 
 	execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${BUILD_WRAPPER_DIR}/src/orekit ${CATKIN_DEVEL_PREFIX}/lib/python2.7/dist-packages/orekit)
+	execute_process(COMMAND ${CMAKE_COMMAND} -E copy ${BUILD_WRAPPER_DIR}/src/orekit-data.zip ${CATKIN_DEVEL_PREFIX}/lib/python2.7/dist-packages/orekit)
 
 else(EXISTS "${CATKIN_DEVEL_PREFIX}/lib/python2.7/dist-packages/orekit")
 	message(STATUS "Cannot find Orekit library. Library will be downloaded and put in devel space")
 
 	ExternalProject_Add(orekit
-	PREFIX ${BUILD_WRAPPER_DIR}
-	URL ${LIB_DIR}
-	UPDATE_COMMAND ""
-	CONFIGURE_COMMAND ""
-	BUILD_COMMAND ""
-	INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory ${BUILD_WRAPPER_DIR}/src/orekit ${CATKIN_DEVEL_PREFIX}/lib/python2.7/dist-packages/orekit COMMAND ${CMAKE_COMMAND} -E remove ${BUILD_WRAPPER_DIR}/src/orekit.tar.bz2
-	TEST_COMMAND ""
-	LOG_DOWNLOAD 1
-	LOG_UPDATE 0
-	LOG_CONFIGURE 0
-	LOG_BUILD 0
-	LOG_TEST 0
-	LOG_INSTALL 1)
+	PREFIX 				${BUILD_WRAPPER_DIR}
+	URL 				${LIB_DIR}
+
+	UPDATE_COMMAND 		""
+	CONFIGURE_COMMAND 	""
+	BUILD_COMMAND 		""
+
+	INSTALL_COMMAND 	${CMAKE_COMMAND} -E copy_directory ${BUILD_WRAPPER_DIR}/src/orekit ${CATKIN_DEVEL_PREFIX}/lib/python2.7/dist-packages/orekit 
+						COMMAND ${CMAKE_COMMAND} -E remove ${BUILD_WRAPPER_DIR}/src/orekit.tar.bz2
+
+	TEST_COMMAND 		wget -O ${BUILD_WRAPPER_DIR}/src/orekit-data.zip "${DATA_ZIP_DIR}" 
+				 		COMMAND ${CMAKE_COMMAND} -E copy ${BUILD_WRAPPER_DIR}/src/orekit-data.zip ${CATKIN_DEVEL_PREFIX}/lib/python2.7/dist-packages/orekit
+
+	LOG_DOWNLOAD 		1
+	LOG_UPDATE 			0
+	LOG_CONFIGURE 		0
+	LOG_BUILD 			0
+	LOG_TEST 			0
+	LOG_INSTALL 		1
+	)
 
 	## The tarball file is being deleted and only the library kept in the
 	## devel space
-endif(EXISTS "${CATKIN_DEVEL_PREFIX}/lib/python2.7/dist-packages/orekit")
+endif(EXISTS "${CATKIN_DEVEL_PREFIX}/lib/python2.7/dist-packages/orekit/_orekit.so")
+
