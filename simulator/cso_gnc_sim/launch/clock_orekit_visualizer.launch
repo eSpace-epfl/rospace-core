@@ -14,7 +14,7 @@
     <param name="/use_sim_time" value="True" />
 
     <!-- Launch CSO & target propagator -->
-    <include file="$(find orekit_node)/launch/$(arg prop_mode)_orbit.launch" />
+    <include file="$(find propagator)/launch/$(arg prop_mode)_orbit.launch" />
 
     <!-- Include CSO base definition -->
     <include file="$(find cso_gnc_sim)/launch/cso_base.launch">
