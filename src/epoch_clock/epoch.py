@@ -1,3 +1,11 @@
+# @copyright Copyright (c) 2017, Michael Pantic (michael.pantic@gmail.com)
+#
+# @license zlib license
+#
+# This file is licensed under the terms of the zlib license.
+# See the LICENSE.md file in the root of this repository
+# for complete details.
+
 """ Library for time-handling in a space simulation
 
 Addition to ros-provided rostime library.
@@ -9,10 +17,8 @@ Example:
     Epoch_0 is 23.12.2017 15:47:00 UTC (= date that corresponds to rostime 00:00 (secs:nsecs).
     Current rostime is 10:00 (simulation is running since 10s)
     Now = Epoch_0+Rostime = 23.12.2017 15:47:10
-
-    Author: Michael Pantic
-    License: TBD
 """
+
 import rospy
 from datetime import datetime, timedelta
 import time
