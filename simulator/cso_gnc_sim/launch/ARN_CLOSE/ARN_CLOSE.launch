@@ -13,8 +13,8 @@
 
     <!-- http://www.tsi.lv/sites/default/files/editor/science/Conferences/SPACE/beach.pdf (TRIDAR) -->
 	<group ns="filter_init">
-        <rosparam param="R">[8.72665e-5, 8.72665e-5, 0.000625]</rosparam> <!-- 18 arcsecs -->
-        <rosparam param="P_bias">[8.72665e-1, 8.72665e-1, 0.1]</rosparam> <!-- 50 arcsec -->
+        <rosparam param="R">[1.3538486e-8, 1.3538486e-8, 0.000625]</rosparam> <!-- 24 arcsecs  and 25 mm sigma^2-->
+        <rosparam param="P_bias">[2.35044615e-7, 2.35044615e-7, 0.0025]</rosparam> <!-- 50 arcsec -->
 
         <rosparam param="P_emp">[1e-14, 1e-14, 1e-14]</rosparam>
 		<rosparam param="Q">[1e-11, 1e-10, 1e-12, 1e-12, 1e-11, 1e-11]</rosparam>
@@ -60,9 +60,8 @@
             <param name="~sensor/max_range" value="1500" />
             <param name="~sensor/fov_x" value="6.28" />
             <param name="~sensor/fov_y" value="6.28" />
-            <param name="~sensor/mu" value="0.05 0.0 0.05" />
-            <param name="~sensor/sigma" value="8.72665e-5 8.72665e-5 0.000625" />
-
+            <param name="~sensor/mu" value="0.000484814 0.0 0.05" />
+            <param name="~sensor/sigma" value="0.000116355 0.000116355 0.025" />
             <param name="~sensor/position" value="0.0 0.0 0.0" />
             <param name="~sensor/pose" value="0 0 0 1" />
 
