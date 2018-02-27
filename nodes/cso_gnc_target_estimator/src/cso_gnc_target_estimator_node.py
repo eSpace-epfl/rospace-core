@@ -44,10 +44,11 @@ if __name__ == '__main__':
 
 
     R_init = np.diag(np.array(rospy.get_param("~R")).astype(np.float))
+    Q_init = np.diag(np.array(rospy.get_param("~Q")).astype(np.float))
 
     #Q_init = np.diag(np.diag(P_init))/1000
 
-    Q_factor = float(rospy.get_param("~Q_factor"))
+    #Q_factor = float(rospy.get_param("~Q_factor"))
 
     mode = rospy.get_param("~mode")
 
@@ -67,7 +68,7 @@ if __name__ == '__main__':
     filter = UKFRelativeOrbitalFilter(x=x_init,
                                       P=P_init,
                                       R=R_init,
-                                      Q_factor=Q_factor,
+                                      Q=Q_init,
                                       enable_bias= enable_bias,
                                       enable_emp=enable_emp,
                                       mode=mode,

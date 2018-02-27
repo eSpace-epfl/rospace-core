@@ -15,7 +15,7 @@
 		<rosparam param="R">[1.3538486e-8, 1.3538486e-8]</rosparam> <!-- 18 arcsecs -->
         <rosparam param="P_bias">[2.35044615e-7, 2.35044615e-7]</rosparam> <!-- 50 arcsec -->
            <rosparam param="P_emp">[1e-14, 1e-14, 1e-14]</rosparam>
-		<rosparam param="Q">[1e-11, 1e-10, 1e-12, 1e-12, 1e-11, 1e-11]</rosparam>
+		<rosparam param="Q">[1.06355337e-14, 1.13319817e-18, 8.59857998e-13, 1.61995621e-14, 7.70520510e-15, 2.61757428e-11]</rosparam>
 		<rosparam command="load" file="/home/pantic/cso_ws/eval/orbit_sampling/scenarios_FAR/sample_covariance.txt" />
 	</group>
 
@@ -75,7 +75,7 @@
 	        <remap from="aon" to="/cso/aon" />
             <remap from="chaser_oe" to="/cso/oe" />
             <remap from="target_oe" to="/target/oe" />
-
+            <remap from="~Q" to="/filter_init/Q" />
 	        <remap from="~R" to="/filter_init/R" />
 	        <remap from="~P" to="/filter_init/P" />
             <remap from="~P_bias" to="/filter_init/P_bias" />
@@ -97,7 +97,7 @@
             <remap from="aon" to="/cso/aon" />
             <remap from="chaser_oe" to="/cso/oe" />
             <remap from="target_oe" to="/target/oe" />
-
+             <remap from="~Q" to="/filter_init/Q" />
 	        <remap from="~R" to="/filter_init/R" />
 	        <remap from="~P" to="/filter_init/P" />
             <remap from="~P_bias" to="/filter_init/P_bias" />
@@ -117,7 +117,7 @@
             <remap from="aon" to="/cso/aon" />
             <remap from="chaser_oe" to="/cso/oe" />
             <remap from="target_oe" to="/target/oe" />
-
+             <remap from="~Q" to="/filter_init/Q" />
 	        <remap from="~R" to="/filter_init/R" />
 	        <remap from="~P" to="/filter_init/P" />
             <remap from="~P_bias" to="/filter_init/P_bias" />

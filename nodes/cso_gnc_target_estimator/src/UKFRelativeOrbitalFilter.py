@@ -19,7 +19,7 @@ class UKFRelativeOrbitalFilter:
     # [2] Improved maneuver-free approach to angles only navigation
     #       for space rendez-vous" by Sullivan/Koenig/D'Amico
 
-    def __init__(self, x, P, Q_factor, R, mode="ore", enable_emp=True, enable_bias=True, augment_range = False):
+    def __init__(self, x, P, Q, R, mode="ore", enable_emp=True, enable_bias=True, augment_range = False):
 
         self.n_total = len(x)
         self.n_bias = len(np.diag(R))
@@ -56,17 +56,21 @@ class UKFRelativeOrbitalFilter:
         self.mode = mode
 
         self.stm_matrix = RelativeOrbitalSTM()
-        self.ukf.Q = np.diag(np.concatenate([np.diag(self.ukf.P[0:6]), np.zeros(self.n_bias+3)])) /Q_factor
+        self.ukf.Q = np.diag(np.concatenate([np.diag(Q), np.zeros(self.n_bias + 3)]))
+        print np.diag(self.ukf.Q[0:6,0:6])
 
         self.ukf.R = R
         self.t_ukf = 0.0
         self.t_oe_c = 0.0
 
-        self.tau_b = 99999999999
+        self.tau_b = 9999999999999
         self.tau_emp = 400
 
         self.oe_c = stf.KepOrbElem()
         self.oe_c_osc = stf.OscKepOrbElem()
+
+        self.oe_c_osc_exact = stf.KepOrbElem()
+
         self.oe_t_osc = stf.OscKepOrbElem()
         self.R_body = None
 
@@ -135,7 +139,7 @@ class UKFRelativeOrbitalFilter:
             x[0:6] = x[0:6] + dx[0:6]
 
             if self.bias:
-                x[6:6+self.n_bias] = x[6:6+self.n_bias] * dx[6:6+self.n_bias]
+                x[6:6+self.n_bias] = x[6:6+self.n_bias] #* dx[6:6+self.n_bias]
 
             if self.emp:
                 x[0:6] = x[0:6] + np.dot(b_oe*dt, x[6+self.n_bias:6+self.n_bias+3])
@@ -233,11 +237,23 @@ class UKFRelativeOrbitalFilter:
         oe_t_osc = stf.OscKepOrbElem()
         oe_t_osc.from_message(target_oe.position)
 
-        self.oe_c_osc = oe_c_osc
+        self.oe_c_osc_exact = oe_c_osc
+
+        # add noise
+        cart_chaser_noise = stf.Cartesian()
+        cart_chaser_noise.from_keporb(oe_c_osc)
+
+        cart_chaser_noise.R += np.random.normal([0, 0, 0], [1/3.0, 1/3.0, 1/3.0])/1000.0
+        cart_chaser_noise.V += np.random.normal([0,0,0],[1/300.0, 1/300.0, 1/300.0])/1000.0
+
+        self.oe_c_osc.from_cartesian(cart_chaser_noise)
         self.oe_t_osc = oe_t_osc
 
         self.oe_c = stf.KepOrbElem()
         self.oe_c.from_osc_elems(oe_c_osc, self.mode)
+
+        self.oe_c_exact = stf.KepOrbElem()
+        self.oe_c_exact.from_osc_elems(self.oe_c_osc_exact, "ore")
 
         # store orientation
         self.R_body = transformations.quaternion_matrix([chaser_oe.orientation.x,
@@ -328,16 +344,16 @@ class UKFRelativeOrbitalFilter:
         target_true_cart.from_keporb(self.oe_t_osc)
 
         chaser_true_cart = stf.Cartesian()
-        chaser_true_cart.from_keporb(self.oe_c_osc)
+        chaser_true_cart.from_keporb(self.oe_c_osc_exact)
 
         # calculate true current ROE, scaled
         true_roe = stf.QNSRelOrbElements()
         target_true_mean = stf.KepOrbElem()
-        target_true_mean.from_osc_elems(self.oe_t_osc, "ore") # always use ore for evaluation
+        target_true_mean.from_osc_elems(self.oe_t_osc, "ore") # always use ore for evaluation, best accuracy
 
-        true_roe.from_keporb(target_true_mean, self.oe_c)
+        true_roe.from_keporb(target_true_mean, self.oe_c_exact)
 
-        fs.roe_scaled_true = true_roe.as_scaled(self.oe_c.a).as_vector()
+        fs.roe_scaled_true = true_roe.as_scaled(self.oe_c_exact.a).as_vector()
 
         # set target/target estimated and chaser positions
         fs.chaser_true_R = chaser_true_cart.R
