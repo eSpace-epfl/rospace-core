@@ -416,7 +416,7 @@ class KepOrbElem(BaseState):
         elif mode == "null":
             self.osc_elems_transformation_null(other, dir)
         else:
-            raise("Osculating transform mode not know")
+            raise("Osculating transform mode not known")
 
     def osc_elems_transformation_null(self,other, dir):
         self.a = other.a
