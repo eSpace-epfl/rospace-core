@@ -12,7 +12,7 @@
         <rosparam param="P_bias">[2.35044615e-7, 2.35044615e-7, 100]</rosparam> <!-- 50 arcsec -->
         <rosparam param="P_emp">[1e-14, 1e-14, 1e-14]</rosparam>
 		<rosparam param="Q">[1.06355337e-14, 1.13319817e-18, 8.59857998e-13, 1.61995621e-14, 7.70520510e-15, 2.61757428e-11]</rosparam>
-		<rosparam command="load" file="/home/pantic/cso_ws/eval/orbit_sampling/scenarios_FAR/sample_covariance.txt" />
+		<rosparam command="load" file="$(find cso_gnc_sim)/res/scenarios/scenarios_FAR/sample_covariance.txt" />
 	</group>
 
     <arg name="epoch" value="20170915T12:20:00" />

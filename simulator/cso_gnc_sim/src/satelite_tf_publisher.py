@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+"""
+Publishes satellite location as TF frame for visualizations
+"""
+
 import rospy
 import tf
 import numpy as np
@@ -91,7 +95,7 @@ def handle_target_oe(msg):
                     q_ref,
                    msg.header.stamp,
                   body_frame+"_ref",
-                 "teme")
+                 "J2K")
 
 
 

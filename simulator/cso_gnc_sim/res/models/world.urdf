@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <robot name="cso_visualization">
 
-    <link name="teme">
+    <link name="J2K">
         <visual>
           <geometry>
            <mesh filename="package://cso_gnc_sim/res/meshes/earth-mesh.stl" scale="1 1 1">
@@ -33,14 +33,14 @@
         </visual>
     </link>
 
-    <joint name="target2teme" type="fixed">
-        <parent link="teme"/>
+    <joint name="target2J2K" type="fixed">
+        <parent link="J2K"/>
         <child link="target"/>
         <origin xyz="7000000 0 0 "/>
     </joint>
 
-    <joint name="cso2teme" type="fixed">
-        <parent link="teme"/>
+    <joint name="cso2J2K" type="fixed">
+        <parent link="J2K"/>
         <child link="cso"/>
         <origin xyz="0 0 0 "/>
     </joint>
