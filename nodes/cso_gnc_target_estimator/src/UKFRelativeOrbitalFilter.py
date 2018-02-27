@@ -444,8 +444,10 @@ class UKFRelativeOrbitalFilter:
 
         self.update_lock.acquire()
         try:
-            return [self.t_ukf, self.ukf.x[0:6] * self.O_c.a * 1000, self.ukf.P[0:6, 0:6] * (self.O_c.a * 1000.0) ** 2]
-            #return [self.ukf.x , self.ukf.P * (self.oe_c.a * 1000.0) ** 2]
+            if self.t_ukf == 0:
+                return [False, 0, stf.KepOrbElem()]
+            else:
+                return [True, self.t_ukf, self.get_target_oe(self.ukf.x)]
         finally:
             self.update_lock.release()
 

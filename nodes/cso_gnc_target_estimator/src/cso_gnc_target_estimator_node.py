@@ -76,7 +76,6 @@ if __name__ == '__main__':
                                       mode=mode,
                                       output_debug=True)
 
-    [t_ukf, x, P] = filter.get_state()
 
     # set up combined target/chaser/aon subscription such that they are received synchronized
     # Note: Target state subscription is ONLY used for evaluation and debug!!
@@ -87,24 +86,27 @@ if __name__ == '__main__':
     ts = message_filters.TimeSynchronizer([target_oe_sub, chaser_oe_sub, aon_sub], 10)
     ts.registerCallback(filter.callback_aon)
 
-    # set nominal publish rate
+    # set publisher and rate limiter
+    pub = rospy.Publisher('target_est', OrbitalElementsStamped, queue_size=10)
     r = rospy.Rate(10)
 
     while not rospy.is_shutdown():
 
-        [t_ukf, x, P] = filter.get_state()
+        [valid, t_ukf, osc_O_c_est] = filter.get_state()
 
-        msg = RelOrbElemWithCovarianceStamped()
+        if not valid:
+            continue
+
+        msg = OrbitalElementsStamped()
         msg.header.stamp = rospy.Time.from_seconds(t_ukf)
-        msg.relorbit.relorbit.dA = x[0]
-        msg.relorbit.relorbit.dL = x[1]
-        msg.relorbit.relorbit.dEx = x[2]
-        msg.relorbit.relorbit.dEy = x[3]
-        msg.relorbit.relorbit.dIx = x[4]
-        msg.relorbit.relorbit.dIy = x[5]
-        # flatten matrix in row-major order ("style C")
-        msg.relorbit.covariance = P.flatten("C")
-        #pub.publish(msg)
+        msg.orbit.semimajoraxis = osc_O_c_est.a
+        msg.orbit.eccentricity = osc_O_c_est.e
+        msg.orbit.inclination = np.rad2deg(osc_O_c_est.i)
+        msg.orbit.arg_perigee = np.rad2deg(osc_O_c_est.w)
+        msg.orbit.raan = np.rad2deg(osc_O_c_est.O)
+        msg.orbit.true_anomaly = np.rad2deg(osc_O_c_est.v)
+
+        pub.publish(msg)
 
         r.sleep()
 
