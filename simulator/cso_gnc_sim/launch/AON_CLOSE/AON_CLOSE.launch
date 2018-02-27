@@ -6,9 +6,9 @@
 
 	</group>
 
-    <node pkg="rosbag" type="record" name="rosbag_record_diag"
+   <!-- <node pkg="rosbag" type="record" name="rosbag_record_diag"
        args="record -a --duration=36000 -O /home/pantic/cso_ws/eval/data/AON_CLOSE/$(arg scenario).bag" required="true"/>
-
+-->
 	<group ns="filter_init">
         <rosparam param="R">[1.3538486e-8, 1.3538486e-8]</rosparam> <!-- 24 arcsecs  and 25 mm sigma^2-->
         <rosparam param="P_bias">[2.35044615e-7, 2.35044615e-7]</rosparam> <!-- 100 arcsec -->

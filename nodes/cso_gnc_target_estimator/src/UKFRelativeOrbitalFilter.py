@@ -291,13 +291,8 @@ class UKFRelativeOrbitalFilter:
 
             z = np.zeros(self.n_sensor)
 
-
-
             if self.n_sensor == 3:
-                if self.augment_range:
-                    z[2] = np.linalg.norm(chaser_true_cart.R - target_est_cart.R)*1000
-                else:
-                    z[2] = meas_msg.range
+                    z[2] = meas_msg.value.range
 
             z[0] = meas_msg.value.azimut
             z[1] = meas_msg.value.elevation

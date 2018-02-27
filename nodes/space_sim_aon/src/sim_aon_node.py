@@ -78,7 +78,7 @@ class AONSensorNode:
 
             # if range measurement is activated
             if len(sensor_obj.mu) == 3:
-                msg.range = np.linalg.norm(r_CB) + np.asscalar(np.random.normal(sensor_obj.mu[2], sensor_obj.sigma[2], 1))
+                msg.value.range = np.linalg.norm(r_CB) + np.asscalar(np.random.normal(sensor_obj.mu[2], sensor_obj.sigma[2], 1))
 
         else:
             msg.valid = False

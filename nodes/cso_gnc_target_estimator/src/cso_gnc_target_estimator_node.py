@@ -34,7 +34,6 @@ if __name__ == '__main__':
 
     if enable_emp and enable_bias:
         P_init = scipy.linalg.block_diag(P_roe, P_bias, P_emp)
-
     elif enable_emp and not enable_bias:
         P_init = scipy.linalg.block_diag(P_roe, P_emp)
     elif not enable_emp and enable_bias:
@@ -42,13 +41,10 @@ if __name__ == '__main__':
     else:
         P_init = P_roe
 
-
     R_init = np.diag(np.array(rospy.get_param("~R")).astype(np.float))
     Q_init = np.diag(np.array(rospy.get_param("~Q")).astype(np.float))
 
-    #Q_init = np.diag(np.diag(P_init))/1000
 
-    #Q_factor = float(rospy.get_param("~Q_factor"))
 
     mode = rospy.get_param("~mode")
 
@@ -74,20 +70,13 @@ if __name__ == '__main__':
                                       mode=mode,
                                       augment_range=augment_range)
 
-    #pub = rospy.Publisher("state", RelOrbElemWithCovarianceStamped, queue_size=10)
-    #pub_tar_oe = rospy.Publisher("state_oe", SatelitePose, queue_size=10)
-    # get first state before subscribers start
+
     [t_ukf, x, P] = filter.get_state()
 
-    # sensor subscribers
-    #rospy.Subscriber("aon", AzimutElevationStamped, filter.callback_aon)
-
-    # own state subscriber
-    #rospy.Subscriber("oe", SatelitePose, filter.callback_state)
 
     target_oe_sub = message_filters.Subscriber('target_oe', SatelitePose)
     chaser_oe_sub = message_filters.Subscriber('chaser_oe', SatelitePose)
-    aon_sub = message_filters.Subscriber('aon', AzimutElevationStamped)
+    aon_sub = message_filters.Subscriber('aon', AzimutElevationRangeStamped)
     ts = message_filters.TimeSynchronizer([target_oe_sub, chaser_oe_sub, aon_sub], 10)
     ts.registerCallback(filter.callback_aon)
     # filter publisher
