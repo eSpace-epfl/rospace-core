@@ -38,13 +38,13 @@ class AONSensorNode:
         # vector from chaser to target in chaser body frame in [m]
 
         ## get current rotation of body
-        R_body = transformations.quaternion_matrix([chaser_oe.orientation.x,
+        R_J2K_CB = transformations.quaternion_matrix([chaser_oe.orientation.x,
                                                     chaser_oe.orientation.y,
                                                     chaser_oe.orientation.z,
                                                     chaser_oe.orientation.w])
 
         r_J2K = (S_t.R -S_c.R)*1000
-        r_CB = np.dot(R_body[0:3,0:3].T, r_J2K)
+        r_CB = np.dot(R_J2K_CB[0:3,0:3].T, r_J2K)
 
         # publish observation as marker for visualization
         msg = Marker()

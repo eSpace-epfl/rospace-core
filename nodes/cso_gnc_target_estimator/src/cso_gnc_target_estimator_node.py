@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+"""
+ROS node for relative navigation filtering
+
+    Author: Michael Pantic
+
+"""
 
 import rospy
 import numpy as np
@@ -10,14 +16,14 @@ filter = None
 import space_tf as stf
 import scipy
 import tf
-
 import message_filters
 
 if __name__ == '__main__':
     rospy.init_node("cso_gnc_target_estimator", anonymous=True)
+
+    # read configuration values
     enable_bias = bool(rospy.get_param("~enable_bias"))
     enable_emp = bool(rospy.get_param("~enable_emp"))
-    augment_range = bool(rospy.get_param("~augment_range"))
 
     P_roe = np.array(rospy.get_param("~P")).astype(np.float).reshape((6, 6), order='C')
 
@@ -31,7 +37,7 @@ if __name__ == '__main__':
     else:
         P_emp = np.array((0,0))
 
-
+    # build covariance matrix P based on enabled options
     if enable_emp and enable_bias:
         P_init = scipy.linalg.block_diag(P_roe, P_bias, P_emp)
     elif enable_emp and not enable_bias:
@@ -41,14 +47,14 @@ if __name__ == '__main__':
     else:
         P_init = P_roe
 
+    # set up R and Q
     R_init = np.diag(np.array(rospy.get_param("~R")).astype(np.float))
     Q_init = np.diag(np.array(rospy.get_param("~Q")).astype(np.float))
 
-
-
+    # defines the used mean-to-osculating tranformation
     mode = rospy.get_param("~mode")
 
-    print R_init
+    # Load initial x_roe state
     x_dict = rospy.get_param("~x")
     roe_init = stf.QNSRelOrbElements()
     roe_init.dA = float(x_dict["dA"])
@@ -68,22 +74,23 @@ if __name__ == '__main__':
                                       enable_bias= enable_bias,
                                       enable_emp=enable_emp,
                                       mode=mode,
-                                      augment_range=augment_range)
-
+                                      output_debug=True)
 
     [t_ukf, x, P] = filter.get_state()
 
-
+    # set up combined target/chaser/aon subscription such that they are received synchronized
+    # Note: Target state subscription is ONLY used for evaluation and debug!!
     target_oe_sub = message_filters.Subscriber('target_oe', SatelitePose)
     chaser_oe_sub = message_filters.Subscriber('chaser_oe', SatelitePose)
     aon_sub = message_filters.Subscriber('aon', AzimutElevationRangeStamped)
+
     ts = message_filters.TimeSynchronizer([target_oe_sub, chaser_oe_sub, aon_sub], 10)
     ts.registerCallback(filter.callback_aon)
-    # filter publisher
+
+    # set nominal publish rate
     r = rospy.Rate(10)
 
     while not rospy.is_shutdown():
-
 
         [t_ukf, x, P] = filter.get_state()
 
