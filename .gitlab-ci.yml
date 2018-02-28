@@ -1,18 +1,34 @@
 image: osrf/ros:lunar-desktop-xenial
 
 before_script:
+  - mkdir -p ~/catkin_ws/src
+  - cd ~/catkin_ws/src
+  - if [ ! -f CMakeLists.txt ]; then catkin_init_workspace; else echo "CMakeList file already there";fi
+  - if [ ! -f .rosinstall ]; then wstool init; else echo "rosinstall file already there";fi
+  - ln -s ${CI_PROJECT_DIR} .
+  - cd ~/catkin_ws/src
+  - wstool up
+  - git clone https://github.com/catkin/catkin_simple.git
+  - cd ~/catkin_ws
+  - ls -a
   - apt-get -qq update
   - apt-get -qq install software-properties-common -y
   - add-apt-repository ppa:timsc/opencv-3.2
   - apt-get -qq update
   - apt-get -qq install libopencv-dev python-pip -y
   - pip install numpy sgp4 pytest pdoc matplotlib scikit-learn scipy numpy
-  - PYTHONPATH="${PYTHONPATH}:${CI_PROJECT_DIR}/nodes/space_vision/src/"
+  - PYTHONPATH="${PYTHONPATH}:${CI_PROJECT_DIR}/nodes/space_vision/src/:${CI_PROJECT_DIR}/epoch_clock/src/:${CI_PROJECT_DIR}/rqt_simtime_plugin/src/"
   - export PYTHONPATH
 
-space_vision:
+docs_and_tests:
   script:
-    - pdoc --html --html-dir docs nodes/space_vision/src/vision_algo/
+    - cd ~/catkin_ws
+    - catkin_make
+    - rostest --text ${CI_PROJECT_DIR}/rqt_simtime_plugin/test/simtime_plugin.test 
+    - rostest --text ${CI_PROJECT_DIR}/epoch_clock/test/testSimTime.test
+    - pdoc --html --html-dir docs/docs nodes/space_vision/src/vision_algo/
+    - pdoc --html --html-dir docs/docs epoch_clock/src/epoch_clock/
+    - pdoc --html --html-dir docs/docs rqt_simtime_plugin/src/rqt_simtime_plugin/
     - cp -r docs public
 
   artifacts:

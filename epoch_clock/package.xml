@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>epoch_clock</name>
+  <version>0.0.0</version>
+  <description>
+	   Clock that publishes information about current time in simulation, updates simulation time and sets up
+     the clock service which can be called using the rqt gui.
+  </description>
+
+  <maintainer email="michael.pantic@epfl.ch">Michael Pantic</maintainer>
+  <maintainer email="lanegger.christian@gmail.com"> Christian Lanegger </maintainer>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+  
+  <build_depend>rostest</build_depend>
+
+  <depend>rospy</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>space_msgs</depend>
+
+</package>

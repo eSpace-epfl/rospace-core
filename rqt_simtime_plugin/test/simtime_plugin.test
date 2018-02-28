@@ -1,0 +1,5 @@
+<launch>
+	<test test-name="testSimtimePlguin" pkg="rqt_simtime_plugin" type="test_simtime_plugin_widget.py" time-limit="10.0">
+		<param name="frequency" type="double" value="33.0"/>
+	</test>
+</launch>
