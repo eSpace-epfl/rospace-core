@@ -24,11 +24,11 @@ before_script:
   ## Setup SSH
   - 'which ssh-agent || ( apt-get install openssh-client -y )'
   - eval $(ssh-agent -s)
-  ## - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
   - mkdir -p ~/.ssh
   - chmod 700 ~/.ssh
-  - echo "$SSH_PRIVATE_KEY" >> ~/.ssh/id_rsa && chmod 0600 ~/.ssh/id_rsa
-  - git clone git@gitlab.com:OneSpace/RDV-SIM/orbdyn-tools.git
+  - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
+  - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+  - git clone git@gitlab.com:OneSpace/RDV-SIM/orbdyn-tools.git ${CI_PROJECT_DIR}/orbdyn-tools
 
   ## Add each modules to the Python path
   - PYTHONPATH="${PYTHONPATH}:${CI_PROJECT_DIR}/nodes/space_vision/src/:${CI_PROJECT_DIR}/epoch_clock/src/:${CI_PROJECT_DIR}/rqt_simtime_plugin/src/"
