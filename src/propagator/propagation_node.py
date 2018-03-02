@@ -31,6 +31,7 @@ from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import WrenchStamped
 from space_msgs.msg import ThrustIsp
 from space_msgs.msg import SatelitePose
+from space_msgs.msg import FixedRotationAttitude
 
 
 class ClockServer(threading.Thread):
@@ -292,6 +293,7 @@ if __name__ == '__main__':
     # Subscribe to propulsion node and attitude control
     thrust_force = message_filters.Subscriber('force', WrenchStamped)
     thrust_ispM = message_filters.Subscriber('IspMean', ThrustIsp)
+    att_sub = message_filters.Subscriber('chaser/attitude_ctrl', FixedRotationAttitude)
 
     # Init publisher and rate limiter
     pub_ch = rospy.Publisher('oe_chaser', SatelitePose, queue_size=10)
@@ -313,6 +315,7 @@ if __name__ == '__main__':
     # add callback to thrust function
     Tsync = message_filters.TimeSynchronizer([thrust_force, thrust_ispM], 10)
     Tsync.registerCallback(prop_chaser.add_thrust_callback)
+    att_sub.registerCallback(prop_chaser.attitude_fixed_rot_callback)
 
     prop_target = OrekitPropagator()
     # get settings from yaml file
