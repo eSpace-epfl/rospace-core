@@ -9,7 +9,6 @@ before_script:
   - cd ~/catkin_ws/src
   - wstool up
   - git clone https://github.com/catkin/catkin_simple.git
-  - ssh-agent bash -c 'ssh-add ${SSH_PRIVATE_KEY}; git clone https://gitlab.com/OneSpace/RDV-SIM/orbdyn-tools.git
   - cd ~/catkin_ws
   - ls -a
   - apt-get -qq update
