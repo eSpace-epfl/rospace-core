@@ -39,6 +39,8 @@ from org.orekit.forces.drag.atmosphere.data import MarshallSolarActivityFutureEs
 from org.orekit.attitudes import NadirPointing
 from org.orekit.data import DataProvidersManager
 
+from org.orekit.models.earth import GeoMagneticModelLoader
+
 from org.hipparchus.ode.nonstiff import DormandPrince853Integrator
 from org.hipparchus.geometry.euclidean.threed import Vector3D
 
@@ -78,13 +80,15 @@ def _build_default_earth(methodName):
     '''
     mesg = "\033[93m  [WARN] [Builder." + methodName \
            + "]: No earth defined. Creating default Earth using" \
-           + " OneAxisElliposoid in EME2000 Frame and constants based on"\
+           + " ReferenceElliposoid in EME2000 Frame and constants based on"\
            + " the WGS84 Standard.\033[0m"
     print mesg
 
-    return OneAxisEllipsoid(Cst.WGS84_EARTH_EQUATORIAL_RADIUS,
-                            Cst.WGS84_EARTH_FLATTENING,
-                            FramesFactory.getEME2000())
+    return ReferenceEllipsoid(Cst.WGS84_EARTH_EQUATORIAL_RADIUS,
+                              Cst.WGS84_EARTH_FLATTENING,
+                              FramesFactory.getEME2000(),
+                              Cst.WGS84_EARTH_MU,
+                              Cst.WGS84_EARTH_ANGULAR_VELOCITY)
 
 
 class Builder(object):
@@ -865,7 +869,7 @@ def discretize_outer_surface(solarSettings, discSettings):
             Normal.append(left_Normal)
             Normal.append(right_Normal)
             Area.extend([area_z]*2)
-            Coefs.append([np.array([sat_Ca, sat_Cs])]*2)
+            Coefs.extend([np.array([sat_Ca, sat_Cs])]*2)
 
     # discretization of 2D solar arrays
     if 'SolarArrays' in discSettings:
@@ -899,7 +903,7 @@ def discretize_outer_surface(solarSettings, discSettings):
             for iz in xrange(numSRSolar_z):
                 CoM_z = 0.5 * c_l_z - 0.5 * sol_l_z + iz * c_l_z
 
-                for normal, dC in itertools.izip(dCList, normalList):
+                for dC, normal in itertools.izip(dCList, normalList):
                     CoM.append(Vector3D(float(dC[0] + CoM_x),
                                         float(dC[1]),
                                         float(dC[2] + CoM_z)))
@@ -988,6 +992,7 @@ class AttPropagation(AttitudeFactory):
         gravitySettings = setup['GravityGradient']
         solarSettings = setup['SolarPressure']
         dragSettings = setup['AeroDrag']
+        magSettings = setup['MagneticTorque']
         innerCuboids = None
         surfaceMesh = None
 
@@ -1062,6 +1067,20 @@ class AttPropagation(AttitudeFactory):
                 AttitudeFM['AtmoModel'] = atmo
                 surfaceMesh['Cd'] = dragSettings['DragCoeff']
 
+        if magSettings['add']:
+            gmLoader = GeoMagneticModelLoader()
+            manager = DataProvidersManager.getInstance()
+            manager.feed('WMM.COF', gmLoader)
+
+            # get item from Collection and transform model to year in sim.
+            GM = gmLoader.getModels().iterator().next()
+            GM = GM.transformModel(float(builderInstance.refDate
+                                                        .getDate()
+                                                        .toString()[:4]))
+
+            AttitudeFM['MagneticModel'] = GM
+            AttitudeFM['Earth'] = earth
+
         provider = AttitudePropagation(builderInstance.initialState.getAttitude(),
                                        builderInstance.refDate,
                                        inertiaT,
@@ -1070,6 +1089,11 @@ class AttPropagation(AttitudeFactory):
                                        innerCuboids,
                                        surfaceMesh,
                                        AttitudeFM)
+
+        # for now assume constand dipole vector:
+        x = [float(x) for x in magSettings['Dipole'].split(" ")]
+        dipole = Vector3D(magSettings['Area'], Vector3D(x[0], x[1], x[2]))
+        provider.setDipoleVector(dipole)
 
         propagator.setAttitudeProvider(provider)
 

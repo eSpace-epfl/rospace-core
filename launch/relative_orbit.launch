@@ -8,6 +8,8 @@
 		<remap from="oe_target" to="/target/oe" />
 		<remap from="pose_chaser" to="/chaser/pose" />
 		<remap from="pose_target" to="/target/pose" />
+		<remap from="dtorque_chaser" to="/chaser/dtorque" />
+		<remap from="dtorque_target" to="/target/dtorque" />
 		<remap from="force" to="/chaser/force" />
 		<remap from="IspMean" to="/chaser/IspMean" />   
 	</node>

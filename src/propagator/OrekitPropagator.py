@@ -24,36 +24,33 @@ from org.orekit.attitudes import Attitude, FixedRate, InertialProvider
 from org.hipparchus.geometry.euclidean.threed import Vector3D
 
 
-def write_satellite_state(state):
-    """
-    Method to extract satellite orbit state vector from Java object and put it
-    in a numpy array.
+class DisturbanceTorques(object):
+    def __init__(self):
+        self._add = []
+        self._dtorque = []
 
-    Args:
-        PVCoordinates: satellite state vector
+    @property
+    def add(self):
+        return self._add
 
-    Returns:
-        numpy.array: cartesian state vector in TEME frame
-        numpy.array: current attitude rotation in quaternions
-    """
+    @add.setter
+    def add(self, addedDTorques):
+        self._add = []
+        for added in addedDTorques:
+            self._add.append(added)
 
-    pv = state.getPVCoordinates()
-    cart_teme = space_tf.CartesianTEME()
-    cart_teme.R = np.array([pv.position.x,
-                            pv.position.y,
-                            pv.position.z]) / 1000
-    cart_teme.V = np.array([pv.velocity.x,
-                            pv.velocity.y,
-                            pv.velocity.z]) / 1000
+    @property
+    def dtorque(self):
+        return self._dtorque
 
-    # if hasAttitudeProp:
-    rot_ch = state.getAttitude().getRotation()
-    att = np.array([rot_ch.q1,
-                    rot_ch.q2,
-                    rot_ch.q3,
-                    rot_ch.q0])
-
-    return [cart_teme, att]
+    @dtorque.setter
+    def dtorque(self, new_dtorques):
+        self._dtorque = []
+        for vector in new_dtorques:
+            t_array = np.array([vector.getX(),
+                               vector.getY(),
+                               vector.getZ()])
+            self._dtorque.append(t_array)
 
 
 class OrekitPropagator(object):
@@ -112,6 +109,37 @@ class OrekitPropagator(object):
                                    TimeScalesFactory.getUTC())
         return orekit_date
 
+    @staticmethod
+    def write_satellite_state(state):
+        """
+        Method to extract satellite orbit state vector from Java object and put it
+        in a numpy array.
+
+        Args:
+            PVCoordinates: satellite state vector
+
+        Returns:
+            numpy.array: cartesian state vector in TEME frame
+            numpy.array: current attitude rotation in quaternions
+        """
+
+        pv = state.getPVCoordinates()
+        cart_teme = space_tf.CartesianTEME()
+        cart_teme.R = np.array([pv.position.x,
+                                pv.position.y,
+                                pv.position.z]) / 1000
+        cart_teme.V = np.array([pv.velocity.x,
+                                pv.velocity.y,
+                                pv.velocity.z]) / 1000
+
+        rot_ch = state.getAttitude().getRotation()
+        att = np.array([rot_ch.q1,
+                        rot_ch.q2,
+                        rot_ch.q3,
+                        rot_ch.q0])
+
+        return [cart_teme, att]
+
     def __init__(self):
         self._propagator_num = None
         self._hasAttitudeProp = False
@@ -159,6 +187,7 @@ class OrekitPropagator(object):
 
         if propSettings['attitudeProvider']['type'] == 'AttPropagation':
             self._hasAttitudeProp = True
+            self.attProv = PAP.cast_(self._propagator_num.getAttitudeProvider())
 
         if self.ThrustModel is not None:
             self._hasThrust = True
@@ -183,17 +212,32 @@ class OrekitPropagator(object):
         orekit_date = self.to_orekit_date(epoch)
 
         if self._hasAttitudeProp:
-            self.calculate_torque()
+            self.calculate_external_torque()
 
         if self._hasThrust:
-            # self.change_attitude_provider()
             self.calculate_thrust()
 
         # Place where all the magic happens:
         state = self._propagator_num.propagate(orekit_date)
 
-        # return new state in numpy arrays
-        return write_satellite_state(state)
+        # return and store output of propagation
+        dtorque = self._write_d_torques()
+        [cart_teme, att] = self.write_satellite_state(state)
+        return [cart_teme, att, dtorque]
+
+    def _write_d_torques(self):
+
+        dtorque = DisturbanceTorques()
+
+        if self._hasAttitudeProp:
+            dtorque.add = self.attProv.getAddedDisturbanceTorques()
+            dtorque.dtorque = self.attProv.getDisturbanceTorques()
+        else:
+            dtorque.add = [False]*5
+            zeros_vector = [Vector3D.ZERO]*5
+            dtorque.dtorque = orekit.JArray('object')(zeros_vector, Vector3D)
+
+        return dtorque
 
     def change_attitude_provider(self):
         """
@@ -263,7 +307,7 @@ class OrekitPropagator(object):
             else:
                 self.ThrustModel.firing = False
 
-    def calculate_torque(self):
+    def calculate_external_torque(self):
         """
         Method which feeds external torques to attitude propagation provider.
 
@@ -324,9 +368,12 @@ class OrekitPropagator(object):
 
         return FixedRate(rot_attitude)
 
-    def add_thrust_callback(self, thrust_force, thrust_ispM):
+    def thrust_torque_callback(self, thrust_force, thrust_ispM):
         """
         Callback function for subscriber to the propulsion node.
+
+        Propulsion has to set torque and force back to Zero if no
+        forces/torques present.
 
         Function saves the vlaue for the mean specific impulse and
         the force, torque vector to class objects.

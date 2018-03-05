@@ -31,7 +31,8 @@ from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import WrenchStamped
 from space_msgs.msg import ThrustIsp
 from space_msgs.msg import SatelitePose
-from space_msgs.msg import FixedRotationAttitude
+from space_msgs.msg import SatelliteTorque
+# from space_msgs.msg import FixedRotationStamped
 
 
 class ClockServer(threading.Thread):
@@ -259,6 +260,41 @@ def cart_to_msgs(cart, att, time):
     return [msg, msg_pose]
 
 
+def torque_to_msgs(torque, time):
+
+    msg = SatelliteTorque()
+
+    msg.header.stamp = time
+    msg.header.frame_id = "sat_frame"
+
+    msg.gravity.active_disturbance = torque.add[0]
+    msg.gravity.torque.x = torque.dtorque[0][0]
+    msg.gravity.torque.y = torque.dtorque[0][1]
+    msg.gravity.torque.z = torque.dtorque[0][2]
+
+    msg.magnetic.active_disturbance = torque.add[1]
+    msg.magnetic.torque.x = torque.dtorque[1][0]
+    msg.magnetic.torque.y = torque.dtorque[1][1]
+    msg.magnetic.torque.z = torque.dtorque[1][2]
+
+    msg.solar_pressure.active_disturbance = torque.add[2]
+    msg.solar_pressure.torque.x = torque.dtorque[2][0]
+    msg.solar_pressure.torque.y = torque.dtorque[2][1]
+    msg.solar_pressure.torque.z = torque.dtorque[2][2]
+
+    msg.drag.active_disturbance = torque.add[3]
+    msg.drag.torque.x = torque.dtorque[3][0]
+    msg.drag.torque.y = torque.dtorque[3][1]
+    msg.drag.torque.z = torque.dtorque[3][2]
+
+    msg.external.active_disturbance = torque.add[4]
+    msg.external.torque.x = torque.dtorque[4][0]
+    msg.external.torque.y = torque.dtorque[4][1]
+    msg.external.torque.z = torque.dtorque[4][2]
+
+    return msg
+
+
 if __name__ == '__main__':
     rospy.init_node('propagation_node', anonymous=True)
 
@@ -293,14 +329,16 @@ if __name__ == '__main__':
     # Subscribe to propulsion node and attitude control
     thrust_force = message_filters.Subscriber('force', WrenchStamped)
     thrust_ispM = message_filters.Subscriber('IspMean', ThrustIsp)
-    att_sub = message_filters.Subscriber('chaser/attitude_ctrl', FixedRotationAttitude)
+    # att_sub = message_filters.Subscriber('chaser/attitude_ctrl', FixedRotationStamped)
 
     # Init publisher and rate limiter
     pub_ch = rospy.Publisher('oe_chaser', SatelitePose, queue_size=10)
     pub_pose_ch = rospy.Publisher('pose_chaser', PoseStamped, queue_size=10)
+    pub_dtorque_ch = rospy.Publisher('dtorque_chaser', SatelliteTorque, queue_size=10)
 
     pub_ta = rospy.Publisher('oe_target', SatelitePose, queue_size=10)
     pub_pose_ta = rospy.Publisher('pose_target', PoseStamped, queue_size=10)
+    pub_dtorque_ta = rospy.Publisher('dtorque_target', SatelliteTorque, queue_size=10)
 
     [init_state_ch, init_state_ta] = get_init_state_from_param()
 
@@ -314,8 +352,8 @@ if __name__ == '__main__':
 
     # add callback to thrust function
     Tsync = message_filters.TimeSynchronizer([thrust_force, thrust_ispM], 10)
-    Tsync.registerCallback(prop_chaser.add_thrust_callback)
-    att_sub.registerCallback(prop_chaser.attitude_fixed_rot_callback)
+    Tsync.registerCallback(prop_chaser.thrust_torque_callback)
+    # att_sub.registerCallback(prop_chaser.attitude_fixed_rot_callback)
 
     prop_target = OrekitPropagator()
     # get settings from yaml file
@@ -361,17 +399,22 @@ if __name__ == '__main__':
         rospy_now = rospy.Time.now()
 
         # propagate to epoch_now
-        [cart_ch, att_ch] = prop_chaser.propagate(epoch_now)
-        [cart_t, att_t] = prop_target.propagate(epoch_now)
+        [cart_ch, att_ch, d_torque_ch] = prop_chaser.propagate(epoch_now)
+        [cart_ta, att_ta, d_torque_ta] = prop_target.propagate(epoch_now)
 
         [msg_ch, msg_pose_ch] = cart_to_msgs(cart_ch, att_ch, rospy_now)
-        [msg_t, msg_pose_t] = cart_to_msgs(cart_t, att_t, rospy_now)
+        [msg_ta, msg_pose_ta] = cart_to_msgs(cart_ta, att_ta, rospy_now)
+
+        msg_dtorque_ch = torque_to_msgs(d_torque_ch, rospy_now)
+        msg_dtorque_ta = torque_to_msgs(d_torque_ta, rospy_now)
 
         pub_ch.publish(msg_ch)
         pub_pose_ch.publish(msg_pose_ch)
+        pub_dtorque_ch.publish(msg_dtorque_ch)
 
-        pub_ta.publish(msg_t)
-        pub_pose_ta.publish(msg_pose_t)
+        pub_ta.publish(msg_ta)
+        pub_pose_ta.publish(msg_pose_ta)
+        pub_dtorque_ta.publish(msg_dtorque_ta)
 
         # calculate reminding sleeping time
         sleep_time = SimTime.rate - (time.clock() - comp_time)
