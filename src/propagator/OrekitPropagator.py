@@ -112,8 +112,8 @@ class OrekitPropagator(object):
     @staticmethod
     def write_satellite_state(state):
         """
-        Method to extract satellite orbit state vector from Java object and put it
-        in a numpy array.
+        Method to extract satellite orbit state vector from Java object and put
+        it in a numpy array.
 
         Args:
             PVCoordinates: satellite state vector
@@ -163,9 +163,18 @@ class OrekitPropagator(object):
             propSettings: dictionary containing info about propagator settings
             state: initial state of spacecraft
             epoch: initial epoch @ which state is defined
+
+        Raises:
+            AssertionError: if propagator settings file was not found
         """
 
         OrEpoch = self.to_orekit_date(epoch)
+
+        try:
+            assert propSettings != 0
+        except AssertionError:
+            print "ERROR: Propagator settings file could not be found!"
+            raise
 
         _builder = PB.PropagatorBuilder(propSettings, state, OrEpoch)
         _builder._build_state()

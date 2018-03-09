@@ -207,6 +207,29 @@ def get_init_state_from_param():
             else:
                 raise ValueError("No Anomaly for initialization of target")
 
+    elif rospy.has_param("~oe_ch_init/x"):
+        x = float(rospy.get_param("~oe_ch_init/x"))
+        y = float(rospy.get_param("~oe_ch_init/y"))
+        z = float(rospy.get_param("~oe_ch_init/z"))
+        xDot = float(rospy.get_param("~oe_ch_init/xDot"))
+        yDot = float(rospy.get_param("~oe_ch_init/yDot"))
+        zDot = float(rospy.get_param("~oe_ch_init/zDot"))
+
+        init_state_ch = space_tf.CartesianITRF()
+        init_state_ch.R = np.array([x, y, z])
+        init_state_ch.V = np.array([xDot, yDot, zDot])
+
+        x = float(rospy.get_param("~oe_ta_init/x"))
+        y = float(rospy.get_param("~oe_ta_init/y"))
+        z = float(rospy.get_param("~oe_ta_init/z"))
+        xDot = float(rospy.get_param("~oe_ta_init/xDot"))
+        yDot = float(rospy.get_param("~oe_ta_init/yDot"))
+        zDot = float(rospy.get_param("~oe_ta_init/zDot"))
+
+        init_state_ta = space_tf.CartesianITRF()
+        init_state_ta.R = np.array([x, y, z])
+        init_state_ta.V = np.array([xDot, yDot, zDot])
+
     return [init_state_ch, init_state_ta]
 
 
@@ -304,6 +327,8 @@ if __name__ == '__main__':
         sim_parameter['frequency'] = int(rospy.get_param("~frequency"))
     if rospy.has_param("~oe_epoch"):
         sim_parameter['oe_epoch'] = str(rospy.get_param("~oe_epoch"))
+    if rospy.has_param("~step_size"):
+        sim_parameter['step_size'] = float(rospy.get_param("~step_size"))
 
     SimTime = EpochClock(**sim_parameter)
 
@@ -315,7 +340,7 @@ if __name__ == '__main__':
     # do this before setting /epoch parameter to ensure epoch_clock library
     # can find them
     rospy.set_param('/publish_freq', SimTime.frequency)
-    rospy.set_param('/time_step_size', SimTime.step_size)
+    rospy.set_param('/time_step_size', str(SimTime.step_size))  # set as string, so no overflow
     rospy.set_param('/epoch',
                     SimTime.datetime_oe_epoch.strftime("%Y-%m-%d %H:%M:%S"))
 
@@ -345,7 +370,8 @@ if __name__ == '__main__':
     OrekitPropagator.init_jvm()
     prop_chaser = OrekitPropagator()
     # get settings from yaml file
-    propSettings = rospy.get_param("/chaser/propagator_settings", 0)
+    ch_prop_file = "/" + rospy.get_param("~ns_chaser") + "/propagator_settings"
+    propSettings = rospy.get_param(ch_prop_file, 0)
     prop_chaser.initialize(propSettings,
                            init_state_ch,
                            SimTime.datetime_oe_epoch)
@@ -357,7 +383,8 @@ if __name__ == '__main__':
 
     prop_target = OrekitPropagator()
     # get settings from yaml file
-    propSettings = rospy.get_param("/target/propagator_settings", 0)
+    ta_prop_file = "/" + rospy.get_param("~ns_target") + "/propagator_settings"
+    propSettings = rospy.get_param(ta_prop_file, 0)
     prop_target.initialize(propSettings,
                            init_state_ta,
                            SimTime.datetime_oe_epoch)
@@ -366,13 +393,16 @@ if __name__ == '__main__':
 
     # Update first step so that other nodes don't give errors
     msg_cl = Clock()
-    SimTime.updateClock(msg_cl)
+    msg_cl.clock.secs = int(0)
+    msg_cl.clock.nsecs = int(0)
+    # msg_cl = Clock()
+    # SimTime.updateClock(msg_cl)
     pub_clock.publish(msg_cl)
     # init epoch clock for propagator
     epoch = epoch_clock.Epoch()
+    epoch_now = epoch.now()  # initialize, because simulation starts stopped
 
     while not rospy.is_shutdown():
-
         comp_time = time.clock()
 
         # change of realtime factor requested:
@@ -392,15 +422,14 @@ if __name__ == '__main__':
 
             # update clock
             msg_cl = Clock()
-            SimTime.updateClock(msg_cl)
+            [msg_cl, epoch_now] = SimTime.updateClock(msg_cl)
             pub_clock.publish(msg_cl)
-
-        epoch_now = epoch.now()
-        rospy_now = rospy.Time.now()
 
         # propagate to epoch_now
         [cart_ch, att_ch, d_torque_ch] = prop_chaser.propagate(epoch_now)
         [cart_ta, att_ta, d_torque_ta] = prop_target.propagate(epoch_now)
+
+        rospy_now = rospy.Time.now()
 
         [msg_ch, msg_pose_ch] = cart_to_msgs(cart_ch, att_ch, rospy_now)
         [msg_ta, msg_pose_ta] = cart_to_msgs(cart_ta, att_ta, rospy_now)

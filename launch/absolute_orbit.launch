@@ -1,10 +1,17 @@
 <launch>
+    <arg name="ns_chaser" />
+    <arg name="ns_target" />
+
 	<node pkg="propagator_node" name="propagator_abs" type="propagation_node.py" output="screen" cwd="node">
 		<param name="oe_ta_rel" type="bool" value="False" />
 		<param name="oe_ch_init" type="yaml" value="{a: 7000, e: 0.0001, i: 30, O: 60, w: 120, v: 0.001}" />
 		<param name="oe_ta_init" type="yaml" value="{a: 7000, e: 0.0001, i: 30, O: 60, w: 120, v: 0.001}" />
 		
 		<!-- param name="oe_epoch" value="20000101T12:00:00"/-->
+
+		<param name="ns_chaser" value="$(arg ns_chaser)" />
+		<param name="ns_target" value="$(arg ns_target)" />
+
 		<remap from="oe_chaser" to="/chaser/oe" />
 		<remap from="oe_target" to="/target/oe" />
 		<remap from="pose_chaser" to="/chaser/pose" />

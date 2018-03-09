@@ -19,11 +19,13 @@ from orekit import JArray_double, JArray
 from org.orekit.frames import FramesFactory
 from org.orekit.utils import Constants as Cst
 from org.orekit.utils import IERSConventions as IERS
+from org.orekit.utils import PVCoordinates
 from org.orekit.time import TimeScalesFactory
 from org.orekit.bodies import OneAxisEllipsoid, CelestialBodyFactory
 from org.orekit.bodies import CelestialBody
 from org.orekit.models.earth import ReferenceEllipsoid
 from org.orekit.orbits import KeplerianOrbit, OrbitType, PositionAngle
+from org.orekit.orbits import CartesianOrbit
 from org.orekit.propagation import SpacecraftState
 from org.orekit.propagation.numerical import NumericalPropagator
 from org.orekit.forces import BoxAndSolarArraySpacecraft
@@ -485,12 +487,12 @@ class StateFactory(object):
         """Build spacecraft state based on type selected"""
 
 
-class Keplerian(StateFactory):
+class KeplerianEME2000(StateFactory):
 
     @staticmethod
     def isApplicable(name):
 
-        if name == "Keplerian":
+        if name == "KeplerianEME2000":
             return True
         else:
             return False
@@ -525,6 +527,58 @@ class Keplerian(StateFactory):
 
         initialOrbit = KeplerianOrbit(a*1000, e, i, w, O, v,
                                       PositionAngle.TRUE,
+                                      inertialFrame,
+                                      epoch,
+                                      Cst.WGS84_EARTH_MU)
+
+        initialState = SpacecraftState(initialOrbit, SatMass)
+
+        return [inertialFrame, initialOrbit, initialState]
+
+
+class CartesianITRF2008(StateFactory):
+
+    @staticmethod
+    def isApplicable(name):
+
+        if name == "CartesianITRF2008":
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def Setup(epoch, state, setup):
+        """
+        Create initial spacecraft state and orbit using PV-Coordinates in ITRF2008 Frame.
+
+        Args:
+            epoch: initial epoch or orbital elements
+            state: initial state of satellite [Position, Velocity]
+            setup: additional settings defined in dictionary
+
+        Returns:
+            inertialFrame: EME2000 as inertial Frame of Orbit
+            initialOrbit: Keplerian orbit
+            initialState: Spacecraft state
+        """
+
+        SatMass = setup['mass']
+
+        p = Vector3D(float(state.R[0]),
+                     float(state.R[1]),
+                     float(state.R[2]))
+        v = Vector3D(float(state.V[0]),
+                     float(state.V[1]),
+                     float(state.V[2]))
+
+        # Inertial frame where the satellite is defined (and earth)
+        inertialFrame = FramesFactory.getEME2000()
+        # don't ignore tidal effects
+        orbitFrame = FramesFactory.getITRF(IERS.IERS_2010, False)
+        ITRF2EME = orbitFrame.getTransformTo(inertialFrame, epoch)
+        pv_EME = ITRF2EME.transformPVCoordinates(PVCoordinates(p, v))
+
+        initialOrbit = CartesianOrbit(pv_EME,
                                       inertialFrame,
                                       epoch,
                                       Cst.WGS84_EARTH_MU)
