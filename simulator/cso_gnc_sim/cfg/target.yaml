@@ -1,10 +1,10 @@
-name: "TARGET-v0"
+name: "TARGET"
 
 propagator_settings:
   name: "TARGET"
   orbitProp:
     State:
-      type: 'Keplerian'
+      type: 'CartesianITRF2008'
       settings:
         mass: 0.82 # kg
     Gravity:

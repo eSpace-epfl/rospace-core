@@ -1,0 +1,74 @@
+propagator_settings:
+  name: "ENVISAT"
+  orbitProp:
+    State:
+      type: 'CartesianITRF2008'
+      settings:
+        mass: 800.0 # kg
+    Gravity:
+      type: "GravityPertAndRefEllipsoid"
+      settings: # Spherical Harmonics Field Coeffs
+        degree: 140
+        order: 140
+    Thrust:
+      type: "" #ThrustModelVariable
+      settings: ""
+    SatShape: # Settings for creation of spacecraft model
+        type: "FacetsAndFixedSolarArray"
+        settings:
+          Facets: ## area in [m2]
+            front:
+              area: 110.25
+              nVector: 1 0 0  
+            back: 
+              area: 110.25
+              nVector: -1 0 0
+            left: 
+              area: 6.25
+              nVector: 0 0 1
+            right:
+              area: 6.25
+              nVector: 0 0 -1
+            top:
+              area: 26.25
+              nVector: 0 -1 0
+            bottom: 
+              area: 26.25
+              nVector: 0 1 0
+          SolarArea: 37.5 # 313x960 * 2
+          SolarDir: 0 1 1
+          absCoeff: 0.34
+          refCoeff: 0.66
+          dragCoeff: 2.0
+          liftRatio: 0.0 
+    SolarModel: # Solar pressure force model
+        type: "SolarPressureBoxModel"
+        settings:
+          abs_Estimated: True # false = fixed
+          ref_Estimated: True # false = fixed 
+    DragModel: # Drag force model
+        type: "DragDTM2000"
+        settings:
+          cD_Estimated: True # if false cD fixed
+    integrator: # Steps have to be floats
+      minStep: 0.01
+      maxStep: 1000.0
+      initStep: 0.1
+      positionTolerance: 0.1
+    ThirdBody: 
+      Sun: True
+      Moon: True
+    SolidTides: # bodies which generate tides
+      add: True
+      settings:
+        Sun: True
+        Moon: True
+    OceanTides:
+      add: True
+      settings:
+        degree: 5
+        order: 5
+    addRelativity: True
+  attitudeProvider:
+    type:  'AttNadir'
+    settings: ""
