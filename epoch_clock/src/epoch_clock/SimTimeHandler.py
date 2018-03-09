@@ -6,7 +6,7 @@
 # See the LICENSE.md file in the root of this repository
 # for complete details.
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 class SimTimeHandler(object):
@@ -73,7 +73,10 @@ class SimTimeHandler(object):
         full_seconds = int(self.currentTime*1e-9)
         msg_cl.clock.secs = full_seconds
         msg_cl.clock.nsecs = int(self.currentTime - full_seconds*1e9)
-        return msg_cl
+
+        time_delta = timedelta(0, msg_cl.clock.secs, msg_cl.clock.nsecs / 1e3)
+
+        return [msg_cl, self.datetime_oe_epoch + time_delta]
 
     def updateTimeFactors(self, new_rtf, new_freq, new_dt):
         """

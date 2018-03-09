@@ -11,6 +11,7 @@ import inspect
 import time
 from time import sleep
 from threading import RLock
+import Queue
 
 from SimTimeHandler import SimTimeHandler
 from SimTimeService import SimTimeService
@@ -40,9 +41,11 @@ class SimTimeClock(object):
     def __init__(self):
         # Internal members:
         self._time_driving_node = ''  # name of node driving time
+        self._epoch_now = None        # current epoch @ time step
         self._comp_time = None        # wall time passed in one iteration
         self._SimTime = None          # holds SimTimeHandler object
         self._lock = RLock()          # lock for thread safety
+        self._queue = Queue.Queue()    # queue to return epoch_now
 
     @property
     def datetime_oe_epoch(self):
@@ -53,10 +56,10 @@ class SimTimeClock(object):
             return None
 
     def _publish_sim_time(self):
-        """Updates and publishes simulation time"""
+        """Updates and publishes simulation time. Epoch_now is changed here."""
 
         msg_cl = Clock()
-        self._SimTime.updateClock(msg_cl)
+        [msg_cl, self._epoch_now] = self._SimTime.updateClock(msg_cl)
         self.pub_clock.publish(msg_cl)
 
     def set_up_simulation_time(self):
@@ -66,8 +69,8 @@ class SimTimeClock(object):
         first node requesting to drive the simulation time. Once requested,
         no other node should influence the update of the simulation time.
 
-        Also the initial time step is published to the clock topic, in case
-        any node cannot handle time zero.
+        Also the time 0 is published to the clock topic, in case
+        any node cannot handle if nothing is published to /clock.
 
         Raises:
             RuntimeError: if method called more than once per simulation
@@ -111,8 +114,12 @@ class SimTimeClock(object):
 
             self.epoch = Epoch()
 
-            # Update first step so that other nodes don't give errors
-            self._publish_sim_time()
+            # Publish to /clock for 1. time so other nodes don't give errors
+            msg_cl = Clock()
+            msg_cl.clock.secs = int(0)
+            msg_cl.clock.nsecs = int(0)
+            self.pub_clock.publish(msg_cl)
+            self._epoch_now = self.epoch.now()
         else:
             raise RuntimeError("Time is already being driven by " +
                                self._time_driving_node + ". Only one node " +
@@ -128,6 +135,14 @@ class SimTimeClock(object):
 
         Also if any changes to time paramaters have been set in GUI they are
         updated here before publishing.
+
+        This method also returns the current epoch as datetime object. This
+        is done, since somethimes obtaining this object through the epoch
+        class right after publishing returns the old object, resulting in
+        skipping the next timestep.
+
+        Returns:
+            datetime: current epoch as datetime object
 
         Raises:
             RuntimeError: If used without the sleep_to_keep_frequency method
@@ -165,7 +180,11 @@ class SimTimeClock(object):
                 # update clock
                 self._publish_sim_time()
 
+        self._queue.put(self._epoch_now)
+
         self._lock.release()
+
+        return self._queue.get()
 
     def sleep_to_keep_frequency(self):
         """Sleeps if simulation is quicker than requested. Warns if slower.
