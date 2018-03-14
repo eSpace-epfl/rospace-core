@@ -14,7 +14,7 @@ import numpy as np
 import message_filters
 import space_tf
 from space_msgs.msg import SatelitePose
-from geometry_msgs.msg import PoseStamped
+from space_msgs.msg import PoseVelocityStamped
 
 sensor_cfg = 0
 position_mode = 0
@@ -124,7 +124,7 @@ if __name__ == '__main__':
 
     if position_mode == "absolute" or position_mode == "zero_pos":
         rospy.Subscriber('pose',
-                         PoseStamped,
+                         PoseVelocityStamped,
                          handle_pose)
 
         rospy.Subscriber('target_oe',
@@ -132,8 +132,8 @@ if __name__ == '__main__':
                          handle_target_oe)
 
     elif position_mode == "relative":
-        pose_sub = message_filters.Subscriber('pose', PoseStamped)
-        relative_parent_sub = message_filters.Subscriber('relative_parent', PoseStamped)
+        pose_sub = message_filters.Subscriber('pose', PoseVelocityStamped)
+        relative_parent_sub = message_filters.Subscriber('relative_parent', PoseVelocityStamped)
         ts = message_filters.TimeSynchronizer([pose_sub, relative_parent_sub], 10)
         ts.registerCallback(handle_sync)
 

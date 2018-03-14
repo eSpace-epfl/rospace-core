@@ -1,20 +1,20 @@
 propagator_settings:
-  name: "ENVISAT"
+  name: "FLOCK1C"
   orbitProp:
     State:
-      type: 'CartesianITRF'
+      type: 'CartesianEME2000'
       settings:
-        mass: 800.0 # kg
+        mass: 5.2 # kg
     integrator: # Steps have to be floats
       minStep: 0.001
-      maxStep: 10
+      maxStep: 30
       initStep: 0.1
       positionTolerance: 0.001
     Gravity:
-      type: "EGM96GravityWGS84"
+      type: "GDRDGravityGRIM5C1RefEllipsoid"
       settings: # Spherical Harmonics Field Coeffs
-        degree: 240
-        order: 240
+        degree: 10
+        order: 10
     Thrust:
       type: "" #ThrustModelVariable
       settings: ""
@@ -23,25 +23,25 @@ propagator_settings:
         settings:
           Facets: ## area in [m2]
             front:
-              area: 26.25
+              area: 0.01
               nVector: 1 0 0  
             back: 
-              area: 26.25
+              area: 0.01
               nVector: -1 0 0
             left: 
-              area: 6.25
+              area: 0.034
               nVector: 0 0 1
             right:
-              area: 6.25
+              area: 0.034
               nVector: 0 0 -1
             top:
-              area: 26.25
+              area: 0.034
               nVector: 0 -1 0
             bottom: 
-              area: 26.25
+              area: 0.034
               nVector: 0 1 0
-          SolarArea: 37.5 # 313x960 * 2
-          SolarDir: 0 1 1
+          SolarArea: 0.078 # 313x960 * 2
+          SolarDir: 0 0 1
           absCoeff: 0.34
           refCoeff: 0.66
           dragCoeff: 2.0
@@ -66,9 +66,9 @@ propagator_settings:
     OceanTides:
       add: True
       settings:
-        degree: 50
-        order: 50
-    addRelativity: True
+        degree: 20
+        order: 20
+    addRelativity: False
   attitudeProvider:
     type:  'AttNadir'
     settings: ""
