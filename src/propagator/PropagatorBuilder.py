@@ -21,7 +21,7 @@ from org.orekit.utils import Constants as Cst
 from org.orekit.utils import IERSConventions as IERS
 from org.orekit.utils import PVCoordinates
 from org.orekit.time import TimeScalesFactory
-from org.orekit.bodies import OneAxisEllipsoid, CelestialBodyFactory
+from org.orekit.bodies import CelestialBodyFactory
 from org.orekit.bodies import CelestialBody
 from org.orekit.models.earth import ReferenceEllipsoid
 from org.orekit.orbits import KeplerianOrbit, OrbitType, PositionAngle
@@ -36,6 +36,7 @@ from org.orekit.forces.gravity import HolmesFeatherstoneAttractionModel
 from org.orekit.forces.gravity import ThirdBodyAttraction
 from org.orekit.forces.gravity import SolidTides, OceanTides, Relativity
 from org.orekit.forces.gravity.potential import GravityFieldFactory
+from org.orekit.forces.gravity.potential import EGMFormatReader, ICGEMFormatReader
 from org.orekit.forces.drag.atmosphere import DTM2000
 from org.orekit.forces.drag.atmosphere.data import MarshallSolarActivityFutureEstimation
 from org.orekit.attitudes import NadirPointing
@@ -49,7 +50,9 @@ from org.hipparchus.geometry.euclidean.threed import Vector3D
 
 def _build_default_gravity_Field(methodName):
     """
-    Build gravity field using Normalized Provider with degree and order of 5.
+    Build gravity field using Normalized Provider with degree and order of 10.
+
+    Gravity model used: eigen-6s
 
     Args:
         methodName: name of method calling this function (for printing warning)
@@ -58,18 +61,21 @@ def _build_default_gravity_Field(methodName):
         NormalizedSphericalHarmonicsProvider: provids norm. spherical harmonics
 
     """
+    gfReader = EGMFormatReader('eigen-6s.gfc', False)
+    GravityFieldFactory.addPotentialCoefficientsReader(gfReader)
+
     mesg = "\033[93m  [WARN] [Builder." + methodName\
            + "]: No Gravity Field defined. Creating default using"\
-           + " NormalizedProvider of degree and order 5.\033[0m"
+           + " NormalizedProvider of degree and order 10.\033[0m"
 
     print mesg
 
-    return GravityFieldFactory.getNormalizedProvider(5, 5)
+    return GravityFieldFactory.getNormalizedProvider(10, 10)
 
 
 def _build_default_earth(methodName):
     '''
-    Build earth object in EME2000 Frame using OneAxisElliposoid as Earth model.
+    Build earth object using OneAxisElliposoid and GTOD as body frame.
 
     Uses Constants based on WGS84 Standard from Orekit library.
 
@@ -77,20 +83,40 @@ def _build_default_earth(methodName):
         methodName: name of method calling this function (for printing warning)
 
     Returns:
-        OneAxisEllipsoid: non-rotating Earth Body
+        ReferenceEllipsoid: Earth Body with rotating body frame
 
     '''
     mesg = "\033[93m  [WARN] [Builder." + methodName \
            + "]: No earth defined. Creating default Earth using" \
-           + " ReferenceElliposoid in EME2000 Frame and constants based on"\
-           + " the WGS84 Standard.\033[0m"
+           + " ReferenceElliposoid with GTOD as body frame and constants based"\
+           + "  on the WGS84 Standard.\033[0m"
     print mesg
 
     return ReferenceEllipsoid(Cst.WGS84_EARTH_EQUATORIAL_RADIUS,
                               Cst.WGS84_EARTH_FLATTENING,
-                              FramesFactory.getEME2000(),
+                              FramesFactory.getGTOD(IERS.IERS_2010, False),
                               Cst.WGS84_EARTH_MU,
                               Cst.WGS84_EARTH_ANGULAR_VELOCITY)
+
+
+def _get_name_of_loaded_file(folder_name):
+    '''
+    Gets names of files in defined folder loaded by the data provider.
+
+    Args:
+        folder_name: string of folder name containing files
+
+    Returns:
+        List<String>: all file names loaded by data provider in folder
+    '''
+    file_names = []
+    manager = DataProvidersManager.getInstance()
+    string_set = manager.getLoadedDataNames()
+    for i in string_set:
+        if folder_name in i:
+            file_names.append(i.rsplit('/', 1)[1])
+
+    return file_names
 
 
 class Builder(object):
@@ -198,8 +224,11 @@ class PropagatorBuilder(Builder):
                 break
 
         if self.initialState is None:
-            raise ValueError("No existing state class defined. \
-                            State could not be build!")
+            raise ValueError("No existing state class defined. " +
+                             "State could not be build!")
+        else:
+            print "  [INFO]: Satellite state created in %s Frame."\
+                  % (self.inertialFrame.getName())
 
     def _build_integrator(self):
         """
@@ -221,22 +250,25 @@ class PropagatorBuilder(Builder):
                                                   self.orbitType)
 
         self.integrator = \
-            DormandPrince853Integrator(minStep, maxStep,
+            DormandPrince853Integrator(float(minStep), float(maxStep),
                                        JArray_double.cast_(self.tol[0]),
                                        # Double array of doubles
                                        # needs to be casted in Python
                                        JArray_double.cast_(self.tol[1]))
 
-        self.integrator.setInitialStepSize(initStep)
+        self.integrator.setInitialStepSize(float(initStep))
 
     def _build_propagator(self):
         """
-        Build of propagator object and add integrator and initial State to it.
+        Build propagator object and add integrator and initial State to it.
         """
 
         self.propagator = NumericalPropagator(self.integrator)
         self.propagator.setOrbitType(self.orbitType)
         self.propagator.setInitialState(self.initialState)
+
+        print "  [INFO]: Propagator created with %s integrator & %s orbit."\
+              % (str(self.integrator.getName()), str(self.orbitType))
 
     def _build_attitude_propagation(self):
         """
@@ -261,11 +293,14 @@ class PropagatorBuilder(Builder):
         GM = self.orbSettings['Gravity']
         for model in GMFactory:
             if model.isApplicable(GM['type']):
-                [prop, earth, gravField] = model.Setup(self.propagator,
-                                                       GM['settings'])
+                [prop, earth, gravField, file] = model.Setup(self.propagator,
+                                                             GM['settings'])
                 self.propagator = prop
                 self.earth = earth
                 self.gravField = gravField
+
+                print "  [INFO]: Gravity pertubation added. Using \'%s\' file."\
+                      % (file[0])
                 break
 
     def _build_thirdBody(self):
@@ -536,12 +571,12 @@ class KeplerianEME2000(StateFactory):
         return [inertialFrame, initialOrbit, initialState]
 
 
-class CartesianITRF2008(StateFactory):
+class CartesianITRF(StateFactory):
 
     @staticmethod
     def isApplicable(name):
 
-        if name == "CartesianITRF2008":
+        if name == "CartesianITRF":
             return True
         else:
             return False
@@ -558,7 +593,7 @@ class CartesianITRF2008(StateFactory):
 
         Returns:
             inertialFrame: EME2000 as inertial Frame of Orbit
-            initialOrbit: Keplerian orbit
+            initialOrbit: Cartesian orbit
             initialState: Spacecraft state
         """
 
@@ -586,6 +621,54 @@ class CartesianITRF2008(StateFactory):
         initialState = SpacecraftState(initialOrbit, SatMass)
 
         return [inertialFrame, initialOrbit, initialState]
+
+
+class CartesianEME2000(StateFactory):
+
+    @staticmethod
+    def isApplicable(name):
+
+        if name == "CartesianEME2000":
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def Setup(epoch, state, setup):
+        """
+        Create initial spacecraft state and orbit using PV-Coordinates in J2000 Frame.
+
+        Args:
+            epoch: initial epoch or orbital elements
+            state: initial state of satellite [Position, Velocity]
+            setup: additional settings defined in dictionary
+
+        Returns:
+            inertialFrame: EME2000 as inertial Frame of Orbit
+            initialOrbit: Cartesian orbit
+            initialState: Spacecraft state
+        """
+
+        SatMass = setup['mass']
+
+        p = Vector3D(float(state.R[0]),
+                     float(state.R[1]),
+                     float(state.R[2]))
+        v = Vector3D(float(state.V[0]),
+                     float(state.V[1]),
+                     float(state.V[2]))
+
+        # Inertial frame where the satellite is defined (and earth)
+        inertialFrame = FramesFactory.getEME2000()
+
+        initialOrbit = CartesianOrbit(PVCoordinates(p, v),
+                                      inertialFrame,
+                                      epoch,
+                                      Cst.WGS84_EARTH_MU)
+
+        initialState = SpacecraftState(initialOrbit, SatMass)
+
+        return [inertialFrame, initialOrbit, initialState]
 #####################################################################
 
 
@@ -606,11 +689,11 @@ class GravityFactory(object):
         """Create gravity field and add force model to propagator."""
 
 
-class GravityPert(GravityFactory):
+class EigenGravityWGS84(GravityFactory):
 
     @staticmethod
     def isApplicable(name):
-        if name == "GravityPert":
+        if name == "EigenGravityWGS84":
             return True
         else:
             return False
@@ -620,66 +703,32 @@ class GravityPert(GravityFactory):
         """
         Add gravity pertubation using the HolmesFeatherstoneAttractionModel.
 
-        As Earth Model a OneAxisEllipsoid is used specified in the same
-        inertial Frame as the satellite state. The Earth is not rotating.
+        As Earth model a ReferenceEllipsoid is used, with GTOD as body frame
+        (tidal effects are not ignored when interpolating EOP).
 
-        Uses WGS84 norm for the equatorial radius and flattening.
+        Uses WGS84 norm for the equatorial radius, flattening, standard
+        grav. parameter and angular velocity.
+
+        The Eigen-6s gravity model is used to compute the gravity field.
 
         Args:
             propagator: propagator object
-            setup: settings defined in dictionary and needed for build
+            setup: additional settings defined in dictionary
 
         Returns:
             Propagator: propagator
-            OneAxisEllipsoid: Earth body
+            ReferenceEllipsoid: Earth body with GTOD as body frame
             NormalizedSphericalHarmonicsProvider: gravity field
+            String: name of file used for the calculation of gravity potential
         """
-
-        earth = OneAxisEllipsoid(Cst.WGS84_EARTH_EQUATORIAL_RADIUS,
-                                 Cst.WGS84_EARTH_FLATTENING,
-                                 propagator.getFrame())
-
-        degree = setup['degree']
-        order = setup['order']
-        gravField = GravityFieldFactory.getNormalizedProvider(degree, order)
-        gravModel = HolmesFeatherstoneAttractionModel(earth.getBodyFrame(),
-                                                      gravField)
-
-        propagator.addForceModel(gravModel)
-
-        return [propagator, earth, gravField]
-
-
-class GravityPertAndRefEllipsoid(GravityFactory):
-
-    @staticmethod
-    def isApplicable(name):
-        if name == "GravityPertAndRefEllipsoid":
-            return True
-        else:
-            return False
-
-    @staticmethod
-    def Setup(propagator, setup):
-        """
-        Add gravity pertubation using the HolmesFeatherstoneAttractionModel.
-
-        As Earth model a ReferenceEllipsoid is used specified in the same
-        inertial Frame as the satellite state.
-
-        Uses WGS84 norm for the equatorial radius, flattening, standard
-        grav. parameter and angular velocity. Earth is rotating at a constant
-        rate.
-
-        Returns:
-            Propagator: propagator
-            ReferenceEllipsoid: Earth body
-            NormalizedSphericalHarmonicsProvider: gravity field
-        """
+        GravityFieldFactory.clearPotentialCoefficientsReaders()
+        supported = GravityFieldFactory.ICGEM_FILENAME
+        gfReader = ICGEMFormatReader(supported, False)
+        GravityFieldFactory.addPotentialCoefficientsReader(gfReader)
 
         earth = ReferenceEllipsoid(Cst.WGS84_EARTH_EQUATORIAL_RADIUS,
                                    Cst.WGS84_EARTH_FLATTENING,
-                                   propagator.getFrame(),
+                                   FramesFactory.getGTOD(IERS.IERS_2010, False),
                                    Cst.WGS84_EARTH_MU,
                                    Cst.WGS84_EARTH_ANGULAR_VELOCITY)
 
@@ -691,7 +740,77 @@ class GravityPertAndRefEllipsoid(GravityFactory):
 
         propagator.addForceModel(gravModel)
 
-        return [propagator, earth, gravField]
+        file_name = _get_name_of_loaded_file('Potential')
+        if len(file_name) > 1:
+            file_name = file_name[0]  # orekit uses first loaded file
+        elif len(file_name) == 0:
+            # error should be trhown before this when creating gravModel!
+            raise ValueError('No gravity potential file loaded!')
+
+        return [propagator, earth, gravField, file_name]
+
+
+class EGM96GravityWGS84(GravityFactory):
+
+    @staticmethod
+    def isApplicable(name):
+        if name == "EGM96GravityWGS84":
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def Setup(propagator, setup):
+        """
+        Add gravity pertubation using the HolmesFeatherstoneAttractionModel.
+
+        As Earth model a ReferenceEllipsoid is used, with GTOD as body frame
+        (tidal effects are not ignored when interpolating EOP).
+
+        Uses WGS84 norm for the equatorial radius, flattening, standard
+        grav. parameter and angular velocity.
+
+        The EGM96 gravity model is used to compute the gravity field.
+
+        Args:
+            propagator: propagator object
+            setup: additional settings defined in dictionary
+
+        Returns:
+            Propagator: propagator
+            ReferenceEllipsoid: Earth body with GTOD body frame
+            NormalizedSphericalHarmonicsProvider: gravity field
+            String: name of file used for the calculation of gravity potential
+        """
+
+        GravityFieldFactory.clearPotentialCoefficientsReaders()
+        supported = GravityFieldFactory.EGM_FILENAME
+        gfReader = EGMFormatReader(supported, False)
+        GravityFieldFactory.addPotentialCoefficientsReader(gfReader)
+
+        earth = ReferenceEllipsoid(Cst.WGS84_EARTH_EQUATORIAL_RADIUS,
+                                   Cst.WGS84_EARTH_FLATTENING,
+                                   FramesFactory.getGTOD(IERS.IERS_2010, False),
+                                   Cst.WGS84_EARTH_MU,
+                                   Cst.WGS84_EARTH_ANGULAR_VELOCITY)
+
+        degree = setup['degree']
+        order = setup['order']
+
+        gravField = GravityFieldFactory.getNormalizedProvider(degree, order)
+        gravModel = HolmesFeatherstoneAttractionModel(earth.getBodyFrame(),
+                                                      gravField)
+
+        propagator.addForceModel(gravModel)
+
+        file_name = _get_name_of_loaded_file('Potential')
+        if len(file_name) > 1:
+            file_name = file_name[0]  # orekit uses first loaded file
+        elif len(file_name) == 0:
+            # error should be trhown before this when creating gravModel!
+            raise ValueError('No gravity potential file loaded!')
+
+        return [propagator, earth, gravField, file_name]
 #####################################################################
 
 

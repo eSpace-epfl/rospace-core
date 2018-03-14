@@ -27,7 +27,7 @@ from EpochClock import EpochClock
 from rosgraph_msgs.msg import Clock
 from space_msgs.srv import ClockService
 from space_msgs.srv import SyncNodeService
-from geometry_msgs.msg import PoseStamped
+from space_msgs.msg import PoseVelocityStamped
 from geometry_msgs.msg import WrenchStamped
 from space_msgs.msg import ThrustIsp
 from space_msgs.msg import SatelitePose
@@ -269,7 +269,7 @@ def cart_to_msgs(cart, att, time):
     msg.orientation.w = att[3]
 
     # set message for cartesian TEME pose
-    msg_pose = PoseStamped()
+    msg_pose = PoseVelocityStamped()
     msg_pose.header.stamp = time
     msg_pose.header.frame_id = "teme"
     msg_pose.pose.position.x = cart.R[0]
@@ -279,6 +279,9 @@ def cart_to_msgs(cart, att, time):
     msg_pose.pose.orientation.y = att[1]
     msg_pose.pose.orientation.z = att[2]
     msg_pose.pose.orientation.w = att[3]
+    msg_pose.velocity.x = cart.V[0]
+    msg_pose.velocity.y = cart.V[1]
+    msg_pose.velocity.z = cart.V[2]
 
     return [msg, msg_pose]
 
@@ -358,11 +361,11 @@ if __name__ == '__main__':
 
     # Init publisher and rate limiter
     pub_ch = rospy.Publisher('oe_chaser', SatelitePose, queue_size=10)
-    pub_pose_ch = rospy.Publisher('pose_chaser', PoseStamped, queue_size=10)
+    pub_pose_ch = rospy.Publisher('pose_chaser', PoseVelocityStamped, queue_size=10)
     pub_dtorque_ch = rospy.Publisher('dtorque_chaser', SatelliteTorque, queue_size=10)
 
     pub_ta = rospy.Publisher('oe_target', SatelitePose, queue_size=10)
-    pub_pose_ta = rospy.Publisher('pose_target', PoseStamped, queue_size=10)
+    pub_pose_ta = rospy.Publisher('pose_target', PoseVelocityStamped, queue_size=10)
     pub_dtorque_ta = rospy.Publisher('dtorque_target', SatelliteTorque, queue_size=10)
 
     [init_state_ch, init_state_ta] = get_init_state_from_param()
