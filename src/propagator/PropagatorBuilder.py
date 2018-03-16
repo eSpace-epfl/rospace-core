@@ -41,7 +41,6 @@ from org.orekit.forces.drag.atmosphere import DTM2000
 from org.orekit.forces.drag.atmosphere.data import MarshallSolarActivityFutureEstimation
 from org.orekit.attitudes import NadirPointing
 from org.orekit.data import DataProvidersManager
-
 from org.orekit.models.earth import GeoMagneticModelLoader
 
 from org.hipparchus.ode.nonstiff import DormandPrince853Integrator
@@ -88,8 +87,8 @@ def _build_default_earth(methodName):
     '''
     mesg = "\033[93m  [WARN] [Builder." + methodName \
            + "]: No earth defined. Creating default Earth using" \
-           + " ReferenceElliposoid with GTOD as body frame and constants based"\
-           + "  on the WGS84 Standard.\033[0m"
+           + " ReferenceElliposoid with GTOD and IERS2010 conventions as"\
+           + " body frame and constants based on the WGS84 Standard.\033[0m"
     print mesg
 
     return ReferenceEllipsoid(Cst.WGS84_EARTH_EQUATORIAL_RADIUS,
@@ -99,7 +98,7 @@ def _build_default_earth(methodName):
                               Cst.WGS84_EARTH_ANGULAR_VELOCITY)
 
 
-def _get_name_of_loaded_file(folder_name):
+def _get_name_of_loaded_files(folder_name):
     '''
     Gets names of files in defined folder loaded by the data provider.
 
@@ -158,7 +157,7 @@ class PropagatorBuilder(Builder):
     If for no subclass is found for corresponding type, no propagtor attributes
     will be changed.
 
-    Here is an fictional example for the _build_state method:
+    Here is an possible example for the _build_state method:
         State:
             type: 'Keplerian'
             settings:
@@ -478,10 +477,12 @@ class PropagatorBuilder(Builder):
                 break
 
     def get_propagator(self):
-        '''
+        """
         Call after build has been completed.
-        Returns finished propagator object.
-        '''
+
+        Returns:
+            Object: finished propagator.
+        """
 
         # Print all force models which are being integrated
         print "[%s]: added Force models: \n%s"\
@@ -490,17 +491,22 @@ class PropagatorBuilder(Builder):
         return self.propagator
 
     def get_earth(self):
-        '''
-        Returns Earth object which was created during gravity build.
-        '''
-
-        return self.earth
+        """
+        Returns:
+            Object: Earth object which was created during gravity build. If
+                    none was created a default Earth object is created.
+        """
+        if self.earth is None:
+            return _build_default_earth('get_earth')
+        else:
+            return self.earth
 
     def get_thrust_model(self):
-        '''
-        Returns thrust model if build and added to propagator.
-        Otherwise returns None.
-        '''
+        """
+        Returns:
+            Object: Thrust model if build and added to propagator
+                    (otherwise returns None).
+        """
 
         return self.thrustM
 
@@ -740,7 +746,7 @@ class EigenGravityWGS84(GravityFactory):
 
         propagator.addForceModel(gravModel)
 
-        file_name = _get_name_of_loaded_file('Potential')
+        file_name = _get_name_of_loaded_files('Potential')
         if len(file_name) > 1:
             file_name = file_name[0]  # orekit uses first loaded file
         elif len(file_name) == 0:
@@ -803,7 +809,7 @@ class EGM96GravityWGS84(GravityFactory):
 
         propagator.addForceModel(gravModel)
 
-        file_name = _get_name_of_loaded_file('Potential')
+        file_name = _get_name_of_loaded_files('Potential')
         if len(file_name) > 1:
             file_name = file_name[0]  # orekit uses first loaded file
         elif len(file_name) == 0:

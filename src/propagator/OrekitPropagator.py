@@ -10,6 +10,8 @@ import space_tf
 import numpy as np
 import PropagatorBuilder as PB
 import os
+from datetime import datetime, timedelta
+from math import degrees
 
 import orekit
 
@@ -18,13 +20,28 @@ from java.io import File
 from org.orekit.python import PythonAttitudePropagation as PAP
 from orekit.pyhelpers import setup_orekit_curdir
 from org.orekit.data import DataProvidersManager, ZipJarCrawler
+from org.orekit.models.earth import GeoMagneticModelLoader
 from org.orekit.time import TimeScalesFactory, AbsoluteDate
+from org.orekit.frames import FramesFactory
 from org.orekit.attitudes import Attitude, FixedRate, InertialProvider
+from org.orekit.forces.drag.atmosphere.data import MarshallSolarActivityFutureEstimation
+from org.orekit.utils import IERSConventions as IERS
 
 from org.hipparchus.geometry.euclidean.threed import Vector3D
 
 
 class DisturbanceTorques(object):
+    '''Stores disturbance torques in satellite frame and their activation
+    status in numpy array.
+
+    The torques are stored in following order:
+        - gravity gradient
+        - magnetic torque
+        - solar radiation pressure torque
+        - drag torque
+        - external torque
+        - sum of all torques
+    '''
     def __init__(self):
         self._add = []
         self._dtorque = []
@@ -46,17 +63,24 @@ class DisturbanceTorques(object):
     @dtorque.setter
     def dtorque(self, new_dtorques):
         self._dtorque = []
+        torque_sum = np.array([0.0, 0.0, 0.0])
         for vector in new_dtorques:
             t_array = np.array([vector.getX(),
                                vector.getY(),
                                vector.getZ()])
+            torque_sum += t_array
             self._dtorque.append(t_array)
+
+        self._dtorque.append(torque_sum)
 
 
 class OrekitPropagator(object):
     """
     Class building numerical propagator using the orekit library methods.
     """
+
+    _data_checklist = dict()
+    """Holds dates for which data from orekit-data folder is loaded"""
 
     @staticmethod
     def init_jvm():
@@ -110,10 +134,99 @@ class OrekitPropagator(object):
         return orekit_date
 
     @staticmethod
-    def write_satellite_state(state):
+    def create_data_validity_checklist():
+        """Get files loader by DataProvider and create dict() with valid dates for
+        loaded data.
+
+        Creates a list with valid start and ending date for data loaded by the
+        DataProvider during building. The method looks for follwing folders
+        holding the correspoding files:
+
+            Earth-Orientation-Parameters: EOP files using IERS2010 convetions
+            MSAFE: NASA Marshall Solar Activity Future Estimation files
+            WMM2015COF: World magentic model data files
+
+        The list should be used before every propagation step, to check if data
+        is loaded/still exists for current simulation time. Otherwise
+        simulation could return results with coarse accuracy. If e.g. no
+        EOP data is available, null correction is used, which could worsen the
+        propagators accuracy.
         """
-        Method to extract satellite orbit state vector from Java object and put
-        it in a numpy array.
+        checklist = dict()
+        start_dates = []
+        end_dates = []
+
+        EOP_file = PB._get_name_of_loaded_files('Earth-Orientation-Parameters')
+        if EOP_file:
+            EOPHist = FramesFactory.getEOPHistory(IERS.IERS_2010, False)
+            EOP_start_date = EOPHist.getStartDate()
+            EOP_end_date = EOPHist.getEndDate()
+            checklist['EOP_dates'] = [EOP_start_date, EOP_end_date]
+            start_dates.append(EOP_start_date)
+            end_dates.append(EOP_end_date)
+
+        MSAFE_file = PB._get_name_of_loaded_files('MSAFE')
+        if MSAFE_file:
+            msafe = \
+                MarshallSolarActivityFutureEstimation(
+                 "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)" +
+                 "\\p{Digit}\\p{Digit}\\p{Digit}\\p{Digit}F10\\" +
+                 ".(?:txt|TXT)",
+                 MarshallSolarActivityFutureEstimation.StrengthLevel.AVERAGE)
+            MS_start_date = msafe.getMinDate()
+            MS_end_date = msafe.getMaxDate()
+            checklist['MSAFE_dates'] = [MS_start_date, MS_end_date]
+            start_dates.append(MS_start_date)
+            end_dates.append(MS_end_date)
+
+        WMM_file = PB._get_name_of_loaded_files('WMM2015COF')
+        if WMM_file:
+            gmLoader = GeoMagneticModelLoader()
+            manager = DataProvidersManager.getInstance()
+            manager.feed(WMM_file[0], gmLoader)
+            gmModel = gmLoader.getModels().iterator().next()
+            dec_year = gmModel.validFrom()
+            base = datetime(int(dec_year), 1, 1)
+            dec = timedelta(seconds=(base.replace(year=base.year + 1) -
+                            base).total_seconds() * (dec_year-int(dec_year)))
+            GM_start_date = OrekitPropagator.to_orekit_date(base + dec)
+            dec_year = gmModel.validTo()
+            base = datetime(int(dec_year), 1, 1)
+            dec = timedelta(seconds=(base.replace(year=base.year + 1) -
+                            base).total_seconds() * (dec_year-int(dec_year)))
+            GM_end_date = OrekitPropagator.to_orekit_date(base + dec)
+            checklist['WMM_dates'] = [GM_start_date, GM_end_date]
+            start_dates.append(GM_start_date)
+            end_dates.append(GM_end_date)
+
+        if checklist:  # if any data loaded define first and last date
+            for idx, date in enumerate(start_dates):
+                if idx == 0:
+                    first_date = date
+                else:
+                    if first_date.compareTo(date) < 0:
+                        first_date = date
+
+            for idx, date in enumerate(end_dates):
+                if idx == 0:
+                    last_date = date
+                else:
+                    if last_date.compareTo(date) > 0:
+                        last_date = date
+
+            checklist['MinMax_dates'] = [first_date, last_date]
+
+        mesg = "[INFO]: Based on loaded data files simulation can run between"\
+               + " the dates: " + str(first_date) + " & " + str(last_date)
+        print mesg
+
+        OrekitPropagator._data_checklist = checklist
+
+    @staticmethod
+    def _write_satellite_state(state):
+        """
+        Method to extract satellite orbit state vector, rotation and force
+        from Java object and put it in a numpy array.
 
         Args:
             PVCoordinates: satellite state vector
@@ -121,6 +234,7 @@ class OrekitPropagator(object):
         Returns:
             numpy.array: cartesian state vector in TEME frame
             numpy.array: current attitude rotation in quaternions
+            numpy.array: force in satellite body frame
         """
 
         pv = state.getPVCoordinates()
@@ -138,12 +252,32 @@ class OrekitPropagator(object):
                         rot_ch.q3,
                         rot_ch.q0])
 
-        return [cart_teme, att]
+        a_sF = rot_ch.applyTo(pv.acceleration)
+        force_sF = np.array([a_sF.x,
+                             a_sF.y,
+                             a_sF.z]) * state.getMass()
+
+        return [cart_teme, att, force_sF]
+
+    def _write_d_torques(self):
+
+        dtorque = DisturbanceTorques()
+
+        if self._hasAttitudeProp:
+            dtorque.add = self.attProv.getAddedDisturbanceTorques()
+            dtorque.dtorque = self.attProv.getDisturbanceTorques()
+        else:
+            dtorque.add = [False]*6
+            zeros_vector = [Vector3D.ZERO]*6
+            dtorque.dtorque = orekit.JArray('object')(zeros_vector, Vector3D)
+
+        return dtorque
 
     def __init__(self):
         self._propagator_num = None
         self._hasAttitudeProp = False
         self._hasThrust = False
+        self._GMmodel = None
 
     def initialize(self, propSettings, state, epoch):
         """
@@ -216,9 +350,14 @@ class OrekitPropagator(object):
         Returns:
             numpy.array: cartesian state vector in TEME frame
             numpy.array: current attitude rotation in quaternions
+            numpy.array: force acting on satellite in body frame
+            numpy.array: disturbance torques acting on satellite in body frame
         """
 
         orekit_date = self.to_orekit_date(epoch)
+
+        if OrekitPropagator._data_checklist:
+            self._check_data_availability(orekit_date)
 
         if self._hasAttitudeProp:
             self.calculate_external_torque()
@@ -231,22 +370,68 @@ class OrekitPropagator(object):
 
         # return and store output of propagation
         dtorque = self._write_d_torques()
-        [cart_teme, att] = self.write_satellite_state(state)
-        return [cart_teme, att, dtorque]
+        [cart_teme, att, force_sF] = self._write_satellite_state(state)
+        B_field_b = self.calculate_magnetic_field(orekit_date)
 
-    def _write_d_torques(self):
+        return [cart_teme, att, force_sF, dtorque, B_field_b]
 
-        dtorque = DisturbanceTorques()
+    def _check_data_availability(self, oDate):
+        """
+        Checks if loaded files from orekit-data have data for current epoch.
 
-        if self._hasAttitudeProp:
-            dtorque.add = self.attProv.getAddedDisturbanceTorques()
-            dtorque.dtorque = self.attProv.getDisturbanceTorques()
+        Also transforms the GeoMagnetic model to new year should the year of
+        the epoch change.
+
+        Args:
+            oDate: AbsoluteDate object of current epoch
+
+        Raises:
+            ValueError: if no data loaded for current epoch
+        """
+        min_max = OrekitPropagator._data_checklist['MinMax_dates']
+        if oDate.compareTo(min_max[0]) < 0:
+            err_msg = "No file loaded with valid data for current epoch " + \
+                      str(oDate) + "! Earliest possible epoch: " + min_max[0]
+            raise ValueError(err_msg)
+        if oDate.compareTo(min_max[1]) > 0:
+            err_msg = "No file loaded with valid data for current epoch " + \
+                      str(oDate) + "! Latest possible epoch: " + min_max[1]
+            raise ValueError(err_msg)
+
+    def calculate_magnetic_field(self, oDate):
+        """
+        """
+        if self._GMmodel:
+            curr_year = float(str(oDate)[:4])
+            if self._GMmodel.getEpoch() != curr_year:
+                self._GMmodel = self._GMmodel.transformModel(float(curr_year))
+
+            spacecraftState = self._propagator_num.getInitialState()
+            satPos = spacecraftState.getPVCoordinates().getPosition()
+            inertial2Sat = spacecraftState.getAttitude().getRotation()
+            frame = spacecraftState.getFrame()
+
+            gP = self._earth.transform(satPos, frame, oDate)
+            lat = degrees(gP.getLatitude())
+            lon = degrees(gP.getLongitude())
+            alt = gP.getAltitude() / 1e3  # Mag. Field needs degrees and [km]
+
+            B_i = self._GMmodel.calculateField(lat, lon, alt)
+            B_b = inertial2Sat.applyTo(B_i.getFieldVector())
+            # convert B_b from [nT] to [T]
+            B_b = np.array([B_b.getX(), B_b.getY(), B_b.getZ()]) * 1e-9
+
         else:
-            dtorque.add = [False]*5
-            zeros_vector = [Vector3D.ZERO]*5
-            dtorque.dtorque = orekit.JArray('object')(zeros_vector, Vector3D)
+            gmLoader = GeoMagneticModelLoader()
+            manager = DataProvidersManager.getInstance()
+            manager.feed('WMM.COF', gmLoader)
+            # get item from Collection and transform model to year in sim.
+            GM = gmLoader.getModels().iterator().next()
+            self._GMmodel = GM.transformModel(float(str(oDate)[:4]))
 
-        return dtorque
+            B_b = self.calculate_magnetic_field(oDate)
+
+        return B_b
 
     def change_attitude_provider(self):
         """
@@ -298,20 +483,22 @@ class OrekitPropagator(object):
         # if simulation hasn't started attributes don't exist yet
         # set them to None in this case
         F_T = getattr(self, 'F_T', None)
-
-        if F_T is not None:
-            F_T_norm = np.linalg.norm(self.F_T, 2)
+        Isp = getattr(self, 'Isp', None)
+        # F_T = [10,0,0]
+        # Isp = 1000
+        if F_T is not None and Isp is not None:
+            F_T_norm = np.linalg.norm(F_T, 2)
 
             if F_T_norm > 2 * np.finfo(np.float32).eps:
-                F_T_dir = self.F_T / F_T_norm
+                F_T_dir = F_T / F_T_norm
                 F_T_dir = Vector3D(float(F_T_dir[0]),
                                    float(F_T_dir[1]),
                                    float(F_T_dir[2]))
 
                 self.ThrustModel.direction = F_T_dir
                 self.ThrustModel.thrust = float(F_T_norm)
-                self.ThrustModel.isp = self.Isp
-                self.ThrustModel.ChangeParameters(float(F_T_norm), self.Isp)
+                self.ThrustModel.isp = Isp
+                self.ThrustModel.ChangeParameters(float(F_T_norm), Isp)
                 self.ThrustModel.firing = True
             else:
                 self.ThrustModel.firing = False

@@ -130,8 +130,10 @@ class AttitudePropagation(PAP):
         if 'SolarModel' in AttitudeFM:
             self.SolarModel = AttitudeFM['SolarModel']
             self.sun = PVCoordinatesProvider.cast_(AttitudeFM['Sun'])
-            D_REF = float(149597870000.0)  # Reference distance for the solar radiation pressure (m).
-            P_REF = float(4.56e-6)  # Reference solar radiation pressure at D_REF (N/m^2).
+            # Reference distance for the solar radiation pressure (m).
+            D_REF = float(149597870000.0)
+            # Reference solar radiation pressure at D_REF (N/m^2).
+            P_REF = float(4.56e-6)
             self.K_REF = float(P_REF * D_REF * D_REF)
 
         if 'AtmoModel' in AttitudeFM:
@@ -172,7 +174,7 @@ class AttitudePropagation(PAP):
 
             else:
                 self.state.inertiaT = self.inertiaT * \
-                                self.StateObserver.spacecraftState.getMass()
+                    self.StateObserver.spacecraftState.getMass()
                 self.state.torque_control = self.getExternalTorque()
                 gTorque = self.getGravTorque()
                 mTorque = self.getMagTorque()
@@ -180,13 +182,13 @@ class AttitudePropagation(PAP):
                 aTorque = self.getAeroTorque()
 
                 self.state.torque_dist = gTorque.add(
-                                          mTorque.add(
-                                           sTorque.add(
-                                            aTorque)))
+                    mTorque.add(
+                        sTorque.add(
+                            aTorque)))
                 self.state.omega = self.omega
 
                 ode = ExpandableODE(
-                                OrdinaryDifferentialEquation.cast_(self.state))
+                    OrdinaryDifferentialEquation.cast_(self.state))
                 y = self._convert_initial_state_to_JArray()
                 initial_state = ODEState(float(0.0), y)
                 dt = date.durationFrom(self.refDate)  # refDate - date
@@ -228,10 +230,10 @@ class AttitudePropagation(PAP):
                 return newAttitude
 
         except Exception:  # should never get here
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                print exc_type
-                print exc_value
-                raise
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            print exc_type
+            print exc_value
+            raise
 
     def _convert_initial_state_to_JArray(self):
         """Method to get current initial state and convert it to JArray object
@@ -377,7 +379,8 @@ class AttitudePropagation(PAP):
                     try:
                         assert(diffuseReflCoeff >= 0)
                     except AssertionError:
-                        raise AssertionError("Negative diffuse reflection coefficient not possible!")
+                        raise AssertionError(
+                            "Negative diffuse reflection coefficient not possible!")
                     psr = fluxSat.getNorm()
                     # Vallado's equation uses different parameters which are
                     # related to our parameters as:
@@ -448,7 +451,7 @@ class AttitudePropagation(PAP):
                 vNorm2 = relativeVelocity.getNormSq()
                 vNorm = sqrt(vNorm2)
                 vDir = inertial2Sat.applyTo(
-                                relativeVelocity.scalarMultiply(1.0 / vNorm))
+                    relativeVelocity.scalarMultiply(1.0 / vNorm))
 
                 coeff = 0.5 * rho * dragCoeff * vNorm2
                 oMr = 1.0 - liftRatio
@@ -536,25 +539,25 @@ class StateEquation(PSE):
 
             # angular velocity body rates (omega):
             yDot[0] = 1.0 / self.inertiaT[0][0] * \
-                      (self.torque_control.getX() + self.torque_dist.getX() +
-                       (self.inertiaT[1][1] - self.inertiaT[2][2]) *
-                       y[1]*y[2])
+                (self.torque_control.getX() + self.torque_dist.getX() +
+                 (self.inertiaT[1][1] - self.inertiaT[2][2]) *
+                 y[1] * y[2])
 
             yDot[1] = 1.0 / self.inertiaT[1][1] * \
-                     (self.torque_control.getY() + self.torque_dist.getY() +
-                      (self.inertiaT[2][2] - self.inertiaT[0][0]) *
-                      y[2]*y[0])
+                (self.torque_control.getY() + self.torque_dist.getY() +
+                 (self.inertiaT[2][2] - self.inertiaT[0][0]) *
+                 y[2] * y[0])
 
             yDot[2] = 1.0 / self.inertiaT[2][2] * \
-                      (self.torque_control.getZ() + self.torque_dist.getZ() +
-                       (self.inertiaT[0][0] - self.inertiaT[1][1]) *
-                       y[0]*y[1])
+                (self.torque_control.getZ() + self.torque_dist.getZ() +
+                 (self.inertiaT[0][0] - self.inertiaT[1][1]) *
+                 y[0] * y[1])
 
             # attitude quaternion:
-            yDot[3] = 0.5 * (y[2]*y[4] - y[1]*y[5] + y[0]*y[6])
-            yDot[4] = 0.5 * (-y[2]*y[3] + y[0]*y[5] + y[1]*y[6])
-            yDot[5] = 0.5 * (y[1]*y[3] - y[0]*y[4] + y[2]*y[6])
-            yDot[6] = 0.5 * (-y[0]*y[3] - y[1]*y[4] - y[2]*y[5])
+            yDot[3] = 0.5 * (y[2] * y[4] - y[1] * y[5] + y[0] * y[6])
+            yDot[4] = 0.5 * (-y[2] * y[3] + y[0] * y[5] + y[1] * y[6])
+            yDot[5] = 0.5 * (y[1] * y[3] - y[0] * y[4] + y[2] * y[6])
+            yDot[6] = 0.5 * (-y[0] * y[3] - y[1] * y[4] - y[2] * y[5])
 
             return orekit.JArray('double')(yDot)
 

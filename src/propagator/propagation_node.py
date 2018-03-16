@@ -29,6 +29,7 @@ from space_msgs.srv import ClockService
 from space_msgs.srv import SyncNodeService
 from space_msgs.msg import PoseVelocityStamped
 from geometry_msgs.msg import WrenchStamped
+from geometry_msgs.msg import Vector3Stamped
 from space_msgs.msg import ThrustIsp
 from space_msgs.msg import SatelitePose
 from space_msgs.msg import SatelliteTorque
@@ -286,7 +287,19 @@ def cart_to_msgs(cart, att, time):
     return [msg, msg_pose]
 
 
-def torque_to_msgs(torque, time):
+def force_torque_to_msgs(force, torque, time):
+
+    FT_msg = WrenchStamped()
+
+    FT_msg.header.stamp = time
+    FT_msg.header.frame_id = "sat_frame"
+
+    FT_msg.wrench.force.x = force[0]
+    FT_msg.wrench.force.y = force[1]
+    FT_msg.wrench.force.z = force[2]
+    FT_msg.wrench.torque.x = torque.dtorque[5][0]
+    FT_msg.wrench.torque.y = torque.dtorque[5][1]
+    FT_msg.wrench.torque.z = torque.dtorque[5][2]
 
     msg = SatelliteTorque()
 
@@ -317,6 +330,20 @@ def torque_to_msgs(torque, time):
     msg.external.torque.x = torque.dtorque[4][0]
     msg.external.torque.y = torque.dtorque[4][1]
     msg.external.torque.z = torque.dtorque[4][2]
+
+    return [FT_msg, msg]
+
+
+def Bfield_to_msgs(bfield, time):
+
+    msg = Vector3Stamped()
+
+    msg.header.stamp = time
+    msg.header.frame_id = "sat_frame"
+
+    msg.vector.x = bfield[0]
+    msg.vector.y = bfield[1]
+    msg.vector.z = bfield[2]
 
     return msg
 
@@ -363,10 +390,14 @@ if __name__ == '__main__':
     pub_ch = rospy.Publisher('oe_chaser', SatelitePose, queue_size=10)
     pub_pose_ch = rospy.Publisher('pose_chaser', PoseVelocityStamped, queue_size=10)
     pub_dtorque_ch = rospy.Publisher('dtorque_chaser', SatelliteTorque, queue_size=10)
+    pub_FT_ch = rospy.Publisher('forcetorque_chaser', WrenchStamped, queue_size=10)
+    pub_Bfield_ch = rospy.Publisher('B_field_chaser', Vector3Stamped, queue_size=10)
 
     pub_ta = rospy.Publisher('oe_target', SatelitePose, queue_size=10)
     pub_pose_ta = rospy.Publisher('pose_target', PoseVelocityStamped, queue_size=10)
     pub_dtorque_ta = rospy.Publisher('dtorque_target', SatelliteTorque, queue_size=10)
+    pub_FT_ta = rospy.Publisher('forcetorque_target', WrenchStamped, queue_size=10)
+    pub_Bfield_ta = rospy.Publisher('B_field_target', Vector3Stamped, queue_size=10)
 
     [init_state_ch, init_state_ta] = get_init_state_from_param()
 
@@ -392,6 +423,7 @@ if __name__ == '__main__':
                            init_state_ta,
                            SimTime.datetime_oe_epoch)
 
+    OrekitPropagator.create_data_validity_checklist()
     rospy.loginfo("Propagators initialized!")
 
     # Update first step so that other nodes don't give errors
@@ -429,24 +461,37 @@ if __name__ == '__main__':
             pub_clock.publish(msg_cl)
 
         # propagate to epoch_now
-        [cart_ch, att_ch, d_torque_ch] = prop_chaser.propagate(epoch_now)
-        [cart_ta, att_ta, d_torque_ta] = prop_target.propagate(epoch_now)
+        [cart_ch, att_ch, force_ch, d_torque_ch, B_field_ch] = \
+            prop_chaser.propagate(epoch_now)
+        [cart_ta, att_ta, force_ta, d_torque_ta, B_field_ta] = \
+            prop_target.propagate(epoch_now)
 
         rospy_now = rospy.Time.now()
 
         [msg_ch, msg_pose_ch] = cart_to_msgs(cart_ch, att_ch, rospy_now)
         [msg_ta, msg_pose_ta] = cart_to_msgs(cart_ta, att_ta, rospy_now)
 
-        msg_dtorque_ch = torque_to_msgs(d_torque_ch, rospy_now)
-        msg_dtorque_ta = torque_to_msgs(d_torque_ta, rospy_now)
+        [msg_FT_ch, msg_dtorque_ch] = force_torque_to_msgs(force_ch,
+                                                           d_torque_ch,
+                                                           rospy_now)
+        [msg_FT_ta, msg_dtorque_ta] = force_torque_to_msgs(force_ta,
+                                                           d_torque_ta,
+                                                           rospy_now)
+
+        msg_B_field_ch = Bfield_to_msgs(B_field_ch, rospy_now)
+        msg_B_field_ta = Bfield_to_msgs(B_field_ta, rospy_now)
 
         pub_ch.publish(msg_ch)
         pub_pose_ch.publish(msg_pose_ch)
         pub_dtorque_ch.publish(msg_dtorque_ch)
+        pub_FT_ch.publish(msg_FT_ch)
+        pub_Bfield_ch.publish(msg_B_field_ch)
 
         pub_ta.publish(msg_ta)
         pub_pose_ta.publish(msg_pose_ta)
         pub_dtorque_ta.publish(msg_dtorque_ta)
+        pub_FT_ta.publish(msg_FT_ta)
+        pub_Bfield_ch.publish(msg_B_field_ta)
 
         # calculate reminding sleeping time
         sleep_time = SimTime.rate - (time.clock() - comp_time)
