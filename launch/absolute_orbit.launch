@@ -20,6 +20,8 @@
 		<remap from="dtorque_target" to="/$(arg ns_target)/dist_torque" />
 		<remap from="forcetorque_chaser" to="/$(arg ns_chaser)/force_torque" />
 		<remap from="forcetorque_target" to="/$(arg ns_target)/force_torque" />
+		<remap from="B_field_chaser" to="/$(arg ns_chaser)/B_field" />
+		<remap from="B_field_target" to="/$(arg ns_target)/B_field" />
 		<remap from="force" to="/$(arg ns_chaser)/force" />
 		<remap from="IspMean" to="/$(arg ns_chaser)/IspMean" />
 	</node>
