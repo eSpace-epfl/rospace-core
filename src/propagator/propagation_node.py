@@ -339,7 +339,7 @@ def Bfield_to_msgs(bfield, time):
     msg = Vector3Stamped()
 
     msg.header.stamp = time
-    msg.header.frame_id = "sat_frame"
+    msg.header.frame_id = "teme_frame"
 
     msg.vector.x = bfield[0]
     msg.vector.y = bfield[1]
@@ -423,6 +423,7 @@ if __name__ == '__main__':
                            init_state_ta,
                            SimTime.datetime_oe_epoch)
 
+    OrekitPropagator.load_magnetic_field_models(SimTime.datetime_oe_epoch)
     OrekitPropagator.create_data_validity_checklist()
     rospy.loginfo("Propagators initialized!")
 
