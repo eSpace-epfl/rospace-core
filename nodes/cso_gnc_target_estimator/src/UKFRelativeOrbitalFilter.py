@@ -1,10 +1,12 @@
 """
 Relative Navigation Filter based on UKF/filterpy.
 
-    [1] New State Transition Matrices for Relative Motion of Spacecraft Formations in Perturbed Orbits,
+   [1] New State Transition Matrices for Relative Motion of Spacecraft Formations in Perturbed Orbits,
         A. Koenig, T. Guffanti, S. D'Amico, AIAA 2016-5635
-    [2] Improved Maneuver-free approach to angles-only navigation for space rendezvous,
+   [2] Improved Maneuver-free approach to angles-only navigation for space rendezvous,
         J. Sullivan, A.W. Koenig, S. D'Amico, AAS 16-530
+   [3] Nonlinear Kalman Filtering for improved angles-only navigation using relative orbital elements
+        J. Sullivan, S. D'Amico, Journal of Guidance, Navigation and Control
 
     Prerequisities:
         filterpy
@@ -169,7 +171,7 @@ class UKFRelativeOrbitalFilter:
         return x
 
     def get_dx_roe(self, x, delta_t):
-        """ Implementation of Equation 10 of [2]
+        """ Implementation of Equation 10 of [3]
             Calculates derivative of current mean roe state x
         """
 

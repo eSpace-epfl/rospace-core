@@ -1,5 +1,16 @@
-import numpy as np
+"""
+    Implements linearized process models based on
 
+
+    [1] New State Transition Matrices for Relative Motion of Spacecraft Formations in Perturbed Orbits,
+        A. Koenig, T. Guffanti, S. D'Amico, AIAA 2016-5635
+    [2] Improved Maneuver-free approach to angles-only navigation for space rendezvous,
+        J. Sullivan, A.W. Koenig, S. D'Amico, AAS 16-530
+    [3] Nonlinear Kalman Filtering for improved angles-only navigation using relative orbital elements
+        J. Sullivan, S. D'Amico, Journal of Guidance, Navigation and Control
+
+"""
+import numpy as np
 import space_tf as stf
 
 
@@ -36,6 +47,7 @@ class RelativeOrbitalSTM:
         return A_kep_qns
 
     def get_A_j2_qns(self, alpha_c):
+        # Dynamic model from [1]
         a = alpha_c[0]
         e = alpha_c[2]
         i = alpha_c[4]
@@ -72,6 +84,7 @@ class RelativeOrbitalSTM:
         return J_qns
 
     def get_B_oe(self, alpha_c):
+        # Equation 25 in [3]
         a = alpha_c[0]
         e = alpha_c[2]
         i = alpha_c[4]
@@ -105,18 +118,6 @@ class RelativeOrbitalSTM:
         B_oe[5, :] = [0, 0, np.sin(phi_m) / k]
 
         return -eta/(a*n)*B_oe
-
-
-    def get_Phi_emp(self, tau_emp, delta_t):
-        psi = np.exp(-delta_t/tau_emp)
-        B_emp = np.diag([1, 1, 1]* psi)
-        return B_emp
-
-
-    def get_Phi_b(self, tau_b, delta_t):
-        psi = np.exp(-delta_t / tau_b)
-        B_emp = np.diag([1, 1] * psi)
-        return B_emp
 
 
 
