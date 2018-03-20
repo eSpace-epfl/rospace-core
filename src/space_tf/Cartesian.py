@@ -1,9 +1,13 @@
-"""
-    Classes for storing cartesian coordinates with epoch and frame information
+# @copyright Copyright (c) 2017, Michael Pantic (michael.pantic@gmail.com)
+# @copyright Copyright (c) 2017, Davide Frey (frey.davide.ae@gmail.com)
+#
+# @license zlib license
+#
+# This file is licensed under the terms of the zlib license.
+# See the LICENSE.md file in the root of this repository
+# for complete details.
 
-    Author: Michael Pantic, Davide Freay
-    License: TBD
-"""
+"""Classes for storing cartesian coordinates with epoch and frame information"""
 import datetime
 import numpy as np
 from BaseState import *
