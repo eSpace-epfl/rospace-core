@@ -1,0 +1,3 @@
+std_msgs/Header header
+space_msgs/AzimutElevationRange value
+bool valid

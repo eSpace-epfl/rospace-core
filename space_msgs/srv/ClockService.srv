@@ -1,0 +1,9 @@
+#request trigger to start/stop clock
+bool trigger
+int64 dt_size
+float32 p_freq
+---
+#respond if clock succesfully started/stopped
+bool success
+int64 cur_dt
+float32 cur_pfreq
