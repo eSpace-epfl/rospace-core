@@ -32,11 +32,11 @@ before_script:
 
   ## Add each modules to the Python path
 #  - PYTHONPATH="${PYTHONPATH}:${CI_PROJECT_DIR}/nodes/space_vision/src/:${CI_PROJECT_DIR}/epoch_clock/src/:${CI_PROJECT_DIR}/rqt_simtime_plugin/src/"
-  - export PYTHONPATH
+#  - export PYTHONPATH
 
 docs_and_tests:
   script:
-    - cd ~/catkin_ws
+#    - cd ~/catkin_ws
 #    - catkin_make
 #    - rostest --text ${CI_PROJECT_DIR}/rqt_simtime_plugin/test/simtime_plugin.test 
 #    - rostest --text ${CI_PROJECT_DIR}/epoch_clock/test/testSimTime.test
