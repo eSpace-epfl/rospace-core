@@ -12,8 +12,9 @@ import rospy
 import tf
 import numpy as np
 import message_filters
-import space_tf
-from space_msgs.msg import SatelitePose
+import rospace_msgs
+import rospace_lib
+from rospace_msgs.msg import SatelitePose
 from geometry_msgs.msg import PoseStamped
 
 sensor_cfg = 0
@@ -79,11 +80,11 @@ def handle_pose(msg):
 def handle_target_oe(msg):
     global body_frame
     # convert to R/V
-    target_oe = space_tf.KepOrbElem()
+    target_oe = rospace_lib.KepOrbElem()
     target_oe.from_message(msg.position)
 
     # convert to TEME
-    tf_target_teme = space_tf.CartesianTEME()
+    tf_target_teme = rospace_lib.CartesianTEME()
     tf_target_teme.from_keporb(target_oe)
 
     # calculate reference frame
@@ -106,7 +107,7 @@ def handle_target_oe(msg):
                      q_ref,
                      msg.header.stamp,
                      body_frame+"_lvlh",
-                     "teme")
+                     "J2K")
 
 
 if __name__ == '__main__':

@@ -1,24 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <launch>
 
-    <group ns="cso">
+    <arg name="ns_chaser" />
+    <arg name="ns_target" />
+
+    <group ns="$(arg ns_chaser)">
         <!-- Launch TF publisher for visualizations -->
-        <node pkg="cso_gnc_sim" name="tf_pub" type="satelite_tf_publisher.py" output="screen">
-            <remap from="pose" to="/cso/pose" />
-            <remap from="target_oe" to="/cso/oe" />
-            <remap from="~sensors" to="/cso/sensors" />
-            <remap from="~frames" to="/cso/frames" />
-            <param name="body_frame" value="cso" />
+        <node pkg="rospace_simulator" name="tf_pub" type="satelite_tf_publisher.py" output="screen">
+            <remap from="pose" to="pose" />
+            <remap from="~sensors" to="sensors" />
+            <remap from="~frames" to="frames" />
+            <remap from="~frames" to="thrusters" />
+            <param name="body_frame" value="chaser" />
             <param name="mode" value="absolute" />
         </node>
     </group>
 
-  <group ns="target">
+  <group ns="$(arg ns_target)">
 
     <!-- Launch TF publisher for visualizations -->
-    <node pkg="cso_gnc_sim" name="tf_pub_target" type="satelite_tf_publisher.py" output="screen">
-        <remap from="pose" to="/target/pose" />
-        <remap from="target_oe" to="/target/oe" />
-        <remap from="relative_parent" to="/cso/pose" />
+    <node pkg="rospace_simulator" name="tf_pub_target" type="satelite_tf_publisher.py" output="screen">
+        <remap from="pose" to="pose" />
+        <remap from="target_oe" to="oe" />
+        <remap from="relative_parent" to="pose" />
         <param name="body_frame" value="target" />
         <param name="mode" value="absolute" />
     </node>

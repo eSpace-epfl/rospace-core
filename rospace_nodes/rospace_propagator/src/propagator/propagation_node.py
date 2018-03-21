@@ -228,7 +228,7 @@ def cart_to_msgs(cart, att, time):
     msg = SatelitePose()
 
     msg.header.stamp = time
-    msg.header.frame_id = "teme"
+    msg.header.frame_id = "J2K"
 
     msg.position.semimajoraxis = oe.a
     msg.position.eccentricity = oe.e
@@ -245,7 +245,7 @@ def cart_to_msgs(cart, att, time):
     # set message for cartesian TEME pose
     msg_pose = PoseStamped()
     msg_pose.header.stamp = time
-    msg_pose.header.frame_id = "teme"
+    msg_pose.header.frame_id = "J2K"
     msg_pose.pose.position.x = cart.R[0]
     msg_pose.pose.position.y = cart.R[1]
     msg_pose.pose.position.z = cart.R[2]

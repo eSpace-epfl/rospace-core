@@ -4,19 +4,19 @@
     <link name="J2K">
         <visual>
           <geometry>
-           <mesh filename="package://cso_gnc_sim/res/meshes/earth-mesh.stl" scale="1 1 1">
+           <mesh filename="package://rospace_simulator/res/meshes/earth-mesh.stl" scale="1 1 1">
             </mesh>
           </geometry>
           <material name="texture">
-		<texture filename="package://cso_gnc_sim/res/meshes/1_earth_8k.jpg"/>
+		<texture filename="package://rospace_simulator/res/meshes/1_earth_8k.jpg"/>
 	  </material>
         </visual>
     </link>
 
-    <link name="cso">
+    <link name="chaser">
         <visual>
           <geometry>
-            <mesh filename="package://cso_gnc_sim/res/meshes/cso-mesh.stl" scale="1 1 1">
+            <mesh filename="package://rospace_simulator/res/meshes/cso-mesh.stl" scale="1 1 1">
             </mesh>
           </geometry>
           <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -39,9 +39,9 @@
         <origin xyz="7000000 0 0 "/>
     </joint>
 
-    <joint name="cso2J2K" type="fixed">
+    <joint name="chaser2J2K" type="fixed">
         <parent link="J2K"/>
-        <child link="cso"/>
+        <child link="chaser"/>
         <origin xyz="0 0 0 "/>
     </joint>
  </robot>
