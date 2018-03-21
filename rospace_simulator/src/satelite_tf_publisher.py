@@ -1,7 +1,12 @@
 #!/usr/bin/env python
-"""
-Publishes satellite location as TF frame for visualizations
-"""
+
+# @copyright Copyright (c) 2017, Michael Pantic (michael.pantic@gmail.com)
+#
+# @license zlib license
+#
+# This file is licensed under the terms of the zlib license.
+# See the LICENSE.md file in the root of this repository
+# for complete details.
 
 import rospy
 import tf
@@ -56,13 +61,19 @@ def handle_pose(msg):
                          k,
                          body_frame)
 
-
     for k in sensor_cfg:
         br.sendTransform(np.array([float(x) for x in sensor_cfg[k]["position"].split(" ")]),
                          np.array([float(x) for x in sensor_cfg[k]["pose"].split(" ")]),
                      rospy.Time.now(),
                      k,
                      body_frame)
+
+    for k in thruster_cfg:
+        br.sendTransform(np.array([float(x) for x in sensor_cfg[k]["position"].split(" ")]),
+                         np.array([float(x) for x in sensor_cfg[k]["pose"].split(" ")]),
+                         rospy.Time.now(),
+                         k,
+                         body_frame)
 
 
 def handle_target_oe(msg):
@@ -92,19 +103,19 @@ def handle_target_oe(msg):
     br = tf.TransformBroadcaster()
 
     br.sendTransform(tf_target_teme.R*1000,
-                    q_ref,
-                   msg.header.stamp,
-                  body_frame+"_ref",
-                 "J2K")
-
+                     q_ref,
+                     msg.header.stamp,
+                     body_frame+"_lvlh",
+                     "teme")
 
 
 if __name__ == '__main__':
 
     rospy.init_node('satelite_tf_publisher')
-    sensor_cfg =  rospy.get_param("~sensors", "")
+    sensor_cfg = rospy.get_param("~sensors", "")
     frame_cfg = rospy.get_param("~frames", "")
-    body_frame = rospy.get_param("~body_frame", "cso")
+    thruster_cfg = rospy.get_param("~thrusters", "")
+    body_frame = rospy.get_param("~body_frame", "chaser")
     position_mode = rospy.get_param("~mode", "absolute")
 
     # position mode zero_pos = no position is broadcasted for body frame (for debugging)
@@ -119,7 +130,6 @@ if __name__ == '__main__':
         rospy.Subscriber('target_oe',
                          SatelitePose,
                          handle_target_oe)
-
 
     elif position_mode == "relative":
         pose_sub = message_filters.Subscriber('pose', PoseStamped)

@@ -16,7 +16,7 @@
     <link name="cso">
         <visual>
           <geometry>
-            <mesh filename="package://cso_gnc_sim/res/meshes/cso-mesh.stl" scale="0.001 0.001 0.001">
+            <mesh filename="package://cso_gnc_sim/res/meshes/cso-mesh.stl" scale="1 1 1">
             </mesh>
           </geometry>
           <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -26,7 +26,7 @@
     <link name="target">
         <visual>
             <geometry>
-                <box size="0.1 0.1 0.1"/>
+                <box size="1 1 1"/>
             </geometry>
             <!-- material name="blue" / -->
             <origin rpy="0 1.57075 0" xyz="0 0 0"/>
