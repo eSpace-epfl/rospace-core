@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>orekit_wrapper</name>
+  <name>rospace_orekit</name>
   <version>0.0.0</version>
-  <description>The orekit_wrapper package. Checks if the library is already in the devel space. If not it either copies it from the build space or downloads it completely from anaconda</description>
+  <description>The orekit_wrapper package. Checks if the library is already in the devel space. If not it either copies it from the build space or downloads it completely from the espace repository</description>
 
   <maintainer email="lanegger.christian@gmail.com">Christian Lanegger</maintainer>
 
