@@ -1,2 +1,0 @@
-std_msgs/Header header
-space_msgs/OrbitalElements orbit

@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>space_msgs</name>
+  <name>rospace_msgs</name>
   <version>0.0.0</version>
   <description>
-	    Message definitions for space applications
+	    Message definitions for the ROSPACE simulator
   </description>
 
   <maintainer email="michael.pantic@epfl.ch">Michael Pantic</maintainer>
