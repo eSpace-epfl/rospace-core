@@ -9,7 +9,7 @@
 import rospy
 import threading
 
-from space_msgs.srv import SyncNodeService, ClockService
+from rospace_msgs.srv import SyncNodeService, ClockService
 
 
 class SimTimeService(threading.Thread):

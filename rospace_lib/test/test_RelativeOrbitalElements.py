@@ -15,7 +15,7 @@ from copy import copy
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + "/../src/")  # hack...
-from space_tf import *
+from rospace_lib import *
 
 
 class RelativeOrbitalElementsTest(unittest.TestCase):

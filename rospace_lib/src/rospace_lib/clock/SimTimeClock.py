@@ -13,10 +13,8 @@ from time import sleep
 from threading import RLock
 import Queue
 
-from SimTimeHandler import SimTimeHandler
-from SimTimeService import SimTimeService
-from epoch import Epoch
 
+from rospace_lib.clock import *
 from rosgraph_msgs.msg import Clock
 
 
