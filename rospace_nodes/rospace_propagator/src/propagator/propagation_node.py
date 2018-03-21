@@ -17,7 +17,7 @@ import time
 import threading
 import message_filters
 import epoch_clock
-import space_tf
+import rospace_lib
 
 from time import sleep
 from math import radians
@@ -25,12 +25,12 @@ from math import radians
 from OrekitPropagator import OrekitPropagator
 from EpochClock import EpochClock
 from rosgraph_msgs.msg import Clock
-from space_msgs.srv import ClockService
-from space_msgs.srv import SyncNodeService
+from rospace_msgs.srv import ClockService
+from rospace_msgs.srv import SyncNodeService
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import WrenchStamped
-from space_msgs.msg import ThrustIsp
-from space_msgs.msg import SatelitePose
+from rospace_msgs.msg import ThrustIsp
+from rospace_msgs.msg import SatelitePose
 
 
 class ClockServer(threading.Thread):
@@ -157,7 +157,7 @@ def get_init_state_from_param():
         O = float(rospy.get_param("~oe_ch_init/O"))
         w = float(rospy.get_param("~oe_ch_init/w"))
 
-        init_state_ch = space_tf.KepOrbElem()
+        init_state_ch = rospace_lib.KepOrbElem()
         init_state_ch.a = a
         init_state_ch.e = e
         init_state_ch.i = radians(i)  # inclination
@@ -172,7 +172,7 @@ def get_init_state_from_param():
             raise ValueError("No Anomaly for initialization of chaser")
 
         if rospy.get_param("~oe_ta_rel"):  # relative target state
-            qns_init_ta = space_tf.QNSRelOrbElements()
+            qns_init_ta = rospace_lib.QNSRelOrbElements()
             # a = 0.001
             qns_init_ta.dA = float(rospy.get_param("~oe_ta_init/ada")) #/ (a*1000.0)
             qns_init_ta.dL = float(rospy.get_param("~oe_ta_init/adL")) #/ (a*1000.0)
@@ -181,7 +181,7 @@ def get_init_state_from_param():
             qns_init_ta.dIx = float(rospy.get_param("~oe_ta_init/adIx")) #/ (a*1000.0)
             qns_init_ta.dIy = float(rospy.get_param("~oe_ta_init/adIy")) #/ (a*1000.0)
 
-            init_state_ta = space_tf.KepOrbElem()
+            init_state_ta = rospace_lib.KepOrbElem()
             init_state_ta.from_qns_relative(qns_init_ta, init_state_ch)
 
         else:  # absolute target state
@@ -191,7 +191,7 @@ def get_init_state_from_param():
             O_t = float(rospy.get_param("~oe_ta_init/O"))
             w_t = float(rospy.get_param("~oe_ta_init/w"))
 
-            init_state_ta = space_tf.KepOrbElem()
+            init_state_ta = rospace_lib.KepOrbElem()
             init_state_ta.a = a_t
             init_state_ta.e = e_t
             init_state_ta.i = radians(i_t)
@@ -223,7 +223,7 @@ def cart_to_msgs(cart, att, time):
     """
 
     # convert to keplerian elements
-    oe = space_tf.KepOrbElem()
+    oe = rospace_lib.KepOrbElem()
     oe.from_cartesian(cart)
 
     msg = SatelitePose()

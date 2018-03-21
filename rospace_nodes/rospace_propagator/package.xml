@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>propagator_node</name>
+  <name>rospace_propagator</name>
   <version>0.1.0</version>
   <description>
 	   Propagation Node based on orekit
@@ -16,8 +16,10 @@
   <depend>rospy</depend>
 
   <depend>std_msgs</depend>
+
   <depend>geometry_msgs</depend>
-  <depend>space_msgs</depend>
+  <depend>rospace_lib</depend>
+  <depend>rospace_msgs</depend>
   <depend>epoch_clock</depend>
 
 </package>
