@@ -1,0 +1,15 @@
+<launch>
+	<node pkg="propagator_node" name="propagator_abs" type="propagation_node.py" output="screen" cwd="node">
+		<param name="oe_ta_rel" type="bool" value="False" />
+		<param name="oe_ch_init" type="yaml" value="{a: 6700, e: 0.0001, i: 30, O: 60, w: 120, v: 0.001}" />
+		<param name="oe_ta_init" type="yaml" value="{a: 7000, e: 0.0001, i: 30, O: 60, w: 120, v: 0.001}" />
+		
+		<!-- param name="oe_epoch" value="20000101T12:00:00"/-->
+		<remap from="oe_chaser" to="/chaser/oe" />
+		<remap from="oe_target" to="/target/oe" />
+		<remap from="pose_chaser" to="/chaser/pose" />
+		<remap from="pose_target" to="/target/pose" />
+		<remap from="force" to="/chaser/force" />
+		<remap from="IspMean" to="/chaser/IspMean" />
+	</node>
+</launch>
