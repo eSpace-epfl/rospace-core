@@ -8,52 +8,32 @@
     <arg name="ns_target" default="target" />
 
     <!-- Load simulation world -->
-	<param name="robot_description" textfile="$(find cso_gnc_sim)/res/models/world.urdf" />
+	<param name="robot_description" textfile="$(find rospace_simulator)/res/models/world.urdf" />
     <!-- use simulation time -->
     <!-- has to be set here otherwise library not setting wall time to zero -->
     <param name="/use_sim_time" value="True" />
 
     <!-- Launch CSO & target propagator -->
-    <include file="$(find propagator_node)/launch/$(arg prop_mode)_orbit.launch" />
+    <include file="$(find rospace_propagator)/launch/$(arg prop_mode)_orbit.launch" />
 
     <!-- Include CSO base definition -->
-    <include file="$(find cso_gnc_sim)/launch/cso_base.launch">
+    <include file="$(find rospace_simulator)/launch/cso_base.launch">
         <arg name="ns_chaser" value="$(arg ns_chaser)" />
         <arg name="ns_target" value="$(arg ns_target)" />
     </include>
 
     <!-- Include TF publishers -->
-    <include file="$(find cso_gnc_sim)/launch/tf_publisher_absolute.launch">
+    <include file="$(find rospace_simulator)/launch/tf_publisher_absolute.launch">
         <arg name="ns_chaser" value="$(arg ns_chaser)" />
         <arg name="ns_target" value="$(arg ns_target)" />
     </include>
 
-    <!-- Include Orbit visualization of chaser and target -->
-    <node name="rviz_orbit_chaser" pkg="rviz_orbit_node" type="rviz_orbit_node.py" >
-        <remap from="oe" to="/chaser/oe" />
-        <param name="scale" value="1000" />
-        <param name="samples" value="350" />
-        <param name="pub_subsampling" value="1000" />
-        <param name="color" value="0.5 0.5 0 1" />
-    </node>
-
-    <!-- Include Orbit visualization of chaser and target -->
-    <node name="rviz_orbit_target" pkg="rviz_orbit_node" type="rviz_orbit_node.py" >
-        <remap from="oe" to="/target/oe" />
-        <param name="scale" value="1000" />
-        <param name="samples" value="350" />
-        <param name="pub_subsampling" value="1000" />
-        <param name="color" value="0 0.5 0.5 1" />
-    </node>
-
     <!-- start rviz -->
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find cso_gnc_sim)/res/rviz/tf_large.rviz" required="true" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find rospace_simulator)/res/rviz/tf_large.rviz" required="true" />
 
 
      <!-- Launch Visualizer -->
     <!-- <node name="rqt_ekf" pkg="rqt_space_plugins" type="rqt_orbit_ekf" /> -->
     <node name="rqt_sc" pkg="rqt_simtime_plugin" type="rqt_simtime_plugin" />
-
-    
 
 </launch>

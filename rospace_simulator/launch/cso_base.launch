@@ -6,42 +6,13 @@
 
     <group ns="$(arg ns_chaser)">
         <!-- Load Configuration File for sensors etc -->
-        <rosparam command="load" file="$(find cso_gnc_sim)/cfg/$(arg ns_chaser).yaml" />
-
-        <!-- Launch Radar Sensor -->
-        <node pkg="space_sim_radar" name="node_radar1" type="sim_radar_node.py" output="screen">
-            <remap from="~sensor" to="/$(arg ns_chaser)/sensors/chaser_s1_radar" />
-            <remap from="chaser_oe" to="oe" />
-            <remap from="target_oe" to="/$(arg ns_target)/oe" />
-        </node>
-
-         <!-- Launch AON Sensor -->
-        <node pkg="space_sim_aon" name="node_aon" type="sim_aon_node.py" output="screen">
-            <param name="publish_rate" value="0.033" />
-            <remap from="~sensor" to="/$(arg ns_chaser)/sensors/chaser_s0_aon" />
-            <remap from="chaser_oe" to="oe" />
-            <remap from="target_oe" to="/$(arg ns_target)/oe" />
-        </node>
-
+        <rosparam command="load" file="$(find rospace_simulator)/cfg/$(arg ns_chaser).yaml" />
     </group>
 
   <group ns="$(arg ns_target)">
 
     <!-- Load Configuration File for sensors etc -->
-        <rosparam command="load" file="$(find cso_gnc_sim)/cfg/$(arg ns_target).yaml" />
-
-    <!-- Launch LVLH node -->
-    <node name="lvlh_pub" pkg="lvlh_node" type="lvlh_node.py" output="screen" >
-        <remap from="target_oe" to="oe" />
-        <remap from="chaser_oe" to="/$(arg ns_chaser)/oe" />
-    </node>
-
-    <!-- Launch REL node -->
-    <node name="rel_pub" pkg="rel_node" type="rel_node.py" output="screen" >
-        <remap from="target_oe" to="oe" />
-        <remap from="chaser_oe" to="/$(arg ns_chaser)/oe" />
-    </node>
-
-    </group>
+        <rosparam command="load" file="$(find rospace_simulator)/cfg/$(arg ns_target).yaml" />
+  </group>
 
 </launch>

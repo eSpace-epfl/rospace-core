@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>cso_gnc_sim</name>
+  <name>rospace_simulator</name>
   <version>0.0.0</version>
   <description>
-	    Launchfiles etc for a GNC Simulator for CSO
+	    ROSPACE SIMULATOR
   </description>
 
   <maintainer email="michael.pantic@epfl.ch">Michael Pantic</maintainer>
@@ -21,6 +21,7 @@
 
   <depend>std_msgs</depend>
   <depend>geometry_msgs</depend>
-  <depend>space_msgs</depend>
+  <depend>rospace_msgs</depend>
+  <depend>rospace_lib</depend>
 
 </package>

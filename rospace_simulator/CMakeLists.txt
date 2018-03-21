@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(cso_gnc_sim)
+project(rospace_simulator)
 
 find_package(catkin_simple REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
