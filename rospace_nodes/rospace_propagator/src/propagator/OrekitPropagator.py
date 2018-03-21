@@ -6,7 +6,7 @@
 # See the LICENSE.md file in the root of this repository
 # for complete details.
 
-import space_tf
+import rospace_lib
 import numpy as np
 import PropagatorBuilder as PB
 import os
@@ -36,7 +36,7 @@ def write_satellite_state(state):
     """
 
     pv = state.getPVCoordinates()
-    cart_teme = space_tf.CartesianTEME()
+    cart_teme = rospace_lib.CartesianTEME()
     cart_teme.R = np.array([pv.position.x,
                             pv.position.y,
                             pv.position.z]) / 1000
