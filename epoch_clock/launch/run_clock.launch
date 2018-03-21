@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="epoch_clock" name="epoch_clock_sim" type="epoch_clock.py" output="screen">
+        <param name="realtime_factor" value="1" />
+    </node>
+</launch>
