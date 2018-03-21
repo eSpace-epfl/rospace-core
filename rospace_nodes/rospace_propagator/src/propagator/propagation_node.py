@@ -16,7 +16,6 @@ import rospy
 import time
 import threading
 import message_filters
-import epoch_clock
 import rospace_lib
 
 from time import sleep
@@ -328,7 +327,7 @@ if __name__ == '__main__':
     SimTime.updateClock(msg_cl)
     pub_clock.publish(msg_cl)
     # init epoch clock for propagator
-    epoch = epoch_clock.Epoch()
+    epoch = rospace_lib.clock.Epoch()
 
     while not rospy.is_shutdown():
 

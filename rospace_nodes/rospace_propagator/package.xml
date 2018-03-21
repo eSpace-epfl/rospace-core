@@ -20,6 +20,5 @@
   <depend>geometry_msgs</depend>
   <depend>rospace_lib</depend>
   <depend>rospace_msgs</depend>
-  <depend>epoch_clock</depend>
 
 </package>
