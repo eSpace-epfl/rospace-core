@@ -1,0 +1,3 @@
+<launch>
+	<test test-name="testSimTime" pkg="epoch_clock" type="test_SimTimeClock.py" time-limit="10.0"/>
+</launch>
