@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>space_tf</name>
+  <name>rospace_lib</name>
   <version>0.0.0</version>
   <description>
 	    Simple python library for coordinate conversions

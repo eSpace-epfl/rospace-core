@@ -6,8 +6,8 @@
 # See the LICENSE.md file in the root of this repository
 # for complete details.
 
-from space_tf.BaseState import *
-from space_tf.Cartesian import *
-from space_tf.Constants import *
-from space_tf.KepOrbElem import *
-from space_tf.QNSRelOrbElements import *
+from rospace_lib.BaseState import *
+from rospace_lib.Cartesian import *
+from rospace_lib.Constants import *
+from rospace_lib.KepOrbElem import *
+from rospace_lib.QNSRelOrbElements import *

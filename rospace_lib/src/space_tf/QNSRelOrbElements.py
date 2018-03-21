@@ -1,3 +1,7 @@
+# @copyright Copyright (c) 2017, Michael Pantic (michael.pantic@gmail.com)
+#
+# @license zlib license
+#
 """
 Module that contains Classes for Relative Orbital Elements (ROE)
 
@@ -8,8 +12,6 @@ References:
     [2] Improved Maneuver-free approach to angles-only navigation for space rendezvous,
         J. Sullivan, A.W. Koenig, S. D'Amico, AAS 16-530
 
-    Author: Michael Pantic
-    License: TBD
 """
 import sys
 import numpy as np
