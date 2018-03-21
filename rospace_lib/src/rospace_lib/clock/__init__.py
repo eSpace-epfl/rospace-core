@@ -6,5 +6,9 @@
 # See the LICENSE.md file in the root of this repository
 # for complete details.
 
+from .epoch import Epoch
+from .SimTimeHandler import SimTimeHandler
+from .SimTimeService import SimTimeService
+from .SimTimeClock import SimTimeClock
 
-from rospace_lib.clock.Epoch import *
+__all__ = ['Epoch', 'SimTimeHandler', 'SimTimeService', 'SimTimeClock']
