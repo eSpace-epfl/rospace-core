@@ -10,54 +10,82 @@ import rospace_lib
 import numpy as np
 import PropagatorBuilder as PB
 import os
+from datetime import datetime, timedelta
+from math import degrees, sin, cos
 
 import orekit
 
 from java.io import File
 
+from org.orekit.python import PythonAttitudePropagation as PAP
 from orekit.pyhelpers import setup_orekit_curdir
 from org.orekit.data import DataProvidersManager, ZipJarCrawler
+from org.orekit.models.earth import GeoMagneticModelLoader, GeoMagneticField
 from org.orekit.time import TimeScalesFactory, AbsoluteDate
+from org.orekit.frames import FramesFactory
+from org.orekit.attitudes import Attitude, FixedRate, InertialProvider
+from org.orekit.forces.drag.atmosphere.data import MarshallSolarActivityFutureEstimation
+from org.orekit.forces.drag.atmosphere.data import CelesTrackWeather
+from org.orekit.utils import IERSConventions as IERS
 
 from org.hipparchus.geometry.euclidean.threed import Vector3D
 
 
-def write_satellite_state(state):
-    """
-    Method to extract satellite orbit state vector from Java object and put it
-    in a numpy array.
+class DisturbanceTorques(object):
+    '''Stores disturbance torques in satellite frame and their activation
+    status in numpy array.
 
-    Args:
-        PVCoordinates: satellite state vector
+    The torques are stored in following order:
+        - gravity gradient
+        - magnetic torque
+        - solar radiation pressure torque
+        - drag torque
+        - external torque
+        - sum of all torques
+    '''
+    def __init__(self):
+        self._add = []
+        self._dtorque = []
 
-    Returns:
-        numpy.array: cartesian state vector in TEME frame
-        numpy.array: current attitude rotation in quaternions
-    """
+    @property
+    def add(self):
+        return self._add
 
-    pv = state.getPVCoordinates()
-    cart_teme = rospace_lib.CartesianTEME()
-    cart_teme.R = np.array([pv.position.x,
-                            pv.position.y,
-                            pv.position.z]) / 1000
-    cart_teme.V = np.array([pv.velocity.x,
-                            pv.velocity.y,
-                            pv.velocity.z]) / 1000
+    @add.setter
+    def add(self, addedDTorques):
+        self._add = []
+        for added in addedDTorques:
+            self._add.append(added)
 
-    # if hasAttitudeProp:
-    rot_ch = state.getAttitude().getRotation()
-    att = np.array([rot_ch.q1,
-                    rot_ch.q2,
-                    rot_ch.q3,
-                    rot_ch.q0])
+    @property
+    def dtorque(self):
+        return self._dtorque
 
-    return [cart_teme, att]
+    @dtorque.setter
+    def dtorque(self, new_dtorques):
+        self._dtorque = []
+        torque_sum = np.array([0.0, 0.0, 0.0])
+        for vector in new_dtorques:
+            t_array = np.array([vector.getX(),
+                               vector.getY(),
+                               vector.getZ()])
+            torque_sum += t_array
+            self._dtorque.append(t_array)
+
+        self._dtorque.append(torque_sum)
 
 
 class OrekitPropagator(object):
     """
     Class building numerical propagator using the orekit library methods.
     """
+
+    _data_checklist = dict()
+    """Holds dates for which data from orekit-data folder is loaded"""
+    _mag_field_coll = None
+    """Java Collection holding all loaded magnetic field models"""
+    _mag_field_model = None
+    """Currently used magnetic field model, transformed to correct year"""
 
     @staticmethod
     def init_jvm():
@@ -88,92 +116,250 @@ class OrekitPropagator(object):
             DM.clearProviders()
             DM.addProvider(crawler)
 
-    def __init__(self):
-        self._propagator_num = None
+    @staticmethod
+    def load_magnetic_field_models(epoch):
+        curr_year = GeoMagneticField.getDecimalYear(epoch.day,
+                                                    epoch.month,
+                                                    epoch.year)
+        gmLoader = GeoMagneticModelLoader()
+        manager = DataProvidersManager.getInstance()
+        loaded = manager.feed('(?:IGRF|igrff)\\p{Digit}\\p{Digit}\\.(?:cof|COF)', gmLoader)
+        if not loaded:
+            loaded = manager.feed('(?:WMM|wmm)\\p{Digit}\\p{Digit}\\.(?:cof|COF)', gmLoader)
+            if loaded:
+                mesg = "\033[93m  [WARN] [load_magnetic_field_models] Could " \
+                   + "not load IGRF model. Using WMM instead.\033[0m"
+                print mesg
+            else:
+                raise ValueError("No magnetic field model found!")
 
-    def initialize(self, propSettings, state, epoch):
+        # get correct model from Collection and transform to correct year
+        GMM_coll = gmLoader.getModels()
+        valid_mod = None
+        for GMM in GMM_coll:
+            if GMM.validTo() >= curr_year and GMM.validFrom() < curr_year:
+                valid_mod = GMM
+                break
+
+        if valid_mod is None:
+            mesg = "No magnetic field model found by data provider for year " \
+                    + str(curr_year) + "."
+            raise ValueError(mesg)
+
+        OrekitPropagator._mag_field_coll = GMM_coll
+        if valid_mod.supportsTimeTransform():
+            # only prediction model supports time transformation
+            OrekitPropagator._mag_field_model = valid_mod \
+                                                .transformModel(curr_year)
+        else:
+            OrekitPropagator._mag_field_model = valid_mod
+
+    @staticmethod
+    def create_data_validity_checklist():
+        """Get files loader by DataProvider and create dict() with valid dates for
+        loaded data.
+
+        Creates a list with valid start and ending date for data loaded by the
+        DataProvider during building. The method looks for follwing folders
+        holding the correspoding files:
+
+            Earth-Orientation-Parameters: EOP files using IERS2010 convetions
+            MSAFE: NASA Marshall Solar Activity Future Estimation files
+            Magnetic-Field-Models: magentic field model data files
+
+        The list should be used before every propagation step, to check if data
+        is loaded/still exists for current simulation time. Otherwise
+        simulation could return results with coarse accuracy. If e.g. no
+        EOP data is available, null correction is used, which could worsen the
+        propagators accuracy.
         """
-        Method builds propagator object based on settings defined in arguments.
+        checklist = dict()
+        start_dates = []
+        end_dates = []
 
-        Propagator object is build using PropagatorBuilder. This takes
-        information from a python dictionary to add and build propagator
-        settings correctly.
+        EOP_file = PB._get_name_of_loaded_files('Earth-Orientation-Parameters')
+        if EOP_file:
+            EOPHist = FramesFactory.getEOPHistory(IERS.IERS_2010, False)
+            EOP_start_date = EOPHist.getStartDate()
+            EOP_end_date = EOPHist.getEndDate()
+            checklist['EOP_dates'] = [EOP_start_date, EOP_end_date]
+            start_dates.append(EOP_start_date)
+            end_dates.append(EOP_end_date)
 
-        After build this method checks if Attitude propagation and Thrusting
-        has been set as active. If yes the following object variables are set
-        to True:
-            - hasAttitudeProp
-            - hasThrust
+        CelesTrack_file = PB._get_name_of_loaded_files('CELESTRACK')
+        if CelesTrack_file:
+            ctw = CelesTrackWeather("(?:sw|SW)\\p{Digit}+\\.(?:txt|TXT)")
+            ctw_start_date = ctw.getMinDate()
+            ctw_end_date = ctw.getMaxDate()
+            checklist['CTW_dates'] = [ctw_start_date, ctw_end_date]
+            start_dates.append(ctw_start_date)
+            end_dates.append(ctw_end_date)
+
+        MSAFE_file = PB._get_name_of_loaded_files('MSAFE')
+        if MSAFE_file:
+            msafe = \
+                MarshallSolarActivityFutureEstimation(
+                 "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)" +
+                 "\\p{Digit}\\p{Digit}\\p{Digit}\\p{Digit}F10\\" +
+                 ".(?:txt|TXT)",
+                 MarshallSolarActivityFutureEstimation.StrengthLevel.AVERAGE)
+            MS_start_date = msafe.getMinDate()
+            MS_end_date = msafe.getMaxDate()
+            checklist['MSAFE_dates'] = [MS_start_date, MS_end_date]
+            start_dates.append(MS_start_date)
+            end_dates.append(MS_end_date)
+
+        if OrekitPropagator._mag_field_coll:
+            coll_iterator = OrekitPropagator._mag_field_coll.iterator()
+            first = coll_iterator.next()
+            GM_start_date = first.validFrom()
+            GM_end_date = first.validTo()
+            for GM in coll_iterator:
+                if GM_start_date > GM.validFrom():
+                    GM_start_date = GM.validFrom()
+                if GM_end_date < GM.validTo():
+                    GM_end_date = GM.validTo()
+
+            # convert to absolute date for later comparison
+            dec_year = GM_start_date
+            base = datetime(int(dec_year), 1, 1)
+            dec = timedelta(seconds=(base.replace(year=base.year + 1) -
+                            base).total_seconds() * (dec_year-int(dec_year)))
+            GM_start_date = OrekitPropagator.to_orekit_date(base + dec)
+            dec_year = GM_end_date
+            base = datetime(int(dec_year), 1, 1)
+            dec = timedelta(seconds=(base.replace(year=base.year + 1) -
+                            base).total_seconds() * (dec_year-int(dec_year)))
+            GM_end_date = OrekitPropagator.to_orekit_date(base + dec)
+            checklist['MagField_dates'] = [GM_start_date, GM_end_date]
+            start_dates.append(GM_start_date)
+            end_dates.append(GM_end_date)
+
+        if checklist:  # if any data loaded define first and last date
+            for idx, date in enumerate(start_dates):
+                if idx == 0:
+                    first_date = date
+                else:
+                    if first_date.compareTo(date) < 0:
+                        first_date = date
+
+            for idx, date in enumerate(end_dates):
+                if idx == 0:
+                    last_date = date
+                else:
+                    if last_date.compareTo(date) > 0:
+                        last_date = date
+
+            checklist['MinMax_dates'] = [first_date, last_date]
+
+        mesg = "[INFO]: Simulation can run between epochs: " + \
+               str(first_date) + " & " + str(last_date) + \
+               " (based on loaded files)."
+        print mesg
+
+        OrekitPropagator._data_checklist = checklist
+
+    @staticmethod
+    def check_data_availability(epoch):
+        """
+        Checks if loaded files from orekit-data have data for current epoch.
+
+        Also checks if loaded magnetic model is valid for current epoch and
+        updates the model's coefficients to current epoch using secular
+        variation coefficients.
 
         Args:
-            propSettings: dictionary containing info about propagator settings
-            state: initial state of spacecraft
-            epoch: initial epoch @ which state is defined
+            oDate: AbsoluteDate object of current epoch
+
+        Raises:
+            ValueError: if no data loaded for current epoch
         """
+        min_max = OrekitPropagator._data_checklist['MinMax_dates']
+        oDate = OrekitPropagator.to_orekit_date(epoch)
+        if oDate.compareTo(min_max[0]) < 0:
+            err_msg = "No file loaded with valid data for current epoch " + \
+                      str(oDate) + "! Earliest possible epoch: " + min_max[0]
+            raise ValueError(err_msg)
+        if oDate.compareTo(min_max[1]) > 0:
+            err_msg = "No file loaded with valid data for current epoch " + \
+                      str(oDate) + "! Latest possible epoch: " + min_max[1]
+            raise ValueError(err_msg)
 
-        OrEpoch = self.to_orekit_date(epoch)
+        d_year = GeoMagneticField.getDecimalYear(epoch.day,
+                                                 epoch.month,
+                                                 epoch.year)
 
-        _builder = PB.PropagatorBuilder(propSettings, state, OrEpoch)
-        _builder._build_state()
-        _builder._build_integrator()
-        _builder._build_propagator()
-        _builder._build_gravity()
-        _builder._build_attitude_propagation()
-        _builder._build_thirdBody()
-        _builder._build_drag_and_solar_pressure()
-
-        _builder._build_solid_tides()
-        _builder._build_ocean_tides()
-        _builder._build_relativity()
-        _builder._build_thrust()
-
-        self._earth = _builder.get_earth()
-        self.ThrustModel = _builder.get_thrust_model()
-        self._propagator_num = _builder.get_propagator()
-
-        if propSettings['attitudeProvider']['type'] == 'AttPropagation':
-            self.hasAttitudeProp = True
+        # transform model to current date if inside valid epoch. Else load new
+        # model (should be available -> checking for out-of-bounds date above)
+        mdl = OrekitPropagator._mag_field_model
+        mdl_iterator = OrekitPropagator._mag_field_coll.iterator()
+        if mdl.validFrom() < d_year and mdl.validTo() >= d_year:
+            # still using correct model. Check if time transform necessary
+            if mdl.supportsTimeTransform() and mdl.getEpoch != d_year:
+                OrekitPropagator._mag_field_model = mdl.transformModel(d_year)
         else:
-            self.hasAttitudeProp = False
+            # need to load new 5-year model
+            for GMM in mdl_iterator:
+                if GMM.validTo() >= d_year and GMM.validFrom() < d_year:
+                    break
+            if mdl.supportsTimeTransform():
+                OrekitPropagator._mag_field_model = GMM.transformModel(d_year)
+            else:
+                OrekitPropagator._mag_field_model = GMM
 
-        if self.ThrustModel is not None:
-            self.hasThrust = True
-        else:
-            self.hasThrust = False
-
-    def propagate(self, epoch):
+    @staticmethod
+    def _write_satellite_state(state):
         """
-        Propagate satellite to given epoch.
-
-        Method calculates if external forces and torques are acting on
-        satellite (Thrust), then propagates its state.
-
-        The newly propagated state is set as the satellite's new initial state.
+        Method to extract satellite orbit state vector, rotation and force
+        from Java object and put it in a numpy array.
 
         Args:
-            epoch: epoch to which propagator has to propagate
+            PVCoordinates: satellite state vector
 
         Returns:
             numpy.array: cartesian state vector in TEME frame
             numpy.array: current attitude rotation in quaternions
+            numpy.array: force in satellite body frame
         """
 
-        orekit_date = self.to_orekit_date(epoch)
+        pv = state.getPVCoordinates()
+        cart_teme = rospace_lib.CartesianTEME()
+        cart_teme.R = np.array([pv.position.x,
+                                pv.position.y,
+                                pv.position.z]) / 1000
+        cart_teme.V = np.array([pv.velocity.x,
+                                pv.velocity.y,
+                                pv.velocity.z]) / 1000
 
-        if self.hasAttitudeProp:
-            self.calculate_torque()
+        rot_ch = state.getAttitude().getRotation()
+        att = np.array([rot_ch.q1,
+                        rot_ch.q2,
+                        rot_ch.q3,
+                        rot_ch.q0])
 
-        if self.hasThrust:
-            # self.change_attitude_provider()
-            self.calculate_thrust()
+        a_sF = rot_ch.applyTo(pv.acceleration)
+        force_sF = np.array([a_sF.x,
+                             a_sF.y,
+                             a_sF.z]) * state.getMass()
 
-        # Place where all the magic happens:
-        state = self._propagator_num.propagate(orekit_date)
+        return [cart_teme, att, force_sF]
 
-        # return new state in numpy arrays
-        return write_satellite_state(state)
+    def _write_d_torques(self):
 
-    def to_orekit_date(self, epoch):
+        dtorque = DisturbanceTorques()
+
+        if self._hasAttitudeProp:
+            dtorque.add = self.attProv.getAddedDisturbanceTorques()
+            dtorque.dtorque = self.attProv.getDisturbanceTorques()
+        else:
+            dtorque.add = [False]*6
+            zeros_vector = [Vector3D.ZERO]*6
+            dtorque.dtorque = orekit.JArray('object')(zeros_vector, Vector3D)
+
+        return dtorque
+
+    @staticmethod
+    def to_orekit_date(epoch):
         """
         Method to convert UTC simulation time from python's datetime object to
         orekits AbsoluteDate object
@@ -194,6 +380,174 @@ class OrekitPropagator(object):
                                    TimeScalesFactory.getUTC())
         return orekit_date
 
+    def __init__(self):
+        self._propagator_num = None
+        self._hasAttitudeProp = False
+        self._hasThrust = False
+        self._GMmodel = None
+
+    def initialize(self, propSettings, state, epoch):
+        """
+        Method builds propagator object based on settings defined in arguments.
+
+        Propagator object is build using PropagatorBuilder. This takes
+        information from a python dictionary to add and build propagator
+        settings correctly.
+
+        After build this method checks if Attitude propagation and Thrusting
+        has been set as active. If yes the following object variables are set
+        to True:
+            - hasAttitudeProp
+            - hasThrust
+
+        Args:
+            propSettings: dictionary containing info about propagator settings
+            state: initial state of spacecraft
+            epoch: initial epoch @ which state is defined as datetime object
+
+        Raises:
+            AssertionError: if propagator settings file was not found
+        """
+
+        OrEpoch = self.to_orekit_date(epoch)
+
+        try:
+            assert propSettings != 0
+        except AssertionError:
+            ass_err = "ERROR: Propagator settings file could not be found!"
+            raise AssertionError(ass_err)
+
+        _builder = PB.PropagatorBuilder(propSettings, state, OrEpoch)
+        _builder._build_state()
+        _builder._build_integrator()
+        _builder._build_propagator()
+        _builder._build_gravity()
+        _builder._build_attitude_propagation()
+        _builder._build_thirdBody()
+        _builder._build_drag_and_solar_pressure()
+
+        _builder._build_solid_tides()
+        _builder._build_ocean_tides()
+        _builder._build_relativity()
+        _builder._build_thrust()
+
+        self._earth = _builder.get_earth()
+        self.ThrustModel = _builder.get_thrust_model()
+        self._propagator_num = _builder.get_propagator()
+
+        if propSettings['attitudeProvider']['type'] == 'AttPropagation':
+            self._hasAttitudeProp = True
+            self.attProv = PAP.cast_(self._propagator_num.getAttitudeProvider())
+
+        if self.ThrustModel is not None:
+            self._hasThrust = True
+
+    def propagate(self, epoch):
+        """
+        Propagate satellite to given epoch.
+
+        Method calculates if external forces and torques are acting on
+        satellite (Thrust), then propagates its state.
+
+        The newly propagated state is set as the satellite's new initial state.
+
+        Args:
+            epoch: epoch to which propagator has to propagate
+
+        Returns:
+            numpy.array: cartesian state vector in TEME frame
+            numpy.array: current attitude rotation in quaternions
+            numpy.array: force acting on satellite in body frame
+            numpy.array: disturbance torques acting on satellite in body frame
+            numpy.array: Magnetic field at satellite position in TEME frame
+        """
+
+        orekit_date = self.to_orekit_date(epoch)
+
+        if self._hasAttitudeProp:
+            self.calculate_external_torque()
+
+        if self._hasThrust:
+            self.calculate_thrust()
+
+        # Place where all the magic happens:
+        state = self._propagator_num.propagate(orekit_date)
+
+        # return and store output of propagation
+        dtorque = self._write_d_torques()
+        [cart_teme, att, force_sF] = self._write_satellite_state(state)
+        B_field_i = self._calculate_magnetic_field(orekit_date)
+
+        return [cart_teme, att, force_sF, dtorque, B_field_i]
+
+    def _calculate_magnetic_field(self, oDate):
+        """Calculates magnetic field at position of spacecraft
+
+        Args:
+            oDate: Absolute date object with time of spacecraft state
+
+        Returns:
+            numpy.array: Magnetic field vector in TEME frame
+        """
+        spacecraftState = self._propagator_num.getInitialState()
+        satPos = spacecraftState.getPVCoordinates().getPosition()
+        frame = spacecraftState.getFrame()
+
+        gP = self._earth.transform(satPos, frame, oDate)
+        lat = gP.getLatitude()
+        lon = gP.getLongitude()
+        alt = gP.getAltitude() / 1e3  # Mag. Field needs degrees and [km]
+        geo2inertial = np.array([
+                            [-sin(lon), -cos(lon)*sin(lat), cos(lon)*cos(lat)],
+                            [cos(lon), -sin(lon)*sin(lat), sin(lon)*cos(lat)],
+                            [0, cos(lat), sin(lat)]])
+
+        # get B-field in geodetic system (X:East, Y:North, Z:Nadir)
+        B_geo = OrekitPropagator._mag_field_model.calculateField(
+                            degrees(lat), degrees(lon), alt).getFieldVector()
+
+        # convert geodetic frame to inertial and from [nT] to [T]
+        B_i = geo2inertial.dot(np.array([B_geo.getX(),
+                                         B_geo.getY(),
+                                         B_geo.getZ()])) * 1e-9
+
+        return B_i
+
+    def change_attitude_provider(self):
+        """
+        Method changing propagator's provider between FixedRate and Inertia.
+
+        Rate and axis are obtained from Propulsion node and stored by
+        callback method. If rotation is required the callback method
+        sets trigger to true and the propagator's attitude provider is set
+        to FixedRate. Otherwise an InertialProvider is used so that propagation
+        keeps attitude constant.
+
+        After every change in attitude provider the name is also stored in the
+        variable attProv_name to ensure that the provider is only set once
+        (when changes was requested).
+        """
+
+        if self.attitude_trigger is True:
+            sat_state = self._propagator_num.getInitialState()
+            att_prov = self.provide_fixed_rate_attitude(sat_state)
+            self._propagator_num.setAttitudeProvider(att_prov)
+
+            self.attProv_name = self._propagator_num.getAttitudeProvider()
+            self.attitude_trigger = False
+
+        elif (self.attProv_name !=
+              self._propagator_num.getAttitudeProvider().toString()):
+            curr_rot = self._propagator_num.getInitialState() \
+                                           .getAttitude() \
+                                           .getRotation()
+            self._propagator_num.setAttitudeProvider(InertialProvider(curr_rot))
+
+            self.attProv_name = self._propagator_num.getAttitudeProvider()\
+                                                    .toString()
+        else:
+            pass
+
     def calculate_thrust(self):
         """
         Method that updates parameter in Thrust Model.
@@ -209,28 +563,93 @@ class OrekitPropagator(object):
         # if simulation hasn't started attributes don't exist yet
         # set them to None in this case
         F_T = getattr(self, 'F_T', None)
-
-        if F_T is not None:
-            F_T_norm = np.linalg.norm(self.F_T, 2)
+        Isp = getattr(self, 'Isp', None)
+        # F_T = [10,0,0]
+        # Isp = 1000
+        if F_T is not None and Isp is not None:
+            F_T_norm = np.linalg.norm(F_T, 2)
 
             if F_T_norm > 2 * np.finfo(np.float32).eps:
-                # print self.F_T
-                F_T_dir = self.F_T / F_T_norm
+                F_T_dir = F_T / F_T_norm
                 F_T_dir = Vector3D(float(F_T_dir[0]),
                                    float(F_T_dir[1]),
                                    float(F_T_dir[2]))
 
                 self.ThrustModel.direction = F_T_dir
                 self.ThrustModel.thrust = float(F_T_norm)
-                self.ThrustModel.isp = self.Isp
-                self.ThrustModel.ChangeParameters(float(F_T_norm), self.Isp)
+                self.ThrustModel.isp = Isp
+                self.ThrustModel.ChangeParameters(float(F_T_norm), Isp)
                 self.ThrustModel.firing = True
             else:
                 self.ThrustModel.firing = False
 
-    def add_thrust_callback(self, thrust_force, thrust_ispM):
+    def calculate_external_torque(self):
+        """
+        Method which feeds external torques to attitude propagation provider.
+
+        Method checks if torque has already been set by message from propulsion
+        node (stored in self.torque), and then feeds them to the provider.
+        """
+
+        N_T = getattr(self, 'torque', None)
+
+        if N_T is not None:
+            N_T = Vector3D(float(N_T[0]),
+                           float(N_T[1]),
+                           float(N_T[2]))
+            attProv = PAP.cast_(self._propagator_num.getAttitudeProvider())
+            attProv.setExternalTorque(N_T)
+
+    def init_fixed_rate_attitude(self):
+        """
+        Method adds Fixed rate provider to propagator's attitude provider.
+
+        Spin rate and spin acceleration is set to zero and trigger with
+        attitude provider name is initialized, so that it can be used in
+        the method change_attitude_provider().
+        """
+
+        self.sat_spin = [0, 0, 0]
+        sat_state = self._propagator_num.getInitialState()
+        att_prov = self.provide_fixed_rate_attitude(sat_state)
+        self._propagator_num.setAttitudeProvider(att_prov)
+        self.attitude_trigger = False  # trigger to change attitude in prop
+        self.attProv_name = self._propagator_num.getAttitudeProvider() \
+                                                .toString()
+
+    def provide_fixed_rate_attitude(self, sat_state):
+        """
+        Method creates FixedRate attitude provider object.
+
+        Args:
+            sat_state: current state of satellite
+
+        Returns:
+            FixedRate: Orekit's FixedRate provider
+        """
+        sat_spin = Vector3D(float(self.sat_spin[0]),
+                            float(self.sat_spin[1]),
+                            float(self.sat_spin[2]))
+        sat_acc = Vector3D.ZERO
+
+        start_date = sat_state.getDate()
+        sat_frame = sat_state.getFrame()
+        sat_rotation = sat_state.getAttitude().getRotation()
+
+        rot_attitude = Attitude(start_date,
+                                sat_frame,
+                                sat_rotation,
+                                sat_spin,
+                                sat_acc)
+
+        return FixedRate(rot_attitude)
+
+    def thrust_torque_callback(self, thrust_force, thrust_ispM):
         """
         Callback function for subscriber to the propulsion node.
+
+        Propulsion has to set torque and force back to Zero if no
+        forces/torques present.
 
         Function saves the vlaue for the mean specific impulse and
         the force, torque vector to class objects.
@@ -256,3 +675,27 @@ class OrekitPropagator(object):
         self.torque = np.array([thrust_force.wrench.torque.x,
                                 thrust_force.wrench.torque.y,
                                 thrust_force.wrench.torque.z])
+
+    def attitude_fixed_rot_callback(self, att_parameter):
+        """
+        Callback for attitude control using Orekit's Fixed Rate provider.
+
+        Normalizes the rotation axis vector if necessary and sets spin rate and
+        an attitude trigger indicating attitude change.
+        Is used with  method: simple_attitude_control()
+
+        Args:
+            att_parameter: attitude_ctrl message containing spin axis vector
+                           and angular rate
+        """
+
+        sat_spin = np.array([att_parameter.axis.x,
+                             att_parameter.axis.y,
+                             att_parameter.axis.z])
+
+        norm = np.linalg.norm(sat_spin)
+        if norm != 0:
+            sat_spin = sat_spin / norm
+
+        self.sat_spin = sat_spin * att_parameter.angle_rate
+        self.attitude_trigger = True

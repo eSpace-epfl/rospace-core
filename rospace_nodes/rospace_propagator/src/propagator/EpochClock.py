@@ -6,7 +6,7 @@
 # See the LICENSE.md file in the root of this repository
 # for complete details.
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 class EpochClock(object):
@@ -24,18 +24,19 @@ class EpochClock(object):
     def __init__(self,
                  oe_epoch=None,
                  frequency=None,
-                 step_size=None):
-
-        self.epoch = ""
-        self.oe_epoch = ""
-        self.epoch_end = ""
+                 step_size=None,
+                 TIME_SHIFT=0.0):
 
         if oe_epoch is not None:
-            self.oe_epoch = oe_epoch
-            self.datetime_oe_epoch = datetime.strptime(self.oe_epoch,
-                                                       "%Y%m%dT%H:%M:%S")
+            self.datetime_oe_epoch = datetime.strptime(oe_epoch, "%Y%m%dT%H:%M:%S")
+            self.datetime_oe_epoch_shifted = \
+                self.datetime_oe_epoch - timedelta(seconds=TIME_SHIFT)
         else:
             self.datetime_oe_epoch = datetime.utcnow()
+            self.datetime_oe_epoch_shifted = \
+                self.datetime_oe_epoch - timedelta(seconds=TIME_SHIFT)
+
+        self.time_shift = TIME_SHIFT * 1e9
 
         # real time update rate -- attempted updates per second
         if frequency is not None:
@@ -68,12 +69,26 @@ class EpochClock(object):
         Returns:
             rosgraph_msgs.msg.Clock : clock message
         """
+        if (self.currentTime < self.time_shift and
+           self.currentTime + self.step_size > self.time_shift):
+            shift = int(self.currentTime + self.step_size - self.time_shift)
+            self.currentTime = self.time_shift
+            mesg = "\033[93m[WARN] [EpochClock] Shortend next timestep by " \
+                   + str(shift * 1e-9) \
+                   + "s to reach desired intial epoch. \033[0m"
+            print mesg
+        else:
+            self.currentTime += self.step_size
 
-        self.currentTime += self.step_size
         full_seconds = int(self.currentTime*1e-9)
         msg_cl.clock.secs = full_seconds
         msg_cl.clock.nsecs = int(self.currentTime - full_seconds*1e9)
-        return msg_cl
+
+        time_delta = timedelta(0, msg_cl.clock.secs, msg_cl.clock.nsecs / 1e3)
+
+        return [msg_cl,
+                self.datetime_oe_epoch_shifted + time_delta,
+                self.currentTime >= self.time_shift]
 
     def updateTimeFactors(self, new_rtf, new_freq, new_dt):
         """
