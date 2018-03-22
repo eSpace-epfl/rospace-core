@@ -39,6 +39,7 @@ from org.orekit.forces.gravity.potential import GravityFieldFactory
 from org.orekit.forces.gravity.potential import EGMFormatReader, ICGEMFormatReader
 from org.orekit.forces.drag.atmosphere import DTM2000
 from org.orekit.forces.drag.atmosphere.data import MarshallSolarActivityFutureEstimation
+from org.orekit.forces.drag.atmosphere.data import CelesTrackWeather
 from org.orekit.attitudes import NadirPointing
 from org.orekit.data import DataProvidersManager
 from org.orekit.models.earth import GeoMagneticModelLoader
@@ -1427,11 +1428,11 @@ class DragFactory(object):
         """Create drag instance and add it to propagator"""
 
 
-class DragDTM2000(DragFactory):
+class DragDTM2000MSAFE(DragFactory):
 
     @staticmethod
     def isApplicable(name):
-        if name == "DragDTM2000":
+        if name == "DragDTM2000MSAFE":
             return True
         else:
             return False
@@ -1485,7 +1486,56 @@ class DragDTM2000(DragFactory):
         return [propagator, atmosphere]
 
 
+class DragDTM2000CELESTRACK(DragFactory):
+
+    @staticmethod
+    def isApplicable(name):
+        if name == "DragDTM2000CELESTRACK":
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def Setup(builderInstance):
+        """
+        Adds a Drag Force to orbit propagation using DTM2000 model as atmosphere.
+
+        Uses a BoxAndSolarArraySpacecraft object and aerodynamic parameters
+        configured in the settings.
+
+        Returns:
+            propagator: Propgator
+            atmosphere: DTM2000 model of atmosphere
+        """
+        propagator = builderInstance.propagator
+        if builderInstance.earth is not None:
+            earth = builderInstance.earth
+        else:
+            earth = _build_default_earth('DragDTM2000')
+        starfighter = builderInstance.spacecraft
+        dragModel = builderInstance.orbSettings['DragModel']
+        sun = CelestialBodyFactory.getSun()
+
+        # if drag coefficient estimated so select its driver
+        # (coeff will not be fixed):
+        if dragModel['settings']['cD_Estimated']:
+            for coef in starfighter.getDragParametersDrivers():
+                if coef.getName() == "drag coefficient":
+                    coef.setSelected(True)
+
+        # load data from celestrack-weather
+        ctw = CelesTrackWeather("(:?sw|SW)\\p{Digit}+\\.(?:txt|TXT)")
+
+        manager = DataProvidersManager.getInstance()
+        manager.feed(ctw.getSupportedNames(), ctw)
+
+        atmosphere = DTM2000(ctw, sun, earth)
+        propagator.addForceModel(DragForce(atmosphere, starfighter))
+
+        return [propagator, atmosphere]
 #####################################################################
+
+
 class SolarPressureFactory(object):
     """
     Base class for different solar pressure models used in orbit propagation.

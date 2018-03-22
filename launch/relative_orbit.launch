@@ -8,6 +8,7 @@
 		<param name="oe_ta_init" type="yaml" value="{ada: -0.1, adL: -20, adEx: 0, adEy: 0, adIx: 0, adIy: 0 }" />
 
 		<param name="oe_epoch" value="20171114T15:56:00" />
+		<param name="TIME_SHIFT" type="double" value="10.0" />
 
 		<param name="ns_chaser" value="$(arg ns_chaser)" />
 		<param name="ns_target" value="$(arg ns_target)" />

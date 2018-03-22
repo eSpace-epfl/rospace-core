@@ -25,10 +25,10 @@ from org.orekit.time import TimeScalesFactory, AbsoluteDate
 from org.orekit.frames import FramesFactory
 from org.orekit.attitudes import Attitude, FixedRate, InertialProvider
 from org.orekit.forces.drag.atmosphere.data import MarshallSolarActivityFutureEstimation
+from org.orekit.forces.drag.atmosphere.data import CelesTrackWeather
 from org.orekit.utils import IERSConventions as IERS
 
 from org.hipparchus.geometry.euclidean.threed import Vector3D
-from org.hipparchus.geometry.euclidean.threed import Rotation, RotationOrder, RotationConvention
 
 
 class DisturbanceTorques(object):
@@ -123,13 +123,21 @@ class OrekitPropagator(object):
                                                     epoch.year)
         gmLoader = GeoMagneticModelLoader()
         manager = DataProvidersManager.getInstance()
-        manager.feed('(?:IGRF|WMM)\\d{2}\\.(?:cof|COF)', gmLoader)
+        loaded = manager.feed('(?:IGRF|igrff)\\p{Digit}\\p{Digit}\\.(?:cof|COF)', gmLoader)
+        if not loaded:
+            loaded = manager.feed('(?:WMM|wmm)\\p{Digit}\\p{Digit}\\.(?:cof|COF)', gmLoader)
+            if loaded:
+                mesg = "\033[93m  [WARN] [load_magnetic_field_models] Could " \
+                   + "not load IGRF model. Using WMM instead.\033[0m"
+                print mesg
+            else:
+                raise ValueError("No magnetic field model found!")
 
         # get correct model from Collection and transform to correct year
         GMM_coll = gmLoader.getModels()
         valid_mod = None
         for GMM in GMM_coll:
-            if GMM.validTo() >= curr_year and GMM.validFrom() <= curr_year:
+            if GMM.validTo() >= curr_year and GMM.validFrom() < curr_year:
                 valid_mod = GMM
                 break
 
@@ -139,7 +147,12 @@ class OrekitPropagator(object):
             raise ValueError(mesg)
 
         OrekitPropagator._mag_field_coll = GMM_coll
-        OrekitPropagator._mag_field_model = valid_mod.transformModel(curr_year)
+        if valid_mod.supportsTimeTransform():
+            # only prediction model supports time transformation
+            OrekitPropagator._mag_field_model = valid_mod \
+                                                .transformModel(curr_year)
+        else:
+            OrekitPropagator._mag_field_model = valid_mod
 
     @staticmethod
     def create_data_validity_checklist():
@@ -172,6 +185,15 @@ class OrekitPropagator(object):
             checklist['EOP_dates'] = [EOP_start_date, EOP_end_date]
             start_dates.append(EOP_start_date)
             end_dates.append(EOP_end_date)
+
+        CelesTrack_file = PB._get_name_of_loaded_files('CELESTRACK')
+        if CelesTrack_file:
+            ctw = CelesTrackWeather("(?:sw|SW)\\p{Digit}+\\.(?:txt|TXT)")
+            ctw_start_date = ctw.getMinDate()
+            ctw_end_date = ctw.getMaxDate()
+            checklist['CTW_dates'] = [ctw_start_date, ctw_end_date]
+            start_dates.append(ctw_start_date)
+            end_dates.append(ctw_end_date)
 
         MSAFE_file = PB._get_name_of_loaded_files('MSAFE')
         if MSAFE_file:
@@ -271,14 +293,19 @@ class OrekitPropagator(object):
         # model (should be available -> checking for out-of-bounds date above)
         mdl = OrekitPropagator._mag_field_model
         mdl_iterator = OrekitPropagator._mag_field_coll.iterator()
-        if mdl.validFrom() < d_year and mdl.validTo() > d_year:
-            if mdl.getEpoch != d_year:
+        if mdl.validFrom() < d_year and mdl.validTo() >= d_year:
+            # still using correct model. Check if time transform necessary
+            if mdl.supportsTimeTransform() and mdl.getEpoch != d_year:
                 OrekitPropagator._mag_field_model = mdl.transformModel(d_year)
         else:
+            # need to load new 5-year model
             for GMM in mdl_iterator:
-                if GMM.validTo() >= d_year and GMM.validFrom() <= d_year:
+                if GMM.validTo() >= d_year and GMM.validFrom() < d_year:
                     break
-            OrekitPropagator._mag_field_model = GMM.transformModel(d_year)
+            if mdl.supportsTimeTransform():
+                OrekitPropagator._mag_field_model = GMM.transformModel(d_year)
+            else:
+                OrekitPropagator._mag_field_model = GMM
 
     @staticmethod
     def _write_satellite_state(state):
@@ -387,8 +414,8 @@ class OrekitPropagator(object):
         try:
             assert propSettings != 0
         except AssertionError:
-            print "ERROR: Propagator settings file could not be found!"
-            raise
+            ass_err = "ERROR: Propagator settings file could not be found!"
+            raise AssertionError(ass_err)
 
         _builder = PB.PropagatorBuilder(propSettings, state, OrEpoch)
         _builder._build_state()

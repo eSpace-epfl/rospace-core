@@ -8,6 +8,7 @@
 		<param name="oe_ta_init" type="yaml" value="{x: 868535.2001901865, y: -1155544.823396036, z: 6814678.439188073, xDot: -7338.906970961766, yDot: 1416.584435154647, zDot: 1164.116637689643}" />
 		
 		<param name="oe_epoch" value="20180311T12:04:02"/>
+		<param name="TIME_SHIFT" type="double" value="10.0" />
 		<param name="frequency" value="2.0" />
 		<param name="step_size" value="60.0" /> 
 

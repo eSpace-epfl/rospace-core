@@ -44,11 +44,15 @@ class ClockServer(threading.Thread):
     like publishing frequency and step size.
     """
 
-    def __init__(self, realtime_factor, frequency, step_size):
+    def __init__(self,
+                 realtime_factor,
+                 frequency,
+                 step_size,
+                 start_running=False):
         threading.Thread.__init__(self)
         self.lock = threading.Lock()
         self.start()
-        self.SimRunning = False
+        self.SimRunning = start_running
         self.realtime_factor = realtime_factor
         self.frequency = frequency
         self.step_size = step_size
@@ -353,6 +357,9 @@ if __name__ == '__main__':
 
     # get defined simulation parameters
     sim_parameter = dict()
+    if rospy.has_param("~TIME_SHIFT"):
+        # get simulation time shift before t=0:
+        sim_parameter['TIME_SHIFT'] = float(rospy.get_param("~TIME_SHIFT"))
     if rospy.has_param("~frequency"):
         sim_parameter['frequency'] = int(rospy.get_param("~frequency"))
     if rospy.has_param("~oe_epoch"):
@@ -375,11 +382,16 @@ if __name__ == '__main__':
                     SimTime.datetime_oe_epoch.strftime("%Y-%m-%d %H:%M:%S"))
 
     pub_clock = rospy.Publisher('/clock', Clock, queue_size=10)
-
-    # Start GUI clock service on new thread
-    ClockServer = ClockServer(SimTime.realtime_factor,
-                              SimTime.frequency,
-                              SimTime.step_size)
+    if rospy.has_param("/start_running"):
+        # Start GUI clock service on new thread
+        ClockServer = ClockServer(SimTime.realtime_factor,
+                                  SimTime.frequency,
+                                  SimTime.step_size,
+                                  rospy.get_param("/start_running"))
+    else:
+        ClockServer = ClockServer(SimTime.realtime_factor,
+                                  SimTime.frequency,
+                                  SimTime.step_size)
 
     # Subscribe to propulsion node and attitude control
     thrust_force = message_filters.Subscriber('force', WrenchStamped)
@@ -428,13 +440,13 @@ if __name__ == '__main__':
     rospy.loginfo("Propagators initialized!")
 
     # Update first step so that other nodes don't give errors
-    msg_cl = Clock()
-    msg_cl.clock.secs = int(0)
-    msg_cl.clock.nsecs = int(0)
     # msg_cl = Clock()
-    # SimTime.updateClock(msg_cl)
-    pub_clock.publish(msg_cl)
+    # msg_cl.clock.secs = int(0)
+    # msg_cl.clock.nsecs = int(0)
+    # msg_cl = Clock()
+    # pub_clock.publish(msg_cl)
     # init epoch clock for propagator
+    run_sim = sim_parameter['TIME_SHIFT'] == 0.0  # start propagating if no timeshift
     epoch = epoch_clock.Epoch()
     epoch_now = epoch.now()  # initialize, because simulation starts stopped
 
@@ -458,41 +470,42 @@ if __name__ == '__main__':
 
             # update clock
             msg_cl = Clock()
-            [msg_cl, epoch_now] = SimTime.updateClock(msg_cl)
+            [msg_cl, epoch_now, run_sim] = SimTime.updateClock(msg_cl)
             pub_clock.publish(msg_cl)
 
-        # propagate to epoch_now
-        [cart_ch, att_ch, force_ch, d_torque_ch, B_field_ch] = \
-            prop_chaser.propagate(epoch_now)
-        [cart_ta, att_ta, force_ta, d_torque_ta, B_field_ta] = \
-            prop_target.propagate(epoch_now)
+        if run_sim:
+            # propagate to epoch_now
+            [cart_ch, att_ch, force_ch, d_torque_ch, B_field_ch] = \
+                prop_chaser.propagate(epoch_now)
+            [cart_ta, att_ta, force_ta, d_torque_ta, B_field_ta] = \
+                prop_target.propagate(epoch_now)
 
-        rospy_now = rospy.Time.now()
+            rospy_now = rospy.Time.now()
 
-        [msg_ch, msg_pose_ch] = cart_to_msgs(cart_ch, att_ch, rospy_now)
-        [msg_ta, msg_pose_ta] = cart_to_msgs(cart_ta, att_ta, rospy_now)
+            [msg_ch, msg_pose_ch] = cart_to_msgs(cart_ch, att_ch, rospy_now)
+            [msg_ta, msg_pose_ta] = cart_to_msgs(cart_ta, att_ta, rospy_now)
 
-        [msg_FT_ch, msg_dtorque_ch] = force_torque_to_msgs(force_ch,
-                                                           d_torque_ch,
-                                                           rospy_now)
-        [msg_FT_ta, msg_dtorque_ta] = force_torque_to_msgs(force_ta,
-                                                           d_torque_ta,
-                                                           rospy_now)
+            [msg_FT_ch, msg_dtorque_ch] = force_torque_to_msgs(force_ch,
+                                                               d_torque_ch,
+                                                               rospy_now)
+            [msg_FT_ta, msg_dtorque_ta] = force_torque_to_msgs(force_ta,
+                                                               d_torque_ta,
+                                                               rospy_now)
 
-        msg_B_field_ch = Bfield_to_msgs(B_field_ch, rospy_now)
-        msg_B_field_ta = Bfield_to_msgs(B_field_ta, rospy_now)
+            msg_B_field_ch = Bfield_to_msgs(B_field_ch, rospy_now)
+            msg_B_field_ta = Bfield_to_msgs(B_field_ta, rospy_now)
 
-        pub_ch.publish(msg_ch)
-        pub_pose_ch.publish(msg_pose_ch)
-        pub_dtorque_ch.publish(msg_dtorque_ch)
-        pub_FT_ch.publish(msg_FT_ch)
-        pub_Bfield_ch.publish(msg_B_field_ch)
+            pub_ch.publish(msg_ch)
+            pub_pose_ch.publish(msg_pose_ch)
+            pub_dtorque_ch.publish(msg_dtorque_ch)
+            pub_FT_ch.publish(msg_FT_ch)
+            pub_Bfield_ch.publish(msg_B_field_ch)
 
-        pub_ta.publish(msg_ta)
-        pub_pose_ta.publish(msg_pose_ta)
-        pub_dtorque_ta.publish(msg_dtorque_ta)
-        pub_FT_ta.publish(msg_FT_ta)
-        pub_Bfield_ch.publish(msg_B_field_ta)
+            pub_ta.publish(msg_ta)
+            pub_pose_ta.publish(msg_pose_ta)
+            pub_dtorque_ta.publish(msg_dtorque_ta)
+            pub_FT_ta.publish(msg_FT_ta)
+            pub_Bfield_ch.publish(msg_B_field_ta)
 
         # calculate reminding sleeping time
         sleep_time = SimTime.rate - (time.clock() - comp_time)

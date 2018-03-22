@@ -6,8 +6,9 @@
 		<param name="oe_ta_rel" type="bool" value="False" />
 		<param name="oe_ch_init" type="yaml" value="{a: 7000, e: 0.0001, i: 30, O: 60, w: 120, v: 0.001}" />
 		<param name="oe_ta_init" type="yaml" value="{a: 7000, e: 0.0001, i: 30, O: 60, w: 120, v: 0.001}" />
-		
-		<!-- param name="oe_epoch" value="20000101T12:00:00"/-->
+	
+		<!-- <param name="oe_epoch" value="20141001T12:00:00"/> -->
+		<param name="TIME_SHIFT" type="double" value="20.0" />
 
 		<param name="ns_chaser" value="$(arg ns_chaser)" />
 		<param name="ns_target" value="$(arg ns_target)" />
