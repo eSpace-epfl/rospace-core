@@ -4,14 +4,14 @@ propagator_settings:
     State:
       type: 'CartesianITRF'
       settings:
-        mass: 800.0 # kg
+        mass: 8000.0 # kg
     integrator: # Steps have to be floats
       minStep: 0.001
       maxStep: 10
       initStep: 0.1
       positionTolerance: 0.001
     Gravity:
-      type: "EGM96GravityWGS84"
+      type: "EigenGravityWGS84"
       settings: # Spherical Harmonics Field Coeffs
         degree: 240
         order: 240
@@ -52,7 +52,7 @@ propagator_settings:
           abs_Estimated: False # false = fixed
           ref_Estimated: False # false = fixed 
     DragModel: # Drag force model
-        type: "DragDTM2000"
+        type: "DragDTM2000CELESTRACK"
         settings:
           cD_Estimated: False # if false cD fixed
     ThirdBody: 

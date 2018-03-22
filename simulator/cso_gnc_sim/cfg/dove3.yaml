@@ -23,10 +23,10 @@ propagator_settings:
         settings:
           Facets: ## area in [m2]
             front:
-              area: 0.01
+              area: 0.034
               nVector: 1 0 0  
             back: 
-              area: 0.01
+              area: 0.034
               nVector: -1 0 0
             left: 
               area: 0.034
@@ -35,10 +35,10 @@ propagator_settings:
               area: 0.034
               nVector: 0 0 -1
             top:
-              area: 0.034
+              area: 0.01
               nVector: 0 -1 0
             bottom: 
-              area: 0.034
+              area: 0.01
               nVector: 0 1 0
           SolarArea: 0.078 # 313x960 * 2
           SolarDir: 0 0 1
