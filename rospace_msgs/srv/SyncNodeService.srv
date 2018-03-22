@@ -1,0 +1,6 @@
+#request subsricption or report when finished step
+bool subscribe
+bool ready
+---
+#response if subsriber added
+bool added
