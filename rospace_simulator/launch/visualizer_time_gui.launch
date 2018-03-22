@@ -14,7 +14,10 @@
     <param name="/use_sim_time" value="True" />
 
     <!-- Launch CSO & target propagator -->
-    <include file="$(find rospace_propagator)/launch/$(arg prop_mode)_orbit.launch" />
+    <include file="$(find rospace_propagator)/launch/$(arg prop_mode)_orbit.launch">
+        <arg name="ns_chaser" value="$(arg ns_chaser)" />
+        <arg name="ns_target" value="$(arg ns_target)" />
+    </include>
 
     <!-- Include CSO base definition -->
     <include file="$(find rospace_simulator)/launch/cso_base.launch">

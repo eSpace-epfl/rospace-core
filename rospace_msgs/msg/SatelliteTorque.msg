@@ -1,0 +1,7 @@
+std_msgs/Header header
+rospace_msgs/DisturbanceTorque gravity
+rospace_msgs/DisturbanceTorque magnetic
+rospace_msgs/DisturbanceTorque solar_pressure
+rospace_msgs/DisturbanceTorque drag
+rospace_msgs/DisturbanceTorque external
+

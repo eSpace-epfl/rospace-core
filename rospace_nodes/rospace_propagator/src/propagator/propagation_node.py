@@ -16,7 +16,6 @@ import rospy
 import time
 import threading
 import message_filters
-import epoch_clock
 import rospace_lib
 
 from time import sleep
@@ -257,7 +256,7 @@ def cart_to_msgs(cart, att, time):
     msg = SatelitePose()
 
     msg.header.stamp = time
-    msg.header.frame_id = "teme"
+    msg.header.frame_id = "J2K"
 
     msg.position.semimajoraxis = oe.a
     msg.position.eccentricity = oe.e
@@ -274,7 +273,7 @@ def cart_to_msgs(cart, att, time):
     # set message for cartesian TEME pose
     msg_pose = PoseVelocityStamped()
     msg_pose.header.stamp = time
-    msg_pose.header.frame_id = "teme"
+    msg_pose.header.frame_id = "J2K"
     msg_pose.pose.position.x = cart.R[0]
     msg_pose.pose.position.y = cart.R[1]
     msg_pose.pose.position.z = cart.R[2]
@@ -341,7 +340,7 @@ def Bfield_to_msgs(bfield, time):
     msg = Vector3Stamped()
 
     msg.header.stamp = time
-    msg.header.frame_id = "teme_frame"
+    msg.header.frame_id = "J2K"
 
     msg.vector.x = bfield[0]
     msg.vector.y = bfield[1]
@@ -445,7 +444,7 @@ if __name__ == '__main__':
     # pub_clock.publish(msg_cl)
     # init epoch clock for propagator
     run_sim = sim_parameter['TIME_SHIFT'] == 0.0  # start propagating if no timeshift
-    epoch = epoch_clock.Epoch()
+    epoch = rospace_lib.clock.Epoch()
     epoch_now = epoch.now()  # initialize, because simulation starts stopped
 
     while not rospy.is_shutdown():

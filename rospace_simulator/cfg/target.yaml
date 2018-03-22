@@ -4,7 +4,7 @@ propagator_settings:
   name: "TARGET"
   orbitProp:
     State:
-      type: 'CartesianITRF'
+      type: 'KeplerianEME2000'
       settings:
         mass: 0.82 # kg
     Gravity:
