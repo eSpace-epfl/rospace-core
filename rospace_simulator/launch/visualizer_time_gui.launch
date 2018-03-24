@@ -7,6 +7,10 @@
     <arg name="ns_chaser" default="chaser" />
     <arg name="ns_target" default="target" />
 
+    <arg name="record_bag" default="False" />
+    <rosparam if="$(arg record_bag)" param="start_running">True</rosparam>
+
+
     <!-- Load simulation world -->
 	<param name="robot_description" textfile="$(find rospace_simulator)/res/models/world.urdf" />
     <!-- use simulation time -->
@@ -38,5 +42,7 @@
      <!-- Launch Visualizer -->
     <!-- <node name="rqt_ekf" pkg="rqt_space_plugins" type="rqt_orbit_ekf" /> -->
     <node name="rqt_sc" pkg="rqt_simtime_plugin" type="rqt_simtime_plugin" />
+
+    <include if="$(arg record_bag)" file="$(find cso_gnc_sim)/launch/record_bag.launch" />
 
 </launch>

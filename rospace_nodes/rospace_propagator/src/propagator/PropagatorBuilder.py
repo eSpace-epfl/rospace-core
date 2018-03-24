@@ -1157,7 +1157,9 @@ class AttPropagation(AttitudeFactory):
         Returns:
             Propagator: propagator
         """
-
+        mesg = "\033[91m  [WARN] Attitude Propagation still very buggy and unreliable" + \
+               " Use at own risk!\033[0m"
+        print mesg
         propagator = builderInstance.propagator
         setup = builderInstance.attSettings['settings']
         if builderInstance.earth is not None:
@@ -1250,7 +1252,7 @@ class AttPropagation(AttitudeFactory):
         if magSettings['add']:
             gmLoader = GeoMagneticModelLoader()
             manager = DataProvidersManager.getInstance()
-            manager.feed('WMM.COF', gmLoader)
+            manager.feed('WMM15.COF', gmLoader)
 
             # get item from Collection and transform model to year in sim.
             GM = gmLoader.getModels().iterator().next()

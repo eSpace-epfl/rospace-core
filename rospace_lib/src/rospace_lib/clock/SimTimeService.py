@@ -20,11 +20,15 @@ class SimTimeService(threading.Thread):
     like publishing frequency and step size.
     """
 
-    def __init__(self, realtime_factor, frequency, step_size):
+    def __init__(self,
+                 realtime_factor,
+                 frequency,
+                 step_size,
+                 start_running=False):
         threading.Thread.__init__(self)
         self.lock = threading.Lock()
         self.start()
-        self.SimRunning = False
+        self.SimRunning = start_running
         self.realtime_factor = realtime_factor
         self.frequency = frequency
         self.step_size = step_size

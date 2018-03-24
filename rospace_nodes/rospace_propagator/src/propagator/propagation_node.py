@@ -22,124 +22,31 @@ from time import sleep
 from math import radians
 
 from OrekitPropagator import OrekitPropagator
-from EpochClock import EpochClock
-from rosgraph_msgs.msg import Clock
-from rospace_msgs.srv import ClockService
-from rospace_msgs.srv import SyncNodeService
 from rospace_msgs.msg import PoseVelocityStamped
 from geometry_msgs.msg import WrenchStamped
 from geometry_msgs.msg import Vector3Stamped
 from rospace_msgs.msg import ThrustIsp
 from rospace_msgs.msg import SatelitePose
 from rospace_msgs.msg import SatelliteTorque
+from std_srvs.srv import Empty
 
-class ClockServer(threading.Thread):
-    """
-    Class setting up and communicating with Clock service.
 
-    Can start/pause simulation and change simulation parameters
-    like publishing frequency and step size.
-    """
-
-    def __init__(self,
-                 realtime_factor,
-                 frequency,
-                 step_size,
-                 start_running=False):
+class ExitServer(threading.Thread):
+    def __init__(self):
         threading.Thread.__init__(self)
-        self.lock = threading.Lock()
+        print "EXinting False"
+        self.exiting = False
         self.start()
-        self.SimRunning = start_running
-        self.realtime_factor = realtime_factor
-        self.frequency = frequency
-        self.step_size = step_size
 
-        self.syncSubscribers = 0
-        self.readyCount = 0
-
-    def handle_start_stop_clock(self, req):
-        """
-        Method called when service requested.
-
-        Start/Pauses simulation or changes siulation parameter depending
-        on input given through GUI
-
-        Args:
-            req: ClockService srv message
-
-        Return:
-            bool: SimulationRunning
-            float: Step size
-            float: Publish frequency .
-        """
-
-        if req.trigger:  # start/stop simulation
-            if self.SimRunning:
-                self.SimRunning = False
-            else:
-                self.SimRunning = True
-        elif req.dt_size > 0 and req.p_freq > 0:
-            self.frequency = req.p_freq
-            self.step_size = req.dt_size
-            self.realtime_factor = req.p_freq * req.dt_size
-
-        return [self.SimRunning, self.step_size, self.frequency]
-
-    def handle_sync_nodes(self, req):
-        """
-        Very basic Service to sync nodes.
-
-        Every node has to subscribe and after each time step
-        call service.
-
-        Args:
-            req: SyncNodeService srv message
-
-        Returns:
-            bool : True if adding node to subscribtion list,
-                   False if node reports ready
-        """
-
-        if req.subscribe is True and req.ready is False:
-            self.syncSubscribers += 1
-            return True
-        elif req.subscribe is False and req.ready is True:
-            self.updateReadyCount(reset=False)
-            return False
-
-    def updateReadyCount(self, reset):
-        """
-        Method to count nodes which reported to be ready after one time step.
-
-        Args:
-            reset: if true resets ready count if false increases count by 1
-
-        """
-
-        self.lock.acquire()
-        if reset:
-            self.readyCount = 0
-        else:
-            self.readyCount += 1
-        self.lock.release()
+    def exit_node(self, req):
+        print "EXiting true"
+        self.exiting = True
+        return []
 
     def run(self):
-        """
-        Rospy service for synchronizing nodes and simulation time.
-        Method is running/spinning on seperate thread.
-        """
-        rospy.Service('/sync_nodes',
-                      SyncNodeService,
-                      self.handle_sync_nodes)
-        rospy.loginfo("Node-Synchronisation Service ready.")
-
-        rospy.Service('/start_stop_clock',
-                      ClockService,
-                      self.handle_start_stop_clock)
-        rospy.loginfo("Clock Service ready. Can start simulation now.")
-
-        rospy.spin()  # wait for node to shutdown.
-        self.root.quit()
+        print "running service!"
+        rospy.Service('/exit_node', Empty, self.exit_node)
+        rospy.spin()
 
 
 def get_init_state_from_param():
@@ -352,43 +259,9 @@ def Bfield_to_msgs(bfield, time):
 if __name__ == '__main__':
     rospy.init_node('propagation_node', anonymous=True)
 
-    # get defined simulation parameters
-    sim_parameter = dict()
-    if rospy.has_param("~TIME_SHIFT"):
-        # get simulation time shift before t=0:
-        sim_parameter['TIME_SHIFT'] = float(rospy.get_param("~TIME_SHIFT"))
-    if rospy.has_param("~frequency"):
-        sim_parameter['frequency'] = int(rospy.get_param("~frequency"))
-    if rospy.has_param("~oe_epoch"):
-        sim_parameter['oe_epoch'] = str(rospy.get_param("~oe_epoch"))
-    if rospy.has_param("~step_size"):
-        sim_parameter['step_size'] = float(rospy.get_param("~step_size"))
-
-    SimTime = EpochClock(**sim_parameter)
-
-    rospy.loginfo("Epoch of init. Orbit Elements = " +
-                  SimTime.datetime_oe_epoch.strftime("%Y-%m-%d %H:%M:%S"))
-    rospy.loginfo("Realtime Factor = " + str(SimTime.realtime_factor))
-
-    # set publish frequency & time step size as ros parameter
-    # do this before setting /epoch parameter to ensure epoch_clock library
-    # can find them
-    rospy.set_param('/publish_freq', SimTime.frequency)
-    rospy.set_param('/time_step_size', str(SimTime.step_size))  # set as string, so no overflow
-    rospy.set_param('/epoch',
-                    SimTime.datetime_oe_epoch.strftime("%Y-%m-%d %H:%M:%S"))
-
-    pub_clock = rospy.Publisher('/clock', Clock, queue_size=10)
-    if rospy.has_param("/start_running"):
-        # Start GUI clock service on new thread
-        ClockServer = ClockServer(SimTime.realtime_factor,
-                                  SimTime.frequency,
-                                  SimTime.step_size,
-                                  rospy.get_param("/start_running"))
-    else:
-        ClockServer = ClockServer(SimTime.realtime_factor,
-                                  SimTime.frequency,
-                                  SimTime.step_size)
+    ExitServer = ExitServer()
+    SimTime = rospace_lib.clock.SimTimePublisher()
+    SimTime.set_up_simulation_time()
 
     # Subscribe to propulsion node and attitude control
     thrust_force = message_filters.Subscriber('force', WrenchStamped)
@@ -437,40 +310,17 @@ if __name__ == '__main__':
     rospy.loginfo("Propagators initialized!")
 
     # Update first step so that other nodes don't give errors
-    # msg_cl = Clock()
-    # msg_cl.clock.secs = int(0)
-    # msg_cl.clock.nsecs = int(0)
-    # msg_cl = Clock()
-    # pub_clock.publish(msg_cl)
     # init epoch clock for propagator
-    run_sim = sim_parameter['TIME_SHIFT'] == 0.0  # start propagating if no timeshift
-    epoch = rospace_lib.clock.Epoch()
-    epoch_now = epoch.now()  # initialize, because simulation starts stopped
+    # run_sim = sim_parameter['TIME_SHIFT'] == 0.0  # start propagating if no timeshift
+    # epoch = rospace_lib.clock.Epoch()
+    # epoch_now = epoch.now()  # initialize, because simulation starts stopped
 
-    while not rospy.is_shutdown():
+    while not rospy.is_shutdown() and not ExitServer.exiting:
         comp_time = time.clock()
 
-        # change of realtime factor requested:
-        if ClockServer.realtime_factor != SimTime.realtime_factor:
-            SimTime.updateTimeFactors(ClockServer.realtime_factor,
-                                      ClockServer.frequency,
-                                      ClockServer.step_size)
-            epoch.changeFrequency(ClockServer.frequency)
-            epoch.changeStep(ClockServer.step_size)
+        epoch_now = SimTime.update_simulation_time()
 
-        if ClockServer.SimRunning:
-            # Wait for other nodes which subscribed to service
-            while ClockServer.syncSubscribers > 0:
-                if(ClockServer.readyCount >= ClockServer.syncSubscribers):
-                    ClockServer.updateReadyCount(reset=True)
-                    break
-
-            # update clock
-            msg_cl = Clock()
-            [msg_cl, epoch_now, run_sim] = SimTime.updateClock(msg_cl)
-            pub_clock.publish(msg_cl)
-
-        if run_sim:
+        if SimTime.time_shift_passed:
             # propagate to epoch_now
             [cart_ch, att_ch, force_ch, d_torque_ch, B_field_ch] = \
                 prop_chaser.propagate(epoch_now)
@@ -504,10 +354,4 @@ if __name__ == '__main__':
             pub_FT_ta.publish(msg_FT_ta)
             pub_Bfield_ch.publish(msg_B_field_ta)
 
-        # calculate reminding sleeping time
-        sleep_time = SimTime.rate - (time.clock() - comp_time)
-        # Improve sleep time as Gazebo for more accurate time update
-        if sleep_time > 0:
-            sleep(sleep_time)
-        elif ClockServer.syncSubscribers == 0:
-            rospy.logwarn("Propagator too slow for publishing rate.")
+        SimTime.sleep_to_keep_frequency()

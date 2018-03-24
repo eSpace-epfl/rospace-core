@@ -203,6 +203,7 @@ class AttitudePropagation(PAP):
                     raise illStat
 
                 y = new_state.getPrimaryState()  # primary state from ODEState
+                # print '[Attitude] At ', date, ' number of calls: ', self.state.calls
 
                 # update and store computed values
                 addG = False if self.GravityModel is None else True
@@ -531,7 +532,7 @@ class StateEquation(PSE):
 
     def init(self, t0, y0, finalTime):
         """No initialization needed"""
-        pass
+        self.calls = 0
 
     def computeDerivatives(self, t, y):
         try:
@@ -558,6 +559,8 @@ class StateEquation(PSE):
             yDot[4] = 0.5 * (-y[2] * y[3] + y[0] * y[5] + y[1] * y[6])
             yDot[5] = 0.5 * (y[1] * y[3] - y[0] * y[4] + y[2] * y[6])
             yDot[6] = 0.5 * (-y[0] * y[3] - y[1] * y[4] - y[2] * y[5])
+
+            self.calls += 1
 
             return orekit.JArray('double')(yDot)
 

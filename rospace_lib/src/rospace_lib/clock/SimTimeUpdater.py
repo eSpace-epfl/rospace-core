@@ -9,7 +9,7 @@
 from datetime import datetime, timedelta
 
 
-class SimTimeHandler(object):
+class SimTimeUpdater(object):
     """
     Class handeling simulation time in ROS.
 
@@ -24,18 +24,25 @@ class SimTimeHandler(object):
     def __init__(self,
                  oe_epoch=None,
                  frequency=None,
-                 step_size=None):
+                 step_size=None,
+                 time_shift=0.0):
 
-        self.epoch = ""
-        self.oe_epoch = ""
-        self.epoch_end = ""
+        try:
+            assert(time_shift >= 0.0)
+        except AssertionError:
+            raise AssertionError("Time shift cannot be negative!")
 
         if oe_epoch is not None:
-            self.oe_epoch = oe_epoch
-            self.datetime_oe_epoch = datetime.strptime(self.oe_epoch,
-                                                       "%Y%m%dT%H:%M:%S")
+            self.datetime_oe_epoch = datetime.strptime(oe_epoch, "%Y%m%dT%H:%M:%S")
+            self.datetime_oe_epoch_shifted = \
+                self.datetime_oe_epoch - timedelta(seconds=time_shift)
         else:
             self.datetime_oe_epoch = datetime.utcnow()
+            self.datetime_oe_epoch_shifted = \
+                self.datetime_oe_epoch - timedelta(seconds=time_shift)
+
+        self.time_shift = time_shift * 1e9
+        self.time_shift_passed = time_shift == 0.0
 
         # real time update rate -- attempted updates per second
         if frequency is not None:
@@ -68,15 +75,26 @@ class SimTimeHandler(object):
         Returns:
             rosgraph_msgs.msg.Clock : clock message
         """
+        if (self.currentTime < self.time_shift and
+           self.currentTime + self.step_size > self.time_shift):
+            shift = int(self.currentTime + self.step_size - self.time_shift)
+            self.currentTime = self.time_shift
+            mesg = "\033[93m[WARN] [EpochClock] Shortend next timestep by " \
+                   + str(shift * 1e-9) \
+                   + "s to reach desired intial epoch. \033[0m"
+            print mesg
+            # set that time shift has passed to true
+            self.time_shift_passed = True
+        else:
+            self.currentTime += self.step_size
 
-        self.currentTime += self.step_size
         full_seconds = int(self.currentTime*1e-9)
         msg_cl.clock.secs = full_seconds
         msg_cl.clock.nsecs = int(self.currentTime - full_seconds*1e9)
 
         time_delta = timedelta(0, msg_cl.clock.secs, msg_cl.clock.nsecs / 1e3)
 
-        return [msg_cl, self.datetime_oe_epoch + time_delta]
+        return [msg_cl, self.datetime_oe_epoch_shifted + time_delta]
 
     def updateTimeFactors(self, new_rtf, new_freq, new_dt):
         """

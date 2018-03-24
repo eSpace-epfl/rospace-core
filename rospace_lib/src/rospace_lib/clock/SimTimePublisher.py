@@ -18,7 +18,7 @@ from rospace_lib.clock import *
 from rosgraph_msgs.msg import Clock
 
 
-class SimTimeClock(object):
+class SimTimePublisher(object):
     """
     Class handeling the simulation time.
 
@@ -38,18 +38,26 @@ class SimTimeClock(object):
 
     def __init__(self):
         # Internal members:
-        self._time_driving_node = ''  # name of node driving time
-        self._epoch_now = None        # current epoch @ time step
-        self._comp_time = None        # wall time passed in one iteration
-        self._SimTime = None          # holds SimTimeHandler object
-        self._lock = RLock()          # lock for thread safety
-        self._queue = Queue.Queue()    # queue to return epoch_now
+        self._time_driving_node = ''    # name of node driving time
+        self._epoch_now = None          # current epoch @ time step
+        self._comp_time = None          # wall time passed in one iteration
+        self._SimTime = None            # holds SimTimeUpdater object
+        self._lock = RLock()            # lock for thread safety
+        self._queue = Queue.Queue()      # queue to return epoch_now
 
     @property
     def datetime_oe_epoch(self):
         """Initial epoch of orbital elements [datetime object]"""
         if self._SimTime is not None:
             return self._SimTime.datetime_oe_epoch
+        else:
+            return None
+
+    @property
+    def time_shift_passed(self):
+        """Bool if simulation time shift passed (desired initial time started)"""
+        if self._SimTime is not None:
+            return self._SimTime.time_shift_passed
         else:
             return None
 
@@ -70,27 +78,37 @@ class SimTimeClock(object):
         Also the time 0 is published to the clock topic, in case
         any node cannot handle if nothing is published to /clock.
 
+        Returns:
+            bool: if time shift is present. Can be used as condition to
+                  for publishing messages only after time shift passed
+
         Raises:
             RuntimeError: if method called more than once per simulation
         """
 
         self._lock.acquire()
 
-        if not SimTimeClock._sim_time_setup_requested:
-            SimTimeClock._sim_time_setup_requested = True
-            frame = inspect.stack()[1]
-            self._time_driving_node = inspect.getmodule(frame[0]).__file__
+        if not SimTimePublisher._sim_time_setup_requested:
+            SimTimePublisher._sim_time_setup_requested = True
+            frame = inspect.currentframe().f_back
+            filename = inspect.getframeinfo(frame)[0]
+            self._time_driving_node = filename
             rospy.loginfo("Time is being driven by the node %s.",
                           str(self._time_driving_node))
 
             # get defined simulation parameters from rosparam
             sim_parameter = dict()
+            if rospy.has_param("~TIME_SHIFT"):
+                # get simulation time shift before t=0:
+                sim_parameter['time_shift'] = float(rospy.get_param("~TIME_SHIFT"))
             if rospy.has_param("~frequency"):
                 sim_parameter['frequency'] = int(rospy.get_param("~frequency"))
             if rospy.has_param("~oe_epoch"):
                 sim_parameter['oe_epoch'] = str(rospy.get_param("~oe_epoch"))
+            if rospy.has_param("~step_size"):
+                sim_parameter['step_size'] = float(rospy.get_param("~step_size"))
 
-            self._SimTime = SimTimeHandler(**sim_parameter)
+            self._SimTime = SimTimeUpdater(**sim_parameter)
 
             rospy.loginfo("Epoch of init. Orbit Elements = " +
                           self._SimTime.datetime_oe_epoch.strftime("%Y-%m-%d %H:%M:%S"))
@@ -106,18 +124,21 @@ class SimTimeClock(object):
             self.pub_clock = rospy.Publisher('/clock', Clock, queue_size=10)
 
             # Start GUI clock service on new thread
-            self.ClockService = SimTimeService(self._SimTime.realtime_factor,
-                                               self._SimTime.frequency,
-                                               self._SimTime.step_size)
+            if rospy.has_param("/start_running"):
+                self.ClockService = \
+                    SimTimeService(self._SimTime.realtime_factor,
+                                   self._SimTime.frequency,
+                                   self._SimTime.step_size,
+                                   rospy.has_param("/start_running"))
+            else:
+                self.ClockService = \
+                    SimTimeService(self._SimTime.realtime_factor,
+                                   self._SimTime.frequency,
+                                   self._SimTime.step_size)
 
             self.epoch = Epoch()
-
-            # Publish to /clock for 1. time so other nodes don't give errors
-            msg_cl = Clock()
-            msg_cl.clock.secs = int(0)
-            msg_cl.clock.nsecs = int(0)
-            self.pub_clock.publish(msg_cl)
             self._epoch_now = self.epoch.now()
+
         else:
             raise RuntimeError("Time is already being driven by " +
                                self._time_driving_node + ". Only one node " +
@@ -152,9 +173,9 @@ class SimTimeClock(object):
             raise RuntimeError("sleep_to_keep_frequency() was not called " +
                                "at end of the loop of the driving node!")
 
-        frame = inspect.stack()[1]
-        file = inspect.getmodule(frame[0]).__file__
-        if SimTimeClock._sim_time_setup_requested and \
+        frame = inspect.currentframe().f_back
+        file = inspect.getframeinfo(frame)[0]
+        if SimTimePublisher._sim_time_setup_requested and \
                 file == self._time_driving_node:
             self._comp_time = time.clock()
 
