@@ -34,17 +34,14 @@ from std_srvs.srv import Empty
 class ExitServer(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
-        print "EXinting False"
         self.exiting = False
         self.start()
 
     def exit_node(self, req):
-        print "EXiting true"
         self.exiting = True
         return []
 
     def run(self):
-        print "running service!"
         rospy.Service('/exit_node', Empty, self.exit_node)
         rospy.spin()
 

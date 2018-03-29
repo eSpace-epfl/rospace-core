@@ -14,6 +14,10 @@ from ThrustModel import ThrustModel
 from AttitudePropagation import AttitudePropagation
 from StateObserver import StateObserver
 
+from org.orekit.python import PythonEventHandler, PythonOrekitFixedStepHandler
+
+from org.orekit.utils import PVCoordinatesProvider
+
 import orekit
 from orekit import JArray_double, JArray
 from org.orekit.frames import FramesFactory
@@ -30,6 +34,10 @@ from org.orekit.propagation import SpacecraftState
 from org.orekit.propagation.numerical import NumericalPropagator
 from org.orekit.forces import BoxAndSolarArraySpacecraft
 from org.orekit.forces.radiation import SolarRadiationPressure
+from org.orekit.propagation.events import EclipseDetector
+from org.orekit.propagation.events import EventDetector
+from org.orekit.propagation.events.handlers import EventHandler
+from org.orekit.propagation.sampling import OrekitFixedStepHandler
 from org.orekit.forces.radiation import IsotropicRadiationClassicalConvention
 from org.orekit.forces.drag import DragForce
 from org.orekit.forces.gravity import HolmesFeatherstoneAttractionModel
@@ -150,12 +158,12 @@ class PropagatorBuilder(Builder):
     have to be provided.
 
     The settings have to be provided as a python dictionary. Every method
-    accesses in this nested dictonary its corresponding section which futher
+    accesses in this nested dictionary its corresponding section which further
     has to have the following two keys:
         - type -> name of the subclass to use
         - settings -> dictionary with settings needed for the build
 
-    If for no subclass is found for corresponding type, no propagtor attributes
+    If for no subclass is found for corresponding type, no propagator attributes
     will be changed.
 
     Here is an possible example for the _build_state method:
@@ -285,7 +293,7 @@ class PropagatorBuilder(Builder):
         """
         Add gravity model to orbit propagation based on settings.
 
-        Spacecraft will follow newtonian orbit if type not matching any
+        Spacecraft will follow Newtonian orbit if type not matching any
         available Factory Class.
         """
 
@@ -299,13 +307,13 @@ class PropagatorBuilder(Builder):
                 self.earth = earth
                 self.gravField = gravField
 
-                print "  [INFO]: Gravity pertubation added. Using \'%s\' file."\
+                print "  [INFO]: Gravity perturbation added. Using \'%s\' file."\
                       % (file[0])
                 break
 
     def _build_thirdBody(self):
         """
-        Adds Third body pertubation of Sun and/or Moon based on settings.
+        Adds Third body perturbation of Sun and/or Moon based on settings.
         """
 
         bodies = self.orbSettings['ThirdBody']
@@ -373,7 +381,7 @@ class PropagatorBuilder(Builder):
 
     def _build_ocean_tides(self):
         """
-        Adds ocean tide force model to propagation if spceified in settings.
+        Adds ocean tide force model to propagation if specified in settings.
 
         Uses IERS2010 conventions.
 
@@ -708,7 +716,7 @@ class EigenGravityWGS84(GravityFactory):
     @staticmethod
     def Setup(propagator, setup):
         """
-        Add gravity pertubation using the HolmesFeatherstoneAttractionModel.
+        Add gravity perturbation using the HolmesFeatherstoneAttractionModel.
 
         As Earth model a ReferenceEllipsoid is used, with GTOD as body frame
         (tidal effects are not ignored when interpolating EOP).
@@ -749,9 +757,9 @@ class EigenGravityWGS84(GravityFactory):
 
         file_name = _get_name_of_loaded_files('Potential')
         if len(file_name) > 1:
-            file_name = file_name[0]  # orekit uses first loaded file
+            file_name = file_name[0]  # Orekit uses first loaded file
         elif len(file_name) == 0:
-            # error should be trhown before this when creating gravModel!
+            # error should be thrown before this when creating gravModel!
             raise ValueError('No gravity potential file loaded!')
 
         return [propagator, earth, gravField, file_name]
@@ -769,7 +777,7 @@ class EGM96GravityWGS84(GravityFactory):
     @staticmethod
     def Setup(propagator, setup):
         """
-        Add gravity pertubation using the HolmesFeatherstoneAttractionModel.
+        Add gravity perturbation using the HolmesFeatherstoneAttractionModel.
 
         As Earth model a ReferenceEllipsoid is used, with GTOD as body frame
         (tidal effects are not ignored when interpolating EOP).
@@ -840,13 +848,13 @@ class AttitudeFactory(object):
 
 def discretize_inner_body(discSettings):
     """
-    Discretize a shoebox-type satellite in cuboids of equal mass.
+    Discretized a shoebox-type satellite in cuboid of equal mass.
 
-    Depends on defined number of cuboids in x,y and z
+    Depends on defined number of cuboid in x,y and z
     direction and total size of satellite.
 
     Args:
-        discSettings: dictionary with satellite_dim, and number of cuboids in
+        discSettings: dictionary with satellite_dim, and number of cuboid in
                       all 3 directions
 
     Example of discSettings layout:
@@ -861,7 +869,7 @@ def discretize_inner_body(discSettings):
               numCub_z: 2
 
     Returns:
-        inCub: dictionary with center of masss of each cuboid in satellite
+        inCub: dictionary with center of mass of each cuboid in satellite
                frame and its corresponding mass
     """
 
@@ -869,23 +877,24 @@ def discretize_inner_body(discSettings):
     s_l_y = float(discSettings['satellite_dim']['l_y'])
     s_l_z = float(discSettings['satellite_dim']['l_z'])
 
-    # seperate cuboid into number of smaller cuboids and store
+    # separate cuboid into number of smaller cuboid and store
     # coordinates of center of mass in satellite frame
     numC_x = discSettings['inner_cuboids']['numCub_x']
     numC_y = discSettings['inner_cuboids']['numCub_y']
     numC_z = discSettings['inner_cuboids']['numCub_z']
 
-    # dimension of inner cuboids:
+    # dimension of inner cuboid:
     c_l_x = s_l_x / numC_x
     c_l_y = s_l_y / numC_y
     c_l_z = s_l_z / numC_z
 
-    # total number of cuboids
+    # total number of cuboid
     numC_tot = numC_x * numC_y * numC_z
 
-    # populate satellite with cuboids:
+    # populate satellite with cuboid:
     inCub = dict()
     CoM = []
+    CoM_np = np.empty([0, 3])
     MassCub = []
     massFrac = 1.0 / numC_tot
 
@@ -906,16 +915,18 @@ def discretize_inner_body(discSettings):
                 CoM.append(Vector3D(float(CoM_x),
                                     float(CoM_y),
                                     float(CoM_z)))
+                CoM_np = np.append(CoM_np, [[CoM_x, CoM_y, CoM_z]], axis=0)
                 MassCub.append(massFrac)
 
     inCub['CoM'] = CoM
+    inCub['CoM_np'] = CoM_np
 
     return inCub
 
 
 def discretize_outer_surface(solarSettings, discSettings):
     """
-    Discretize outer surface of a shoebox satellite into planes of equal area.
+    Discretization of outer surface of a shoebox satellite into planes of equal area.
 
     Depends on defined number of surfaces in x,y and z direction and total size
     of satellite.
@@ -993,7 +1004,9 @@ def discretize_outer_surface(solarSettings, discSettings):
     right_Normal = Vector3D.MINUS_K
 
     CoM = []
+    CoM_np = np.empty([0, 3])
     Normal = []
+    Normal_np = np.empty([0, 3])
     Area = []
     Coefs = []
     mesh_dA = dict()
@@ -1011,8 +1024,15 @@ def discretize_outer_surface(solarSettings, discSettings):
                                 CoM_y,
                                 CoM_z))
 
+            CoM_np = np.append(CoM_np, [[front_CoM_x, CoM_y, CoM_z]], axis=0)
+            CoM_np = np.append(CoM_np, [[back_CoM_x, CoM_y, CoM_z]], axis=0)
+
             Normal.append(front_Normal)
             Normal.append(back_Normal)
+
+            Normal_np = np.append(Normal_np, [[1.0, 0.0, 0.0]], axis=0)
+            Normal_np = np.append(Normal_np, [[-1.0, 0.0, 0.0]], axis=0)
+
             Area.extend([area_x]*2)
             Coefs.extend([np.array([sat_Ca, sat_Cs])]*2)
 
@@ -1028,8 +1048,16 @@ def discretize_outer_surface(solarSettings, discSettings):
             CoM.append(Vector3D(CoM_x,
                                 top_CoM_y,
                                 CoM_z))
+
+            CoM_np = np.append(CoM_np, [[CoM_x, bottom_CoM_y, CoM_z]], axis=0)
+            CoM_np = np.append(CoM_np, [[CoM_x, top_CoM_y, CoM_z]], axis=0)
+
             Normal.append(bottom_Normal)
             Normal.append(top_Normal)
+
+            Normal_np = np.append(Normal_np, [[0.0, 1.0, 0.0]], axis=0)
+            Normal_np = np.append(Normal_np, [[0.0, -1.0, 0.0]], axis=0)
+
             Area.extend([area_y]*2)
             Coefs.extend([np.array([sat_Ca, sat_Cs])]*2)
 
@@ -1043,11 +1071,18 @@ def discretize_outer_surface(solarSettings, discSettings):
                                 CoM_y,
                                 left_CoM_z))
             CoM.append(Vector3D(CoM_x,
-                                top_CoM_y,
+                                CoM_y,
                                 right_CoM_z))
+
+            CoM_np = np.append(CoM_np, [[CoM_x, CoM_y, left_CoM_z]], axis=0)
+            CoM_np = np.append(CoM_np, [[CoM_x, CoM_y, right_CoM_z]], axis=0)
 
             Normal.append(left_Normal)
             Normal.append(right_Normal)
+
+            Normal_np = np.append(Normal_np, [[0.0, 0.0, 1.0]], axis=0)
+            Normal_np = np.append(Normal_np, [[0.0, 0.0, -1.0]], axis=0)
+
             Area.extend([area_z]*2)
             Coefs.extend([np.array([sat_Ca, sat_Cs])]*2)
 
@@ -1087,17 +1122,35 @@ def discretize_outer_surface(solarSettings, discSettings):
                     CoM.append(Vector3D(float(dC[0] + CoM_x),
                                         float(dC[1]),
                                         float(dC[2] + CoM_z)))
+                    CoM_np = np.append(CoM_np, [[dC[0] + CoM_x, dC[1], dC[2] + CoM_z]], axis=0)
+
                     Normal.append(Vector3D(float(normal[0]),
                                            float(normal[1]),
                                            float(normal[2])))
+                    Normal_np = np.append(Normal_np, [[normal[0], normal[1], normal[2]]], axis=0)
+
                     Area.append(solArea)
                     Coefs.append(np.array([sol_Ca, sol_Cs]))
 
     # fill dictionary with lists:
     mesh_dA['CoM'] = CoM
+    mesh_dA['CoM_np'] = CoM_np.astype(float)
     mesh_dA['Normal'] = Normal
+    mesh_dA['Normal_np'] = Normal_np.astype(float)
     mesh_dA['Area'] = Area
+    mesh_dA['Area_np'] = np.asarray(Area)
     mesh_dA['Coefs'] = Coefs
+
+    # add to coefs diffusive reflection coefficient
+    Coefs_np = np.asarray(Coefs)
+    col = np.array([1 - np.sum(Coefs_np, axis=1)])
+    Coefs_np = np.concatenate((Coefs_np, col.T), axis=1)
+    try:
+        assert(any(Coefs_np[:, 2] >= 0))
+    except AssertionError:
+        raise AssertionError(
+            "Negative diffuse reflection coefficient not possible!")
+    mesh_dA['Coefs_np'] = Coefs_np
 
     return mesh_dA
 
@@ -1160,6 +1213,7 @@ class AttPropagation(AttitudeFactory):
         mesg = "\033[91m  [WARN] Attitude Propagation still very buggy and unreliable" + \
                " Use at own risk!\033[0m"
         print mesg
+
         propagator = builderInstance.propagator
         setup = builderInstance.attSettings['settings']
         if builderInstance.earth is not None:
@@ -1186,7 +1240,7 @@ class AttPropagation(AttitudeFactory):
         propagator.addForceModel(StateOb)
         AttitudeFM['StateObserver'] = StateOb
 
-        # Intertia Tensor of Spacecraft:
+        # Inertia Tensor of Spacecraft:
         Ix = [float(x) for x in iT_dict['Ix'].split(" ")]
         Iy = [float(x) for x in iT_dict['Iy'].split(" ")]
         Iz = [float(x) for x in iT_dict['Iz'].split(" ")]
@@ -1214,7 +1268,7 @@ class AttPropagation(AttitudeFactory):
             if solarSettings['add']:
                 AttitudeFM['Sun'] = sun
                 # dummy spacecraft which enables access to methods
-                #  needed to create SolarRadiationPressure objet
+                #  needed to create SolarRadiationPressure object
                 dummy = IsotropicRadiationClassicalConvention(
                                                 1.0,
                                                 solarSettings['AbsorbCoeff'],
@@ -1225,6 +1279,14 @@ class AttPropagation(AttitudeFactory):
                 AttitudeFM['SolarModel'] = SolarRadiationPressure(sun,
                                                                   eqRad,
                                                                   dummy)
+
+                # add two Event handlers for solar eclipse (one when entering eclipse other when leaving)
+                # solar pressure torque only computed if not in umbra
+                dayNightEvent = EclipseDetector(PVCoordinatesProvider.cast_(sun),
+                                                696000000.,
+                                                CelestialBodyFactory.getEarth(),
+                                                Cst.WGS84_EARTH_EQUATORIAL_RADIUS)
+                dayNightEvent = dayNightEvent.withHandler(NightEclipseDetector().of_(EclipseDetector))
 
             if dragSettings['add']:
                 # check if atmosphere was already created
@@ -1252,13 +1314,13 @@ class AttPropagation(AttitudeFactory):
         if magSettings['add']:
             gmLoader = GeoMagneticModelLoader()
             manager = DataProvidersManager.getInstance()
-            manager.feed('WMM15.COF', gmLoader)
+            manager.feed('(?:IGRF|igrf)\\p{Digit}\\p{Digit}\\.(?:cof|COF)', gmLoader)
 
             # get item from Collection and transform model to year in sim.
             GM = gmLoader.getModels().iterator().next()
-            GM = GM.transformModel(float(builderInstance.refDate
-                                                        .getDate()
-                                                        .toString()[:4]))
+            # GM = GM.transformModel(float(builderInstance.refDate
+            #                                             .getDate()
+            #                                             .toString()[:4]))
 
             AttitudeFM['MagneticModel'] = GM
             AttitudeFM['Earth'] = earth
@@ -1272,7 +1334,15 @@ class AttPropagation(AttitudeFactory):
                                        surfaceMesh,
                                        AttitudeFM)
 
-        # for now assume constand dipole vector:
+        if solarSettings['add']:
+            NightEclipseDetector.attitudeProvider = provider
+            propagator.addEventDetector(dayNightEvent)
+            # disable torque if starting at umbra:
+            if dayNightEvent.g(propagator.getInitialState()) < 0:
+                DT = NightEclipseDetector.attitudeProvider.getAddedDisturbanceTorques()
+                NightEclipseDetector.attitudeProvider.setAddedDisturbanceTorques(DT[0], DT[1], False, DT[3])
+
+        # for now assume constant dipole vector:
         x = [float(x) for x in magSettings['Dipole'].split(" ")]
         dipole = Vector3D(magSettings['Area'], Vector3D(x[0], x[1], x[2]))
         provider.setDipoleVector(dipole)
@@ -1280,6 +1350,27 @@ class AttPropagation(AttitudeFactory):
         propagator.setAttitudeProvider(provider)
 
         return propagator
+
+
+# Helper classes for attitude propagation:
+class NightEclipseDetector(PythonEventHandler):
+    attitudeProvider = None
+
+    def eventOccurred(self, s, detector, increasing):
+        if not increasing:
+            # in umbra
+            DT = NightEclipseDetector.attitudeProvider.getAddedDisturbanceTorques()
+            NightEclipseDetector.attitudeProvider.setAddedDisturbanceTorques(DT[0], DT[1], False, DT[3])
+
+        if increasing:
+            # exiting umbra
+            DT = NightEclipseDetector.attitudeProvider.getAddedDisturbanceTorques()
+            NightEclipseDetector.attitudeProvider.setAddedDisturbanceTorques(DT[0], DT[1], True, DT[3])
+
+        return EventHandler.Action.CONTINUE
+
+    def resetState(self, detector, oldState):
+        return oldState
 #####################################################################
 
 
@@ -1319,7 +1410,7 @@ def load_facets_from_dict(Facets):
             .
 
     Returns:
-        JArray('object'): Filled with facet list for orekit to create
+        JArray('object'): Filled with facet list for Orekit to create
                           BoxAndSolarArraySpacecraft
     """
 
@@ -1448,7 +1539,7 @@ class DragDTM2000MSAFE(DragFactory):
         configured in the settings.
 
         Returns:
-            propagator: Propgator
+            propagator: Propagator
             atmosphere: DTM2000 model of atmosphere
         """
 
@@ -1506,7 +1597,7 @@ class DragDTM2000CELESTRACK(DragFactory):
         configured in the settings.
 
         Returns:
-            propagator: Propgator
+            propagator: Propagator
             atmosphere: DTM2000 model of atmosphere
         """
         propagator = builderInstance.propagator
