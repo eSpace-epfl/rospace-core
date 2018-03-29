@@ -123,7 +123,7 @@ class OrekitPropagator(object):
                                                     epoch.year)
         gmLoader = GeoMagneticModelLoader()
         manager = DataProvidersManager.getInstance()
-        loaded = manager.feed('(?:IGRF|igrff)\\p{Digit}\\p{Digit}\\.(?:cof|COF)', gmLoader)
+        loaded = manager.feed('(?:IGRF|igrf)\\p{Digit}\\p{Digit}\\.(?:cof|COF)', gmLoader)
         if not loaded:
             loaded = manager.feed('(?:WMM|wmm)\\p{Digit}\\p{Digit}\\.(?:cof|COF)', gmLoader)
             if loaded:
@@ -500,7 +500,7 @@ class OrekitPropagator(object):
         geo2inertial = np.array([
                             [-sin(lon), -cos(lon)*sin(lat), cos(lon)*cos(lat)],
                             [cos(lon), -sin(lon)*sin(lat), sin(lon)*cos(lat)],
-                            [0, cos(lat), sin(lat)]])
+                            [0., cos(lat), sin(lat)]])
 
         # get B-field in geodetic system (X:East, Y:North, Z:Nadir)
         B_geo = OrekitPropagator._mag_field_model.calculateField(
