@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<launch>
+
+    <arg name="ns_chaser" />
+    <arg name="ns_target" />
+
+    <group ns="$(arg ns_chaser)">
+        <!-- Load Configuration File for sensors etc -->
+        <rosparam command="load" file="$(find rospace_simulator)/cfg/$(arg ns_chaser).yaml" />
+    </group>
+
+  <group ns="$(arg ns_target)">
+
+    <!-- Load Configuration File for sensors etc -->
+        <rosparam command="load" file="$(find rospace_simulator)/cfg/$(arg ns_target).yaml" />
+  </group>
+
+</launch>

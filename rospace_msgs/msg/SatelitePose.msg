@@ -1,0 +1,3 @@
+std_msgs/Header header
+rospace_msgs/OrbitalElements position
+geometry_msgs/Quaternion orientation
