@@ -13,6 +13,8 @@ import os
 from datetime import datetime, timedelta
 from math import degrees, sin, cos
 
+from FileDataHandler import FileDataHandler
+
 import orekit
 
 from java.io import File
@@ -80,12 +82,12 @@ class OrekitPropagator(object):
     Class building numerical propagator using the orekit library methods.
     """
 
-    _data_checklist = dict()
-    """Holds dates for which data from orekit-data folder is loaded"""
-    _mag_field_coll = None
-    """Java Collection holding all loaded magnetic field models"""
-    _mag_field_model = None
-    """Currently used magnetic field model, transformed to correct year"""
+    # _data_checklist = dict()
+    # """Holds dates for which data from orekit-data folder is loaded"""
+    # _mag_field_coll = None
+    # """Java Collection holding all loaded magnetic field models"""
+    # _mag_field_model = None
+    # """Currently used magnetic field model, transformed to correct year"""
 
     @staticmethod
     def init_jvm():
@@ -116,196 +118,197 @@ class OrekitPropagator(object):
             DM.clearProviders()
             DM.addProvider(crawler)
 
-    @staticmethod
-    def load_magnetic_field_models(epoch):
-        curr_year = GeoMagneticField.getDecimalYear(epoch.day,
-                                                    epoch.month,
-                                                    epoch.year)
-        gmLoader = GeoMagneticModelLoader()
-        manager = DataProvidersManager.getInstance()
-        loaded = manager.feed('(?:IGRF|igrf)\\p{Digit}\\p{Digit}\\.(?:cof|COF)', gmLoader)
-        if not loaded:
-            loaded = manager.feed('(?:WMM|wmm)\\p{Digit}\\p{Digit}\\.(?:cof|COF)', gmLoader)
-            if loaded:
-                mesg = "\033[93m  [WARN] [load_magnetic_field_models] Could " \
-                   + "not load IGRF model. Using WMM instead.\033[0m"
-                print mesg
-            else:
-                raise ValueError("No magnetic field model found!")
+    # @staticmethod
+    # def load_magnetic_field_models(epoch):
+    #     curr_year = GeoMagneticField.getDecimalYear(epoch.day,
+    #                                                 epoch.month,
+    #                                                 epoch.year)
+    #     gmLoader = GeoMagneticModelLoader()
+    #     manager = DataProvidersManager.getInstance()
+    #     loaded = manager.feed('(?:IGRF|igrf)\\p{Digit}\\p{Digit}\\.(?:cof|COF)', gmLoader)
+    #     # igrf better, because also old data available
+    #     if not loaded:
+    #         loaded = manager.feed('(?:WMM|wmm)\\p{Digit}\\p{Digit}\\.(?:cof|COF)', gmLoader)
+    #         if loaded:
+    #             mesg = "\033[93m  [WARN] [load_magnetic_field_models] Could " \
+    #                + "not load IGRF model. Using WMM instead.\033[0m"
+    #             print mesg
+    #         else:
+    #             raise ValueError("No magnetic field model found!")
 
-        # get correct model from Collection and transform to correct year
-        GMM_coll = gmLoader.getModels()
-        valid_mod = None
-        for GMM in GMM_coll:
-            if GMM.validTo() >= curr_year and GMM.validFrom() < curr_year:
-                valid_mod = GMM
-                break
+    #     # get correct model from Collection and transform to correct year
+    #     GMM_coll = gmLoader.getModels()
+    #     valid_mod = None
+    #     for GMM in GMM_coll:
+    #         if GMM.validTo() >= curr_year and GMM.validFrom() < curr_year:
+    #             valid_mod = GMM
+    #             break
 
-        if valid_mod is None:
-            mesg = "No magnetic field model found by data provider for year " \
-                    + str(curr_year) + "."
-            raise ValueError(mesg)
+    #     if valid_mod is None:
+    #         mesg = "No magnetic field model found by data provider for year " \
+    #                 + str(curr_year) + "."
+    #         raise ValueError(mesg)
 
-        OrekitPropagator._mag_field_coll = GMM_coll
-        if valid_mod.supportsTimeTransform():
-            # only prediction model supports time transformation
-            OrekitPropagator._mag_field_model = valid_mod \
-                                                .transformModel(curr_year)
-        else:
-            OrekitPropagator._mag_field_model = valid_mod
+    #     OrekitPropagator._mag_field_coll = GMM_coll
+    #     if valid_mod.supportsTimeTransform():
+    #         # only prediction model supports time transformation
+    #         OrekitPropagator._mag_field_model = valid_mod \
+    #                                             .transformModel(curr_year)
+    #     else:
+    #         OrekitPropagator._mag_field_model = valid_mod
 
-    @staticmethod
-    def create_data_validity_checklist():
-        """Get files loader by DataProvider and create dict() with valid dates for
-        loaded data.
+    # @staticmethod
+    # def create_data_validity_checklist():
+    #     """Get files loader by DataProvider and create dict() with valid dates for
+    #     loaded data.
 
-        Creates a list with valid start and ending date for data loaded by the
-        DataProvider during building. The method looks for follwing folders
-        holding the correspoding files:
+    #     Creates a list with valid start and ending date for data loaded by the
+    #     DataProvider during building. The method looks for follwing folders
+    #     holding the correspoding files:
 
-            Earth-Orientation-Parameters: EOP files using IERS2010 convetions
-            MSAFE: NASA Marshall Solar Activity Future Estimation files
-            Magnetic-Field-Models: magentic field model data files
+    #         Earth-Orientation-Parameters: EOP files using IERS2010 convetions
+    #         MSAFE: NASA Marshall Solar Activity Future Estimation files
+    #         Magnetic-Field-Models: magentic field model data files
 
-        The list should be used before every propagation step, to check if data
-        is loaded/still exists for current simulation time. Otherwise
-        simulation could return results with coarse accuracy. If e.g. no
-        EOP data is available, null correction is used, which could worsen the
-        propagators accuracy.
-        """
-        checklist = dict()
-        start_dates = []
-        end_dates = []
+    #     The list should be used before every propagation step, to check if data
+    #     is loaded/still exists for current simulation time. Otherwise
+    #     simulation could return results with coarse accuracy. If e.g. no
+    #     EOP data is available, null correction is used, which could worsen the
+    #     propagators accuracy.
+    #     """
+    #     checklist = dict()
+    #     start_dates = []
+    #     end_dates = []
 
-        EOP_file = PB._get_name_of_loaded_files('Earth-Orientation-Parameters')
-        if EOP_file:
-            EOPHist = FramesFactory.getEOPHistory(IERS.IERS_2010, False)
-            EOP_start_date = EOPHist.getStartDate()
-            EOP_end_date = EOPHist.getEndDate()
-            checklist['EOP_dates'] = [EOP_start_date, EOP_end_date]
-            start_dates.append(EOP_start_date)
-            end_dates.append(EOP_end_date)
+    #     EOP_file = PB._get_name_of_loaded_files('Earth-Orientation-Parameters')
+    #     if EOP_file:
+    #         EOPHist = FramesFactory.getEOPHistory(IERS.IERS_2010, False)
+    #         EOP_start_date = EOPHist.getStartDate()
+    #         EOP_end_date = EOPHist.getEndDate()
+    #         checklist['EOP_dates'] = [EOP_start_date, EOP_end_date]
+    #         start_dates.append(EOP_start_date)
+    #         end_dates.append(EOP_end_date)
 
-        CelesTrack_file = PB._get_name_of_loaded_files('CELESTRACK')
-        if CelesTrack_file:
-            ctw = CelesTrackWeather("(?:sw|SW)\\p{Digit}+\\.(?:txt|TXT)")
-            ctw_start_date = ctw.getMinDate()
-            ctw_end_date = ctw.getMaxDate()
-            checklist['CTW_dates'] = [ctw_start_date, ctw_end_date]
-            start_dates.append(ctw_start_date)
-            end_dates.append(ctw_end_date)
+    #     CelesTrack_file = PB._get_name_of_loaded_files('CELESTRACK')
+    #     if CelesTrack_file:
+    #         ctw = CelesTrackWeather("(?:sw|SW)\\p{Digit}+\\.(?:txt|TXT)")
+    #         ctw_start_date = ctw.getMinDate()
+    #         ctw_end_date = ctw.getMaxDate()
+    #         checklist['CTW_dates'] = [ctw_start_date, ctw_end_date]
+    #         start_dates.append(ctw_start_date)
+    #         end_dates.append(ctw_end_date)
 
-        MSAFE_file = PB._get_name_of_loaded_files('MSAFE')
-        if MSAFE_file:
-            msafe = \
-                MarshallSolarActivityFutureEstimation(
-                 "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)" +
-                 "\\p{Digit}\\p{Digit}\\p{Digit}\\p{Digit}F10\\" +
-                 ".(?:txt|TXT)",
-                 MarshallSolarActivityFutureEstimation.StrengthLevel.AVERAGE)
-            MS_start_date = msafe.getMinDate()
-            MS_end_date = msafe.getMaxDate()
-            checklist['MSAFE_dates'] = [MS_start_date, MS_end_date]
-            start_dates.append(MS_start_date)
-            end_dates.append(MS_end_date)
+    #     MSAFE_file = PB._get_name_of_loaded_files('MSAFE')
+    #     if MSAFE_file:
+    #         msafe = \
+    #             MarshallSolarActivityFutureEstimation(
+    #              "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)" +
+    #              "\\p{Digit}\\p{Digit}\\p{Digit}\\p{Digit}F10\\" +
+    #              ".(?:txt|TXT)",
+    #              MarshallSolarActivityFutureEstimation.StrengthLevel.AVERAGE)
+    #         MS_start_date = msafe.getMinDate()
+    #         MS_end_date = msafe.getMaxDate()
+    #         checklist['MSAFE_dates'] = [MS_start_date, MS_end_date]
+    #         start_dates.append(MS_start_date)
+    #         end_dates.append(MS_end_date)
 
-        if OrekitPropagator._mag_field_coll:
-            coll_iterator = OrekitPropagator._mag_field_coll.iterator()
-            first = coll_iterator.next()
-            GM_start_date = first.validFrom()
-            GM_end_date = first.validTo()
-            for GM in coll_iterator:
-                if GM_start_date > GM.validFrom():
-                    GM_start_date = GM.validFrom()
-                if GM_end_date < GM.validTo():
-                    GM_end_date = GM.validTo()
+    #     if OrekitPropagator._mag_field_coll:
+    #         coll_iterator = OrekitPropagator._mag_field_coll.iterator()
+    #         first = coll_iterator.next()
+    #         GM_start_date = first.validFrom()
+    #         GM_end_date = first.validTo()
+    #         for GM in coll_iterator:
+    #             if GM_start_date > GM.validFrom():
+    #                 GM_start_date = GM.validFrom()
+    #             if GM_end_date < GM.validTo():
+    #                 GM_end_date = GM.validTo()
 
-            # convert to absolute date for later comparison
-            dec_year = GM_start_date
-            base = datetime(int(dec_year), 1, 1)
-            dec = timedelta(seconds=(base.replace(year=base.year + 1) -
-                            base).total_seconds() * (dec_year-int(dec_year)))
-            GM_start_date = OrekitPropagator.to_orekit_date(base + dec)
-            dec_year = GM_end_date
-            base = datetime(int(dec_year), 1, 1)
-            dec = timedelta(seconds=(base.replace(year=base.year + 1) -
-                            base).total_seconds() * (dec_year-int(dec_year)))
-            GM_end_date = OrekitPropagator.to_orekit_date(base + dec)
-            checklist['MagField_dates'] = [GM_start_date, GM_end_date]
-            start_dates.append(GM_start_date)
-            end_dates.append(GM_end_date)
+    #         # convert to absolute date for later comparison
+    #         dec_year = GM_start_date
+    #         base = datetime(int(dec_year), 1, 1)
+    #         dec = timedelta(seconds=(base.replace(year=base.year + 1) -
+    #                         base).total_seconds() * (dec_year-int(dec_year)))
+    #         GM_start_date = OrekitPropagator.to_orekit_date(base + dec)
+    #         dec_year = GM_end_date
+    #         base = datetime(int(dec_year), 1, 1)
+    #         dec = timedelta(seconds=(base.replace(year=base.year + 1) -
+    #                         base).total_seconds() * (dec_year-int(dec_year)))
+    #         GM_end_date = OrekitPropagator.to_orekit_date(base + dec)
+    #         checklist['MagField_dates'] = [GM_start_date, GM_end_date]
+    #         start_dates.append(GM_start_date)
+    #         end_dates.append(GM_end_date)
 
-        if checklist:  # if any data loaded define first and last date
-            for idx, date in enumerate(start_dates):
-                if idx == 0:
-                    first_date = date
-                else:
-                    if first_date.compareTo(date) < 0:
-                        first_date = date
+    #     if checklist:  # if any data loaded define first and last date
+    #         for idx, date in enumerate(start_dates):
+    #             if idx == 0:
+    #                 first_date = date
+    #             else:
+    #                 if first_date.compareTo(date) < 0:
+    #                     first_date = date
 
-            for idx, date in enumerate(end_dates):
-                if idx == 0:
-                    last_date = date
-                else:
-                    if last_date.compareTo(date) > 0:
-                        last_date = date
+    #         for idx, date in enumerate(end_dates):
+    #             if idx == 0:
+    #                 last_date = date
+    #             else:
+    #                 if last_date.compareTo(date) > 0:
+    #                     last_date = date
 
-            checklist['MinMax_dates'] = [first_date, last_date]
+    #         checklist['MinMax_dates'] = [first_date, last_date]
 
-        mesg = "[INFO]: Simulation can run between epochs: " + \
-               str(first_date) + " & " + str(last_date) + \
-               " (based on loaded files)."
-        print mesg
+    #     mesg = "[INFO]: Simulation can run between epochs: " + \
+    #            str(first_date) + " & " + str(last_date) + \
+    #            " (based on loaded files)."
+    #     print mesg
 
-        OrekitPropagator._data_checklist = checklist
+    #     OrekitPropagator._data_checklist = checklist
 
-    @staticmethod
-    def check_data_availability(epoch):
-        """
-        Checks if loaded files from orekit-data have data for current epoch.
+    # @staticmethod
+    # def check_data_availability(epoch):
+    #     """
+    #     Checks if loaded files from orekit-data have data for current epoch.
 
-        Also checks if loaded magnetic model is valid for current epoch and
-        updates the model's coefficients to current epoch using secular
-        variation coefficients.
+    #     Also checks if loaded magnetic model is valid for current epoch and
+    #     updates the model's coefficients to current epoch using secular
+    #     variation coefficients.
 
-        Args:
-            oDate: AbsoluteDate object of current epoch
+    #     Args:
+    #         oDate: AbsoluteDate object of current epoch
 
-        Raises:
-            ValueError: if no data loaded for current epoch
-        """
-        min_max = OrekitPropagator._data_checklist['MinMax_dates']
-        oDate = OrekitPropagator.to_orekit_date(epoch)
-        if oDate.compareTo(min_max[0]) < 0:
-            err_msg = "No file loaded with valid data for current epoch " + \
-                      str(oDate) + "! Earliest possible epoch: " + min_max[0]
-            raise ValueError(err_msg)
-        if oDate.compareTo(min_max[1]) > 0:
-            err_msg = "No file loaded with valid data for current epoch " + \
-                      str(oDate) + "! Latest possible epoch: " + min_max[1]
-            raise ValueError(err_msg)
+    #     Raises:
+    #         ValueError: if no data loaded for current epoch
+    #     """
+    #     min_max = OrekitPropagator._data_checklist['MinMax_dates']
+    #     oDate = OrekitPropagator.to_orekit_date(epoch)
+    #     if oDate.compareTo(min_max[0]) < 0:
+    #         err_msg = "No file loaded with valid data for current epoch " + \
+    #                   str(oDate) + "! Earliest possible epoch: " + min_max[0]
+    #         raise ValueError(err_msg)
+    #     if oDate.compareTo(min_max[1]) > 0:
+    #         err_msg = "No file loaded with valid data for current epoch " + \
+    #                   str(oDate) + "! Latest possible epoch: " + min_max[1]
+    #         raise ValueError(err_msg)
 
-        d_year = GeoMagneticField.getDecimalYear(epoch.day,
-                                                 epoch.month,
-                                                 epoch.year)
+    #     d_year = GeoMagneticField.getDecimalYear(epoch.day,
+    #                                              epoch.month,
+    #                                              epoch.year)
 
-        # transform model to current date if inside valid epoch. Else load new
-        # model (should be available -> checking for out-of-bounds date above)
-        mdl = OrekitPropagator._mag_field_model
-        mdl_iterator = OrekitPropagator._mag_field_coll.iterator()
-        if mdl.validFrom() < d_year and mdl.validTo() >= d_year:
-            # still using correct model. Check if time transform necessary
-            if mdl.supportsTimeTransform() and mdl.getEpoch != d_year:
-                OrekitPropagator._mag_field_model = mdl.transformModel(d_year)
-        else:
-            # need to load new 5-year model
-            for GMM in mdl_iterator:
-                if GMM.validTo() >= d_year and GMM.validFrom() < d_year:
-                    break
-            if mdl.supportsTimeTransform():
-                OrekitPropagator._mag_field_model = GMM.transformModel(d_year)
-            else:
-                OrekitPropagator._mag_field_model = GMM
+    #     # transform model to current date if inside valid epoch. Else load new
+    #     # model (should be available -> checking for out-of-bounds date above)
+    #     mdl = OrekitPropagator._mag_field_model
+    #     mdl_iterator = OrekitPropagator._mag_field_coll.iterator()
+    #     if mdl.validFrom() < d_year and mdl.validTo() >= d_year:
+    #         # still using correct model. Check if time transform necessary
+    #         if mdl.supportsTimeTransform() and mdl.getEpoch != d_year:
+    #             OrekitPropagator._mag_field_model = mdl.transformModel(d_year)
+    #     else:
+    #         # need to load new 5-year model
+    #         for GMM in mdl_iterator:
+    #             if GMM.validTo() >= d_year and GMM.validFrom() < d_year:
+    #                 break
+    #         if mdl.supportsTimeTransform():
+    #             OrekitPropagator._mag_field_model = GMM.transformModel(d_year)
+    #         else:
+    #             OrekitPropagator._mag_field_model = GMM
 
     @staticmethod
     def _write_satellite_state(state):
@@ -331,13 +334,9 @@ class OrekitPropagator(object):
                                 pv.velocity.y,
                                 pv.velocity.z]) / 1000
 
-        rot_ch = state.getAttitude().getRotation()
-        att = np.array([rot_ch.q1,
-                        rot_ch.q2,
-                        rot_ch.q3,
-                        rot_ch.q0])
+        att = state.getAttitude()
 
-        a_sF = rot_ch.applyTo(pv.acceleration)
+        a_sF = att.getRotation().applyTo(pv.acceleration)
         force_sF = np.array([a_sF.x,
                              a_sF.y,
                              a_sF.z]) * state.getMass()
@@ -476,9 +475,9 @@ class OrekitPropagator(object):
         # return and store output of propagation
         dtorque = self._write_d_torques()
         [cart_teme, att, force_sF] = self._write_satellite_state(state)
-        B_field_i = self._calculate_magnetic_field(orekit_date)
+        B_field_b = self._calculate_magnetic_field(orekit_date)
 
-        return [cart_teme, att, force_sF, dtorque, B_field_i]
+        return [cart_teme, att, force_sF, dtorque, B_field_b]
 
     def _calculate_magnetic_field(self, oDate):
         """Calculates magnetic field at position of spacecraft
@@ -491,27 +490,33 @@ class OrekitPropagator(object):
         """
         spacecraftState = self._propagator_num.getInitialState()
         satPos = spacecraftState.getPVCoordinates().getPosition()
+        inertial2Sat = spacecraftState.getAttitude().getRotation()
         frame = spacecraftState.getFrame()
 
         gP = self._earth.transform(satPos, frame, oDate)
         lat = gP.getLatitude()
         lon = gP.getLongitude()
         alt = gP.getAltitude() / 1e3  # Mag. Field needs degrees and [km]
-        geo2inertial = np.array([
-                            [-sin(lon), -cos(lon)*sin(lat), cos(lon)*cos(lat)],
-                            [cos(lon), -sin(lon)*sin(lat), sin(lon)*cos(lat)],
-                            [0., cos(lat), sin(lat)]])
+        slo, clo = sin(lon), cos(lon)
+        sla, cla = sin(lat), cos(lat)
+        geo2inertial = np.array([[-slo, -clo*sla, clo*cla],
+                                 [clo, -slo*sla, slo*cla],
+                                 [0., cla, sla]])
 
         # get B-field in geodetic system (X:East, Y:North, Z:Nadir)
-        B_geo = OrekitPropagator._mag_field_model.calculateField(
+        B_geo = FileDataHandler.mag_field_model.calculateField(
                             degrees(lat), degrees(lon), alt).getFieldVector()
 
         # convert geodetic frame to inertial and from [nT] to [T]
-        B_i = geo2inertial.dot(np.array([B_geo.getX(),
-                                         B_geo.getY(),
-                                         B_geo.getZ()])) * 1e-9
+        B_i = geo2inertial.dot(np.array([B_geo.x,
+                                         B_geo.y,
+                                         B_geo.z])) * 1e-9
 
-        return B_i
+        B_b = inertial2Sat.applyTo(Vector3D(float(B_i[0]),
+                                            float(B_i[1]),
+                                            float(B_i[2])))
+
+        return B_b
 
     def change_attitude_provider(self):
         """

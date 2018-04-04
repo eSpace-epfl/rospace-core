@@ -16,7 +16,6 @@ import rospace_msgs
 import rospace_lib
 from rospace_msgs.msg import SatelitePose
 from rospace_msgs.msg import PoseVelocityStamped
-from geometry_msgs.msg import PoseStamped
 
 sensor_cfg = 0
 position_mode = 0
@@ -26,6 +25,7 @@ frame_cfg = 0
 parent_position = np.array([0, 0, 0])
 parent_orientation = np.array([0, 0, 0, 1])
 
+
 def handle_sync(pose_msg, parent_msg):
     global parent_orientation
     global parent_position
@@ -33,6 +33,7 @@ def handle_sync(pose_msg, parent_msg):
     parent_position = np.array([parent_msg.pose.position.x*1000, parent_msg.pose.position.y*1000, parent_msg.pose.position.z*1000])
 
     handle_pose(pose_msg)
+
 
 def handle_pose(msg):
     global sensor_cfg
@@ -44,7 +45,7 @@ def handle_pose(msg):
     pos = np.array([msg.pose.position.x*1000, msg.pose.position.y*1000, msg.pose.position.z*1000])
 
     if position_mode == "zero_pos":
-        pos = np.array([0,0,0])
+        pos = np.array([0, 0, 0])
     elif position_mode =="relative":
         pos = pos - parent_position
 

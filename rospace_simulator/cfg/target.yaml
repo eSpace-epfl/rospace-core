@@ -7,6 +7,9 @@ propagator_settings:
       type: 'KeplerianEME2000'
       settings:
         mass: 0.82 # kg
+        rotation: 1 0 0 0 # quaternions
+        spin: 0 0 0 # omega in [deg/s]
+        acceleration: 0 0 0
     Gravity:
       type: "" #"GravityPertAndRefEllipsoid"
       settings: # Spherical Harmonics Field Coeffs

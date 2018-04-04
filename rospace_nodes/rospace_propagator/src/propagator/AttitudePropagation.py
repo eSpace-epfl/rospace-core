@@ -14,6 +14,9 @@ from math import degrees
 import sys  # for errors
 import traceback
 
+from FileDataHandler import FileDataHandler
+from DipoleModel import DipoleModel
+
 from org.orekit.attitudes import Attitude
 from org.orekit.python import PythonAttitudePropagation as PAP
 from org.orekit.python import PythonStateEquation as PSE
@@ -89,7 +92,7 @@ class AttitudePropagation(PAP):
                  AttitudeFM):
         super(AttitudePropagation, self).__init__(attitude)
 
-        self.omega = Vector3D.ZERO
+        self.omega = attitude.getSpin()
         '''Angular velocity of satellite in direction of principle axes.'''
 
         self.rotation = attitude.getRotation()
@@ -150,8 +153,9 @@ class AttitudePropagation(PAP):
             self.muGM = ForceModel.cast_(self.GravityModel).getParameters()[0]
 
         if 'MagneticModel' in AttitudeFM:
-            self.MagneticModel = AttitudeFM['MagneticModel']
+            # self.MagneticModel = AttitudeFM['MagneticModel']
             self.earth = BodyShape.cast_(AttitudeFM['Earth'])
+            self._initialize_dipole_model(AttitudeFM['MagneticModel'])
 
         if 'SolarModel' in AttitudeFM:
             self.SolarModel = AttitudeFM['SolarModel']
@@ -176,6 +180,49 @@ class AttitudePropagation(PAP):
         self.setAddedDisturbanceTorques(addG, addM, addSP, addD)
 
         # self.f = open('/home/christian/Documents/ETH/MasterThesis/Profiling/Vectorization/output.txt', 'a+')
+
+    def _initialize_dipole_model(self, model):
+        self.dipoleM = DipoleModel()
+
+        for key, hyst in model['Hysteresis'].items():
+            direction = np.array([float(x) for x in hyst['dir'].split(" ")])
+            self.dipoleM.addHysteresis(direction, hyst['vol'], hyst['Hc'], hyst['Bs'], hyst['Br'])
+
+        # initialize values for Hysteresis
+        spacecraftState = self.StateObserver.spacecraftState
+        self.inertial2Sat = spacecraftState.getAttitude().getRotation()
+        self.satPos_i = spacecraftState.getPVCoordinates().getPosition()
+
+        gP = self.earth.transform(self.satPos_i, self.refFrame, self.refDate)
+        lat = gP.getLatitude()
+        lon = gP.getLongitude()
+        alt = gP.getAltitude() / 1e3  # Mag. Field needs degrees and [km]
+        slo, clo = sin(lon), cos(lon)
+        sla, cla = sin(lat), cos(lat)
+        geo2inertial = np.array([
+                        [-slo, -clo*sla, clo*cla],
+                        [clo, -slo*sla, slo*cla],
+                        [0., cla, sla]])
+
+        # get B-field in geodetic system (X:East, Y:North, Z:Nadir)
+        B_geo = FileDataHandler.mag_field_model.calculateField(
+                            degrees(lat), degrees(lon), alt).getFieldVector()
+
+        # convert geodetic frame to inertial and from [nT] to [T]
+        B_i = geo2inertial.dot(np.array([B_geo.getX(),
+                                         B_geo.getY(),
+                                         B_geo.getZ()])) * 1e-9
+
+        B_b = self.inertial2Sat.applyTo(Vector3D(float(B_i[0]),
+                                                 float(B_i[1]),
+                                                 float(B_i[2])))
+        B_field = np.array([B_b.x, B_b.y, B_b.z])
+
+        self.dipoleM.initializeHysteresisModel(B_field)
+
+        for key, bar in model['BarMagnet'].items():
+            direction = np.array([float(x) for x in bar['dir'].split(" ")])
+            self.dipoleM.addBarMagnet(direction, bar['m'])
 
     def getAttitude(self, pvProv, date, frame):
         """Method called by Orekit at every state integration step.
@@ -242,7 +289,6 @@ class AttitudePropagation(PAP):
                 y[5] = self.rotation.q3
                 y[6] = self.rotation.q0
                 dt = date.durationFrom(self.refDate)  # refDate - date
-
                 try:
                     new_state = self.one_step_state.integrate(
                             OrdinaryDifferentialEquation.cast_(self.state),
@@ -419,13 +465,14 @@ class AttitudePropagation(PAP):
             lat = gP.getLatitude()
             lon = gP.getLongitude()
             alt = gP.getAltitude() / 1e3  # Mag. Field needs degrees and [km]
-            geo2inertial = np.array([
-                            [-sin(lon), -cos(lon)*sin(lat), cos(lon)*cos(lat)],
-                            [cos(lon), -sin(lon)*sin(lat), sin(lon)*cos(lat)],
-                            [0., cos(lat), sin(lat)]])
+            slo, clo = sin(lon), cos(lon)
+            sla, cla = sin(lat), cos(lat)
+            geo2inertial = np.array([[-slo, -clo*sla, clo*cla],
+                                     [clo, -slo*sla, slo*cla],
+                                     [0., cla, sla]])
 
             # get B-field in geodetic system (X:East, Y:North, Z:Nadir)
-            B_geo = self.MagneticModel.calculateField(
+            B_geo = FileDataHandler._mag_field_model.calculateField(
                                 degrees(lat), degrees(lon), alt).getFieldVector()
 
             # convert geodetic frame to inertial and from [nT] to [T]
@@ -436,9 +483,13 @@ class AttitudePropagation(PAP):
             B_b = self.inertial2Sat.applyTo(Vector3D(float(B_i[0]),
                                                      float(B_i[1]),
                                                      float(B_i[2])))
-            dipole = self.getDipoleVector()
+            B_b = np.array([B_b.x, B_b.y, B_b.z])
 
-            return self.V3_cross(dipole, B_b)
+            dipoleVector = self.dipolM.getDipoleVectors(B_b)
+
+            torque = np.sum(np.cross(dipoleVector, B_b), axis=0)
+
+            return Vector3D(torque[0], torque[1], torque[3])
         else:
             return Vector3D.ZERO
 

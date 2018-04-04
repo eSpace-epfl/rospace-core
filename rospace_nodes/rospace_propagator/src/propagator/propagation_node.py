@@ -22,6 +22,7 @@ from time import sleep
 from math import radians
 
 from OrekitPropagator import OrekitPropagator
+from FileDataHandler import FileDataHandler
 from rospace_msgs.msg import PoseVelocityStamped
 from geometry_msgs.msg import WrenchStamped
 from geometry_msgs.msg import Vector3Stamped
@@ -169,10 +170,14 @@ def cart_to_msgs(cart, att, time):
     msg.position.raan = np.rad2deg(oe.O)
     msg.position.true_anomaly = np.rad2deg(oe.v)
 
-    msg.orientation.x = att[0]
-    msg.orientation.y = att[1]
-    msg.orientation.z = att[2]
-    msg.orientation.w = att[3]
+    orient = att.getRotation()
+    spin = att.getSpin()
+    acc = att.getRotationAcceleration()
+
+    msg.orientation.x = orient.q1
+    msg.orientation.y = orient.q2
+    msg.orientation.z = orient.q3
+    msg.orientation.w = orient.q0
 
     # set message for cartesian TEME pose
     msg_pose = PoseVelocityStamped()
@@ -181,13 +186,19 @@ def cart_to_msgs(cart, att, time):
     msg_pose.pose.position.x = cart.R[0]
     msg_pose.pose.position.y = cart.R[1]
     msg_pose.pose.position.z = cart.R[2]
-    msg_pose.pose.orientation.x = att[0]
-    msg_pose.pose.orientation.y = att[1]
-    msg_pose.pose.orientation.z = att[2]
-    msg_pose.pose.orientation.w = att[3]
+    msg_pose.pose.orientation.x = orient.q1
+    msg_pose.pose.orientation.y = orient.q2
+    msg_pose.pose.orientation.z = orient.q3
+    msg_pose.pose.orientation.w = orient.q0
     msg_pose.velocity.x = cart.V[0]
     msg_pose.velocity.y = cart.V[1]
     msg_pose.velocity.z = cart.V[2]
+    msg_pose.spin.x = spin.x
+    msg_pose.spin.y = spin.y
+    msg_pose.spin.z = spin.z
+    msg_pose.rot_acceleration.x = acc.x
+    msg_pose.rot_acceleration.x = acc.y
+    msg_pose.rot_acceleration.x = acc.z
 
     return [msg, msg_pose]
 
@@ -244,11 +255,11 @@ def Bfield_to_msgs(bfield, time):
     msg = Vector3Stamped()
 
     msg.header.stamp = time
-    msg.header.frame_id = "J2K"
+    msg.header.frame_id = "sat_frame"
 
-    msg.vector.x = bfield[0]
-    msg.vector.y = bfield[1]
-    msg.vector.z = bfield[2]
+    msg.vector.x = bfield.x
+    msg.vector.y = bfield.y
+    msg.vector.z = bfield.z
 
     return msg
 
@@ -281,6 +292,10 @@ if __name__ == '__main__':
     [init_state_ch, init_state_ta] = get_init_state_from_param()
 
     OrekitPropagator.init_jvm()
+
+    FileDataHandler.load_magnetic_field_models(SimTime.datetime_oe_epoch)
+    FileDataHandler.create_data_validity_checklist()
+
     prop_chaser = OrekitPropagator()
     # get settings from yaml file
     ch_prop_file = "/" + rospy.get_param("~ns_chaser") + "/propagator_settings"
@@ -302,8 +317,6 @@ if __name__ == '__main__':
                            init_state_ta,
                            SimTime.datetime_oe_epoch)
 
-    OrekitPropagator.load_magnetic_field_models(SimTime.datetime_oe_epoch)
-    OrekitPropagator.create_data_validity_checklist()
     rospy.loginfo("Propagators initialized!")
 
     # Update first step so that other nodes don't give errors
@@ -318,6 +331,9 @@ if __name__ == '__main__':
         epoch_now = SimTime.update_simulation_time()
 
         if SimTime.time_shift_passed:
+            print 'in here'
+            # check if data still loaded
+            FileDataHandler.check_data_availability(epoch_now)
             # propagate to epoch_now
             [cart_ch, att_ch, force_ch, d_torque_ch, B_field_ch] = \
                 prop_chaser.propagate(epoch_now)

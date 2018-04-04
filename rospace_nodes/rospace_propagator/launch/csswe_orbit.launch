@@ -2,13 +2,15 @@
     <arg name="ns_chaser" />
     <arg name="ns_target" />
 
-	<node pkg="rospace_propagator" name="propagator_abs" type="propagation_node.py" output="screen" launch-prefix="yappi -b -f callgrind -o /home/christian/Documents/ETH/MasterThesis/Profiling/Vectorization/yappi.out">
+	<node pkg="rospace_propagator" name="propagator_abs" type="propagation_node.py" output="screen">
 		<param name="oe_ta_rel" type="bool" value="False" />
 		<param name="oe_ch_init" type="yaml" value="{a: 7000, e: 0.0001, i: 68, O: 60, w: 120, v: 0.001}" />
 		<param name="oe_ta_init" type="yaml" value="{a: 7000, e: 0.0001, i: 30, O: 60, w: 120, v: 0.001}" />
 	
-		<param name="oe_epoch" value="20141001T12:00:00"/>
-		<param name="TIME_SHIFT" type="double" value="0.0" />
+		<param name="oe_epoch" value="20120913T17:00:00"/>
+		<param name="TIME_SHIFT" type="double" value="400.0" />
+		<param name="frequency" value="10.0" />
+		<param name="step_size" value="1." />
 
 		<param name="ns_chaser" value="$(arg ns_chaser)" />
 		<param name="ns_target" value="$(arg ns_target)" />

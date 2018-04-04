@@ -9,10 +9,12 @@
 import abc
 import itertools
 import numpy as np
+import math
 
 from ThrustModel import ThrustModel
 from AttitudePropagation import AttitudePropagation
 from StateObserver import StateObserver
+from FileDataHandler import FileDataHandler
 
 from org.orekit.python import PythonEventHandler, PythonOrekitFixedStepHandler
 
@@ -48,12 +50,12 @@ from org.orekit.forces.gravity.potential import EGMFormatReader, ICGEMFormatRead
 from org.orekit.forces.drag.atmosphere import DTM2000
 from org.orekit.forces.drag.atmosphere.data import MarshallSolarActivityFutureEstimation
 from org.orekit.forces.drag.atmosphere.data import CelesTrackWeather
-from org.orekit.attitudes import NadirPointing
+from org.orekit.attitudes import NadirPointing, Attitude
 from org.orekit.data import DataProvidersManager
 from org.orekit.models.earth import GeoMagneticModelLoader
 
 from org.hipparchus.ode.nonstiff import DormandPrince853Integrator
-from org.hipparchus.geometry.euclidean.threed import Vector3D
+from org.hipparchus.geometry.euclidean.threed import Vector3D, Rotation
 
 
 def _build_default_gravity_Field(methodName):
@@ -563,7 +565,7 @@ class KeplerianEME2000(StateFactory):
             initialState: Spacecraft state
         """
 
-        SatMass = setup['mass']
+        satMass = setup['mass']
 
         a = float(state.a)
         e = float(state.e)
@@ -581,7 +583,18 @@ class KeplerianEME2000(StateFactory):
                                       epoch,
                                       Cst.WGS84_EARTH_MU)
 
-        initialState = SpacecraftState(initialOrbit, SatMass)
+        satRot = [float(x) for x in setup['rotation'].split(" ")]
+        satRot = Rotation(satRot[0], satRot[1], satRot[2], satRot[3], False)
+
+        spin = [math.radians(float(x)) for x in setup['spin'].split(" ")]
+        spin = Vector3D(float(spin[0]), float(spin[1]), float(spin[2]))
+
+        acc = [math.radians(float(x)) for x in setup['acceleration'].split(" ")]
+        acc = Vector3D(float(acc[0]), float(acc[1]), float(acc[2]))
+
+        satAtt = Attitude(epoch, inertialFrame, satRot, spin, acc)
+
+        initialState = SpacecraftState(initialOrbit, satAtt, satMass)
 
         return [inertialFrame, initialOrbit, initialState]
 
@@ -1312,17 +1325,7 @@ class AttPropagation(AttitudeFactory):
                 surfaceMesh['Cd'] = dragSettings['DragCoeff']
 
         if magSettings['add']:
-            gmLoader = GeoMagneticModelLoader()
-            manager = DataProvidersManager.getInstance()
-            manager.feed('(?:IGRF|igrf)\\p{Digit}\\p{Digit}\\.(?:cof|COF)', gmLoader)
-
-            # get item from Collection and transform model to year in sim.
-            GM = gmLoader.getModels().iterator().next()
-            # GM = GM.transformModel(float(builderInstance.refDate
-            #                                             .getDate()
-            #                                             .toString()[:4]))
-
-            AttitudeFM['MagneticModel'] = GM
+            AttitudeFM['MagneticModel'] = magSettings['settings']
             AttitudeFM['Earth'] = earth
 
         provider = AttitudePropagation(builderInstance.initialState.getAttitude(),
@@ -1342,10 +1345,10 @@ class AttPropagation(AttitudeFactory):
                 DT = NightEclipseDetector.attitudeProvider.getAddedDisturbanceTorques()
                 NightEclipseDetector.attitudeProvider.setAddedDisturbanceTorques(DT[0], DT[1], False, DT[3])
 
-        # for now assume constant dipole vector:
-        x = [float(x) for x in magSettings['Dipole'].split(" ")]
-        dipole = Vector3D(magSettings['Area'], Vector3D(x[0], x[1], x[2]))
-        provider.setDipoleVector(dipole)
+        # # for now assume constant dipole vector:
+        # x = [float(x) for x in magSettings['Dipole'].split(" ")]
+        # dipole = Vector3D(magSettings['Area'], Vector3D(x[0], x[1], x[2]))
+        # provider.setDipoleVector(dipole)
 
         propagator.setAttitudeProvider(provider)
 
