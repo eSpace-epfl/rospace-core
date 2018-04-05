@@ -319,12 +319,6 @@ if __name__ == '__main__':
 
     rospy.loginfo("Propagators initialized!")
 
-    # Update first step so that other nodes don't give errors
-    # init epoch clock for propagator
-    # run_sim = sim_parameter['TIME_SHIFT'] == 0.0  # start propagating if no timeshift
-    # epoch = rospace_lib.clock.Epoch()
-    # epoch_now = epoch.now()  # initialize, because simulation starts stopped
-
     while not rospy.is_shutdown() and not ExitServer.exiting:
         comp_time = time.clock()
 

@@ -26,10 +26,14 @@ from org.orekit.forces.drag.atmosphere import Atmosphere
 from org.orekit.utils import PVCoordinatesProvider
 
 from org.hipparchus.util import Precision
-from org.hipparchus.ode import OrdinaryDifferentialEquation
+from org.hipparchus.ode import ODEState
+from org.hipparchus.ode import OrdinaryDifferentialEquation, ExpandableODE
 from org.hipparchus.ode.nonstiff import DormandPrince853Integrator
 from org.hipparchus.ode.nonstiff import ClassicalRungeKuttaIntegrator
 from org.hipparchus.geometry.euclidean.threed import Rotation, Vector3D
+
+from org.hipparchus.exception import MathIllegalArgumentException
+from org.hipparchus.exception import MathIllegalStateException
 
 
 def _log_value(name, value, date, f):
@@ -57,30 +61,6 @@ def _compare_results(y, y_s, f):
 class AttitudePropagation(PAP):
     """Implements an attitude propagation which is called by Orekit's attitude provider."""
 
-    @staticmethod
-    def _set_up_attitude_DormandPrice(intSettings, tol):
-        '''Set up integrator for attitude propagation.
-
-        If settings negative use same tolerances used in orbit propagation'''
-
-        minStep = intSettings['minStep']
-        maxStep = intSettings['maxStep']
-        initStep = intSettings['initStep']
-
-        if intSettings['absTol'] < 0.0:
-            intAbsTol = orekit.JArray_double.cast_(tol[0])
-        else:
-            intAbsTol = orekit.JArray_double.cast_(intSettings['absTol'])
-        if intSettings['relTol'] < 0.0:
-            intRelTol = orekit.JArray_double.cast_(tol[1])
-        else:
-            intRelTol = orekit.JArray_double.cast_(intSettings['relTol'])
-        integrator = \
-            DormandPrince853Integrator(minStep, maxStep, intAbsTol, intRelTol)
-        integrator.setInitialStepSize(initStep)
-
-        return integrator
-
     def __init__(self,
                  attitude,
                  referenceDate,
@@ -100,10 +80,8 @@ class AttitudePropagation(PAP):
         self.state = StateEquation(7)
         '''StateEquation object. Holds 7 equations to be integrated.'''
 
-        self.one_step_state = SingleStepEq()
-
-        self.integrator = self._set_up_attitude_DormandPrice(intSettings, tol)
-        '''DormandPrince853Integrator object for attitude propagation.'''
+        self.integrator = Integrators(intSettings, tol)
+        '''DormandPrince853 & singleStep RK object for attitude propagation.'''
 
         self.StateObserver = AttitudeFM['StateObserver']
         '''Dictionary of force models for gravity torques & inertia tensor.'''
@@ -289,14 +267,8 @@ class AttitudePropagation(PAP):
                 y[5] = self.rotation.q3
                 y[6] = self.rotation.q0
                 dt = date.durationFrom(self.refDate)  # refDate - date
-                try:
-                    new_state = self.one_step_state.integrate(
-                            OrdinaryDifferentialEquation.cast_(self.state),
-                            float(0.0),
-                            y,
-                            dt)
-                except Exception:
-                    raise RuntimeError("Single Step integration of Attitude failed!")
+
+                new_state = self.integrator.integrate(self.state, y, dt)
 
                 self.rotation = Rotation(float(new_state[6]),
                                          float(new_state[3]),
@@ -827,16 +799,53 @@ class StateEquation(PSE):
             raise
 
 
-class SingleStepEq(object):
-    '''Class performs RK-single step.
+class Integrators(object):
+    '''Class performs RK-single step.'''
 
-    Used for profiler, so that it shows how much time spend in this class'''
+    def __init__(self, intSettings, tol):
+        self.maxDT = intSettings['maxDT']
 
-    def __init__(self):
-        self.RK = ClassicalRungeKuttaIntegrator(float(1.0))
+        self.integrator_RK = ClassicalRungeKuttaIntegrator(float(1.0))  # 1.0 chosen arbitrarily
 
-    def integrate(self, equations, t0, y0, t):
-        result = self.RK.singleStep(equations, t0, y0, t)
+        minStep = intSettings['minStep']
+        maxStep = intSettings['maxStep']
+        initStep = intSettings['initStep']
+
+        minStep = intSettings['minStep']
+        maxStep = intSettings['maxStep']
+        initStep = intSettings['initStep']
+
+        if intSettings['absTol'] < 0.0:
+            intAbsTol = orekit.JArray_double.cast_(tol[0])
+        else:
+            intAbsTol = orekit.JArray_double.cast_(intSettings['absTol'])
+        if intSettings['relTol'] < 0.0:
+            intRelTol = orekit.JArray_double.cast_(tol[1])
+        else:
+            intRelTol = orekit.JArray_double.cast_(intSettings['relTol'])
+        self.integrator_DP853 = \
+            DormandPrince853Integrator(minStep, maxStep, intAbsTol, intRelTol)
+        self.integrator_DP853.setInitialStepSize(initStep)
+
+    def integrate(self, state, y0, dt):
+
+        if abs(dt) <= self.maxDT:
+            equations = OrdinaryDifferentialEquation.cast_(state)
+            result = self.integrator_RK.singleStep(equations, float(0.0), y0, dt)
+        else:
+            ode = ExpandableODE(
+                        OrdinaryDifferentialEquation.cast_(state))
+            initial_state = ODEState(float(0.0), y0)
+            try:
+                new_state = self.integrator_DP853. \
+                                 integrate(ode, initial_state, dt)
+
+            except MathIllegalArgumentException as illArg:
+                raise illArg
+            except MathIllegalStateException as illStat:
+                raise illStat
+
+            result = new_state.getPrimaryState()  # primary state from ODEState
 
         return result
 

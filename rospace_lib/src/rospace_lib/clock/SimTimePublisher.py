@@ -179,8 +179,10 @@ class SimTimePublisher(object):
                 file == self._time_driving_node:
             self._comp_time = time.clock()
 
-            if self.ClockService.realtime_factor != \
-                    self._SimTime.realtime_factor:
+            if (self.ClockService.realtime_factor !=
+                    self._SimTime.realtime_factor or
+                self.ClockService.step_size !=  # frequency = 0 - RT doesn't change
+                    self._SimTime.step_size):
                 self._SimTime.updateTimeFactors(
                                         self.ClockService.realtime_factor,
                                         self.ClockService.frequency,

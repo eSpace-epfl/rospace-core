@@ -10,7 +10,6 @@ import rospace_lib
 import numpy as np
 import PropagatorBuilder as PB
 import os
-from datetime import datetime, timedelta
 from math import degrees, sin, cos
 
 from FileDataHandler import FileDataHandler
@@ -22,13 +21,8 @@ from java.io import File
 from org.orekit.python import PythonAttitudePropagation as PAP
 from orekit.pyhelpers import setup_orekit_curdir
 from org.orekit.data import DataProvidersManager, ZipJarCrawler
-from org.orekit.models.earth import GeoMagneticModelLoader, GeoMagneticField
 from org.orekit.time import TimeScalesFactory, AbsoluteDate
-from org.orekit.frames import FramesFactory
 from org.orekit.attitudes import Attitude, FixedRate, InertialProvider
-from org.orekit.forces.drag.atmosphere.data import MarshallSolarActivityFutureEstimation
-from org.orekit.forces.drag.atmosphere.data import CelesTrackWeather
-from org.orekit.utils import IERSConventions as IERS
 
 from org.hipparchus.geometry.euclidean.threed import Vector3D
 

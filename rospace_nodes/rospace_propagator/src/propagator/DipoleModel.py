@@ -3,8 +3,8 @@ import numpy as np
 
 
 class DipoleModel(object):
-    def __init__(self):
 
+    def __init__(self):
         self._H_hyst_last = np.empty([0, 1])
         self._Bs = np.empty([0, 1])
         self._m_hyst = np.empty([0, 3])

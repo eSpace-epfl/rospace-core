@@ -1,5 +1,5 @@
 propagator_settings:
-  name: "CHASER"
+  name: "CSSWE"
   orbitProp:
     State:
       type: 'KeplerianEME2000'
