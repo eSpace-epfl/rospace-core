@@ -117,7 +117,8 @@ class SimTimePublisher(object):
             # set publish frequency & time step size as ros parameter before
             # setting /epoch parameter to ensure Epoch class finds them
             rospy.set_param('/publish_freq', self._SimTime.frequency)
-            rospy.set_param('/time_step_size', self._SimTime.step_size)
+            print self._SimTime.step_size
+            rospy.set_param('/time_step_size', str(self._SimTime.step_size))
             rospy.set_param('/epoch',
                             self._SimTime.datetime_oe_epoch.strftime("%Y-%m-%d %H:%M:%S"))
 

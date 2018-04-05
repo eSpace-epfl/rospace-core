@@ -50,7 +50,10 @@ class SimTimeUpdater(object):
         else:
             self.frequency = 10
 
-        self.rate = float(1) / float(self.frequency)
+        if frequency > 0:
+            self.rate = float(1) / float(self.frequency)
+        else:
+            self.rate = 0
 
         # maximal step size, run at real time if not defined
         if step_size is not None:
@@ -76,7 +79,7 @@ class SimTimeUpdater(object):
             rosgraph_msgs.msg.Clock : clock message
         """
         if (self.currentTime > self.time_shift or
-           self.currentTime < self.time_shift):
+           self.currentTime + self.step_size < self.time_shift):
             # before starting time or after
             self.currentTime += self.step_size
         elif (self.currentTime < self.time_shift and

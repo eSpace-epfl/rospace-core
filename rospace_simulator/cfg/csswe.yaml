@@ -150,6 +150,7 @@ propagator_settings:
         Iy: 0 0.02552 0
         Iz: 0 0 0.02565
       integrator:
+        maxDT: 10
         minStep: 0.01
         maxStep: 1000.0
         initStep: 0.1
