@@ -180,13 +180,13 @@ class SimtimePluginTest(unittest.TestCase):
 
         widget.dtSize_val_box.setValue(1.0)
 
-        widget.PubFreq_val_box.setValue(0.001)
+        widget.PubFreq_val_box.setValue(-0.001)
         widget.change_dt()
 
-        self.assertEquals(widget.PubFreq_val_box.value(), 0.1)
+        self.assertEquals(widget.PubFreq_val_box.value(), 0.0)
 
         widget.on_decrease_pFreq_clicked()
-        self.assertEquals(widget.PubFreq_val_box.value(), 0.1)
+        self.assertEquals(widget.PubFreq_val_box.value(), 0.0)
 
 
 if __name__ == '__main__':

@@ -212,13 +212,17 @@ class SimTimePublisher(object):
         """
 
         self._lock.acquire()
-        # calculate reminding sleeping time
-        sleep_time = self._SimTime.rate - (time.clock() - self._comp_time)
+        if self._SimTime.frequency > 0:
+            # calculate reminding sleeping time
+            sleep_time = self._SimTime.rate - (time.clock() - self._comp_time)
 
-        if sleep_time > 0:
-            sleep(sleep_time)
-        elif self.ClockService.syncSubscribers == 0:
-            rospy.logwarn("Propagator too slow for publishing rate.")
+            if sleep_time > 0:
+                sleep(sleep_time)
+            elif self.ClockService.syncSubscribers == 0:
+                rospy.logwarn("Propagator too slow for publishing rate.")
 
-        self._comp_time = None
+            self._comp_time = None
+        else:
+            self._comp_time = None
+
         self._lock.release()

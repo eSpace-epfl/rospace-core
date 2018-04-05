@@ -116,5 +116,8 @@ class SimTimeUpdater(object):
 
         self.realtime_factor = new_rtf
         self.frequency = new_freq
-        self.rate = float(1) / float(self.frequency)
+        if new_freq > 0:
+            self.rate = float(1) / float(self.frequency)
+        else:  # frequency = None : run as quickly as possible
+            self.rate = 0
         self.step_size = new_dt

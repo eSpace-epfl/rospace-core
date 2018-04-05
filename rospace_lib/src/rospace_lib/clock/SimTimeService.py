@@ -57,7 +57,7 @@ class SimTimeService(threading.Thread):
                 self.SimRunning = False
             else:
                 self.SimRunning = True
-        elif req.dt_size > 0 and req.p_freq > 0:
+        elif req.dt_size > 0 and req.p_freq >= 0:
             self.frequency = req.p_freq
             self.step_size = req.dt_size
             self.realtime_factor = req.p_freq * req.dt_size
