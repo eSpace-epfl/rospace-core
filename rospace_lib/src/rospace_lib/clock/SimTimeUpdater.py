@@ -75,8 +75,13 @@ class SimTimeUpdater(object):
         Returns:
             rosgraph_msgs.msg.Clock : clock message
         """
-        if (self.currentTime < self.time_shift and
-           self.currentTime + self.step_size > self.time_shift):
+        if (self.currentTime > self.time_shift or
+           self.currentTime < self.time_shift):
+            # before starting time or after
+            self.currentTime += self.step_size
+        elif (self.currentTime < self.time_shift and
+              self.currentTime + self.step_size > self.time_shift):
+            # timestep needs to be adjusted to start at correct epoch
             shift = int(self.currentTime + self.step_size - self.time_shift)
             self.currentTime = self.time_shift
             mesg = "\033[93m[WARN] [EpochClock] Shortend next timestep by " \
@@ -86,7 +91,9 @@ class SimTimeUpdater(object):
             # set that time shift has passed to true
             self.time_shift_passed = True
         else:
+            # time hit exactly correct starting epoch
             self.currentTime += self.step_size
+            self.time_shift_passed = True
 
         full_seconds = int(self.currentTime*1e-9)
         msg_cl.clock.secs = full_seconds

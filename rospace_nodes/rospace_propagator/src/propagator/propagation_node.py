@@ -329,9 +329,7 @@ if __name__ == '__main__':
         comp_time = time.clock()
 
         epoch_now = SimTime.update_simulation_time()
-
         if SimTime.time_shift_passed:
-            print 'in here'
             # check if data still loaded
             FileDataHandler.check_data_availability(epoch_now)
             # propagate to epoch_now
