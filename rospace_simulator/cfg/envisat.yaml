@@ -4,10 +4,10 @@ propagator_settings:
     State:
       type: 'CartesianITRF'
       settings:
-        mass: 8000.0 # kg
+        mass: 7990.0 # kg
     integrator: # Steps have to be floats
       minStep: 0.001
-      maxStep: 10
+      maxStep: 60
       initStep: 0.1
       positionTolerance: 0.001
     Gravity:

@@ -4,12 +4,12 @@
 
 	<node pkg="rospace_propagator" name="propagator_abs" type="propagation_node.py" output="screen" cwd="node">
 		<param name="oe_ta_rel" type="bool" value="False" />
-		<param name="oe_ch_init" type="yaml" value="{x: -6416583.202, y: -0633589.348, z: +3075123.638, xDot: -3333.516275, yDot: +1376.946250, zDot: -6648.182832}" />
+		<param name="oe_ch_init" type="yaml" value="{x: +1120743.995, y: +1098821.761, z: -6978762.588, xDot: +7433.379060, yDot: +0106.713670, zDot: +1210.719708}" />
 		<param name="oe_ta_init" type="yaml" value="{x: -6416585.202, y: -0633589.348, z: +3075123.638, xDot: -3333.516275, yDot: +1376.946250, zDot: -6648.182832}" />
 
-		<param name="oe_epoch" value="20101230T21:55:26"/>
-		<param name="TIME_SHIFT" type="double" value="100.0" />
-		<param name="frequency" value="2.0" />
+		<param name="oe_epoch" value="20120205T21:55:26"/>
+		<param name="TIME_SHIFT" type="double" value="200.0" />
+		<param name="frequency" value="0.0" />
 		<param name="step_size" value="60.0" /> 
 
 		<param name="ns_chaser" value="$(arg ns_chaser)" />

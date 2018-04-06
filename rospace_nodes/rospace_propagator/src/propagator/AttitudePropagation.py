@@ -105,8 +105,8 @@ class AttitudePropagation(PAP):
         '''Gravity Model for gravity torque computation.
         Torque will only be computed if one is provided.'''
 
-        self.MagneticModel = None
-        '''World Magnetic Model for magnetic torque computation.
+        self.dipleM = None
+        '''Dipole model for magnetic torque computation.
         Torque will only be computed if one is provided.'''
 
         self.SolarModel = None
@@ -150,14 +150,15 @@ class AttitudePropagation(PAP):
         self.V3_cross = Vector3D.crossProduct
         self.V3_dot = Vector3D.dotProduct
 
-        # update and store computed values
+        # update and store computed values  - change this to 'add' in yaml file
         addG = False if self.GravityModel is None else True
-        addM = False if self.MagneticModel is None else True
+        addM = False if self.dipoleM is None else True
         addSP = False if self.SolarModel is None else True
         addD = False if self.AtmoModel is None else True
         self.setAddedDisturbanceTorques(addG, addM, addSP, addD)
 
         # self.f = open('/home/christian/Documents/ETH/MasterThesis/Profiling/Vectorization/output.txt', 'a+')
+        # self.f = open('/home/christian/Documents/ETH/MasterThesis/Validation/Attitude/DipolModel/first_run/B_H.out', 'a+')
 
     def _initialize_dipole_model(self, model):
         self.dipoleM = DipoleModel()
@@ -444,7 +445,7 @@ class AttitudePropagation(PAP):
                                      [0., cla, sla]])
 
             # get B-field in geodetic system (X:East, Y:North, Z:Nadir)
-            B_geo = FileDataHandler._mag_field_model.calculateField(
+            B_geo = FileDataHandler.mag_field_model.calculateField(
                                 degrees(lat), degrees(lon), alt).getFieldVector()
 
             # convert geodetic frame to inertial and from [nT] to [T]
@@ -457,11 +458,12 @@ class AttitudePropagation(PAP):
                                                      float(B_i[2])))
             B_b = np.array([B_b.x, B_b.y, B_b.z])
 
-            dipoleVector = self.dipolM.getDipoleVectors(B_b)
+            dipoleVector = self.dipoleM.getDipoleVectors(B_b)
 
             torque = np.sum(np.cross(dipoleVector, B_b), axis=0)
+            # np.savetxt(self.f, (self.dipoleM._B_hyst_last, self.dipoleM._H_hyst_last))
 
-            return Vector3D(torque[0], torque[1], torque[3])
+            return Vector3D(float(torque[0]), float(torque[1]), float(torque[2]))
         else:
             return Vector3D.ZERO
 

@@ -7,6 +7,7 @@
 # for complete details.
 
 from datetime import datetime, timedelta
+from time import sleep
 
 
 class SimTimeUpdater(object):
@@ -78,12 +79,8 @@ class SimTimeUpdater(object):
         Returns:
             rosgraph_msgs.msg.Clock : clock message
         """
-        if (self.currentTime > self.time_shift or
-           self.currentTime + self.step_size < self.time_shift):
-            # before starting time or after
-            self.currentTime += self.step_size
-        elif (self.currentTime < self.time_shift and
-              self.currentTime + self.step_size > self.time_shift):
+        if (self.currentTime < self.time_shift and
+           self.currentTime + self.step_size > self.time_shift):
             # timestep needs to be adjusted to start at correct epoch
             shift = int(self.currentTime + self.step_size - self.time_shift)
             self.currentTime = self.time_shift
@@ -91,12 +88,14 @@ class SimTimeUpdater(object):
                    + str(shift * 1e-9) \
                    + "s to reach desired intial epoch. \033[0m"
             print mesg
-            # set that time shift has passed to true
             self.time_shift_passed = True
-        else:
+        elif (self.currentTime + self.step_size == self.time_shift):
             # time hit exactly correct starting epoch
             self.currentTime += self.step_size
             self.time_shift_passed = True
+        else:
+            # before passing time shift or after
+            self.currentTime += self.step_size
 
         full_seconds = int(self.currentTime*1e-9)
         msg_cl.clock.secs = full_seconds

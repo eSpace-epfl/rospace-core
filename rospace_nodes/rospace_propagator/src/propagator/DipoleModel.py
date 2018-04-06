@@ -18,6 +18,8 @@ class DipoleModel(object):
         self.MU_0 = 4e-7 * math.pi
         self.TWO_DIV_PI = 2. / math.pi
 
+        # f = open('/home/christian/Documents/ETH/MasterThesis/Validation/Attitude/DipolModel/first_run/B_H.out', 'a')
+
     def addBarMagnet(self, direction, m):
         norm = np.linalg.norm(direction)
         if norm != 1.0:

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <launch>
 
-	<arg name="full_directory" value="/home/christian/Documents/ETH/MasterThesis/Validation/Orbit/EnviSat/GTOD_Body_Frame/201101_0.001pT_allF_Celestrak" />
+	<arg name="full_directory" value="/home/christian/Documents/ETH/MasterThesis/Validation/Orbit/EnviSat/WholeMonth/0205" />
 	<arg name="bag_name" value="run_celestrack" />
 	<arg name="end_time" value="96000" /> 
 
