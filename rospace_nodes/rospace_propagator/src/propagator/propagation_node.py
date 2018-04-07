@@ -274,7 +274,6 @@ if __name__ == '__main__':
     # Subscribe to propulsion node and attitude control
     thrust_force = message_filters.Subscriber('force', WrenchStamped)
     thrust_ispM = message_filters.Subscriber('IspMean', ThrustIsp)
-    # att_sub = message_filters.Subscriber('chaser/attitude_ctrl', FixedRotationStamped)
 
     # Init publisher and rate limiter
     pub_ch = rospy.Publisher('oe_chaser', SatelitePose, queue_size=10)

@@ -1,3 +1,17 @@
+# @copyright Copyright (c) 2018, Christian Lanegger (lanegger.christian@gmail.com)
+#
+# @license zlib license
+#
+# This file is licensed under the terms of the zlib license.
+# See the LICENSE.md file in the root of this repository
+# for complete details.
+
+# #####################################################################
+# PRELIMINARY CODE: This code is still under construction.
+# Methods used from here could result to unexpected behavior and should
+# therefore be used with care.
+#######################################################################
+
 import math
 import numpy as np
 

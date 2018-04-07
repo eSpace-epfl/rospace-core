@@ -14,7 +14,7 @@ from math import degrees, sin, cos
 
 import timeit
 
-from FileDataHandler import FileDataHandler
+from FileDataHandler import FileDataHandler, to_orekit_date
 
 import orekit
 
@@ -23,8 +23,6 @@ from java.io import File
 from org.orekit.python import PythonAttitudePropagation as PAP
 from orekit.pyhelpers import setup_orekit_curdir
 from org.orekit.data import DataProvidersManager, ZipJarCrawler
-from org.orekit.time import TimeScalesFactory, AbsoluteDate
-from org.orekit.attitudes import Attitude, FixedRate, InertialProvider
 from org.orekit.frames import TopocentricFrame
 
 from org.hipparchus.geometry.euclidean.threed import Vector3D
@@ -162,28 +160,6 @@ class OrekitPropagator(object):
 
         return dtorque
 
-    @staticmethod
-    def to_orekit_date(epoch):
-        """
-        Method to convert UTC simulation time from python's datetime object to
-        orekits AbsoluteDate object
-
-        Args:
-            epoch: UTC simulation time as datetime object
-
-        Returns:
-            AbsoluteDate: simulation time in UTC
-        """
-        seconds = float(epoch.second) + float(epoch.microsecond) / 1e6
-        orekit_date = AbsoluteDate(epoch.year,
-                                   epoch.month,
-                                   epoch.day,
-                                   epoch.hour,
-                                   epoch.minute,
-                                   seconds,
-                                   TimeScalesFactory.getUTC())
-        return orekit_date
-
     def __init__(self):
         self._propagator_num = None
         self._hasAttitudeProp = False
@@ -213,7 +189,7 @@ class OrekitPropagator(object):
             AssertionError: if propagator settings file was not found
         """
 
-        OrEpoch = self.to_orekit_date(epoch)
+        OrEpoch = to_orekit_date(epoch)
 
         try:
             assert propSettings != 0
@@ -266,7 +242,7 @@ class OrekitPropagator(object):
             numpy.array: Magnetic field at satellite position in TEME frame
         """
 
-        orekit_date = self.to_orekit_date(epoch)
+        orekit_date = to_orekit_date(epoch)
 
         if self._hasAttitudeProp:
             self.calculate_external_torque()
@@ -347,41 +323,6 @@ class OrekitPropagator(object):
 
         return inertial2Sat.applyTo(B_i)
 
-    def change_attitude_provider(self):
-        """
-        Method changing propagator's provider between FixedRate and Inertia.
-
-        Rate and axis are obtained from Propulsion node and stored by
-        callback method. If rotation is required the callback method
-        sets trigger to true and the propagator's attitude provider is set
-        to FixedRate. Otherwise an InertialProvider is used so that propagation
-        keeps attitude constant.
-
-        After every change in attitude provider the name is also stored in the
-        variable attProv_name to ensure that the provider is only set once
-        (when changes was requested).
-        """
-
-        if self.attitude_trigger is True:
-            sat_state = self._propagator_num.getInitialState()
-            att_prov = self.provide_fixed_rate_attitude(sat_state)
-            self._propagator_num.setAttitudeProvider(att_prov)
-
-            self.attProv_name = self._propagator_num.getAttitudeProvider()
-            self.attitude_trigger = False
-
-        elif (self.attProv_name !=
-              self._propagator_num.getAttitudeProvider().toString()):
-            curr_rot = self._propagator_num.getInitialState() \
-                                           .getAttitude() \
-                                           .getRotation()
-            self._propagator_num.setAttitudeProvider(InertialProvider(curr_rot))
-
-            self.attProv_name = self._propagator_num.getAttitudeProvider()\
-                                                    .toString()
-        else:
-            pass
-
     def calculate_thrust(self):
         """
         Method that updates parameter in Thrust Model.
@@ -434,50 +375,6 @@ class OrekitPropagator(object):
             attProv = PAP.cast_(self._propagator_num.getAttitudeProvider())
             attProv.setExternalTorque(N_T)
 
-    def init_fixed_rate_attitude(self):
-        """
-        Method adds Fixed rate provider to propagator's attitude provider.
-
-        Spin rate and spin acceleration is set to zero and trigger with
-        attitude provider name is initialized, so that it can be used in
-        the method change_attitude_provider().
-        """
-
-        self.sat_spin = [0, 0, 0]
-        sat_state = self._propagator_num.getInitialState()
-        att_prov = self.provide_fixed_rate_attitude(sat_state)
-        self._propagator_num.setAttitudeProvider(att_prov)
-        self.attitude_trigger = False  # trigger to change attitude in prop
-        self.attProv_name = self._propagator_num.getAttitudeProvider() \
-                                                .toString()
-
-    def provide_fixed_rate_attitude(self, sat_state):
-        """
-        Method creates FixedRate attitude provider object.
-
-        Args:
-            sat_state: current state of satellite
-
-        Returns:
-            FixedRate: Orekit's FixedRate provider
-        """
-        sat_spin = Vector3D(float(self.sat_spin[0]),
-                            float(self.sat_spin[1]),
-                            float(self.sat_spin[2]))
-        sat_acc = Vector3D.ZERO
-
-        start_date = sat_state.getDate()
-        sat_frame = sat_state.getFrame()
-        sat_rotation = sat_state.getAttitude().getRotation()
-
-        rot_attitude = Attitude(start_date,
-                                sat_frame,
-                                sat_rotation,
-                                sat_spin,
-                                sat_acc)
-
-        return FixedRate(rot_attitude)
-
     def thrust_torque_callback(self, thrust_force, thrust_ispM):
         """
         Callback function for subscriber to the propulsion node.
@@ -509,27 +406,3 @@ class OrekitPropagator(object):
         self.torque = np.array([thrust_force.wrench.torque.x,
                                 thrust_force.wrench.torque.y,
                                 thrust_force.wrench.torque.z])
-
-    def attitude_fixed_rot_callback(self, att_parameter):
-        """
-        Callback for attitude control using Orekit's Fixed Rate provider.
-
-        Normalizes the rotation axis vector if necessary and sets spin rate and
-        an attitude trigger indicating attitude change.
-        Is used with  method: simple_attitude_control()
-
-        Args:
-            att_parameter: attitude_ctrl message containing spin axis vector
-                           and angular rate
-        """
-
-        sat_spin = np.array([att_parameter.axis.x,
-                             att_parameter.axis.y,
-                             att_parameter.axis.z])
-
-        norm = np.linalg.norm(sat_spin)
-        if norm != 0:
-            sat_spin = sat_spin / norm
-
-        self.sat_spin = sat_spin * att_parameter.angle_rate
-        self.attitude_trigger = True

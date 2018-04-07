@@ -983,14 +983,20 @@ def discretize_outer_surface(solarSettings, discSettings):
     s_l_y = float(discSettings['satellite_dim']['l_y'])
     s_l_z = float(discSettings['satellite_dim']['l_z'])
 
+    if s_l_x <= 0. or s_l_y <= 0. or s_l_z <= 0.:
+        raise ValueError("Dimensions of satellite must be bigger than zero!")
+
     sat_Ca = solarSettings['AbsorbCoeff']
     sat_Cs = solarSettings['ReflectCoeff']
     sol_Ca = solarSettings['SolarArray_AbsorbCoeff']
     sol_Cs = solarSettings['SolarArray_ReflectCoeff']
 
-    numSR_x = discSettings['surface_rectangles']['numSR_x']
-    numSR_y = discSettings['surface_rectangles']['numSR_y']
-    numSR_z = discSettings['surface_rectangles']['numSR_z']
+    numSR_x = int(discSettings['surface_rectangles']['numSR_x'])
+    numSR_y = int(discSettings['surface_rectangles']['numSR_y'])
+    numSR_z = int(discSettings['surface_rectangles']['numSR_z'])
+
+    if numSR_x <= 0 or numSR_y <= 0 or numSR_z <= 0:
+        raise ValueError("Number of cuboid must be bigger than zero!")
 
     c_l_x = s_l_x / numSR_x
     c_l_y = s_l_y / numSR_y
@@ -1118,8 +1124,14 @@ def discretize_outer_surface(solarSettings, discSettings):
         sol_l_x = float(solarSettings['l_x'])
         sol_l_z = float(solarSettings['l_z'])
 
+        if sol_l_x <= 0. or sol_l_z <= 0.:
+            raise ValueError("Dimensions of solar panels must be bigger than zero!")
+
         numSRSolar_x = solarSettings['numSRSolar_x']
         numSRSolar_z = solarSettings['numSRSolar_z']
+
+        if numSRSolar_x <= 0 or numSRSolar_z <= 0:
+            raise ValueError("Number of rectangles must be bigger than zero!")
 
         c_l_x = sol_l_x / numSRSolar_x
         c_l_z = sol_l_z / numSRSolar_z
@@ -1296,7 +1308,7 @@ class AttPropagation(AttitudeFactory):
                 # add two Event handlers for solar eclipse (one when entering eclipse other when leaving)
                 # solar pressure torque only computed if not in umbra
                 dayNightEvent = EclipseDetector(PVCoordinatesProvider.cast_(sun),
-                                                696000000.,
+                                                696000000.,  # radius of the sun
                                                 CelestialBodyFactory.getEarth(),
                                                 Cst.WGS84_EARTH_EQUATORIAL_RADIUS)
                 dayNightEvent = dayNightEvent.withHandler(NightEclipseDetector().of_(EclipseDetector))

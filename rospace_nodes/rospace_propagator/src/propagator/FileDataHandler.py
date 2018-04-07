@@ -31,7 +31,7 @@ def _get_name_of_loaded_files(folder_name):
     return file_names
 
 
-def _to_orekit_date(epoch):
+def to_orekit_date(epoch):
     """
     Method to convert UTC simulation time from python's datetime object to
     orekits AbsoluteDate object
@@ -96,8 +96,7 @@ class FileDataHandler(object):
         FileDataHandler._mag_field_coll = GMM_coll
         if valid_mod.supportsTimeTransform():
             # only prediction model supports time transformation
-            FileDataHandler.mag_field_model = valid_mod. \
-                                                    transformModel(curr_year)
+            FileDataHandler.mag_field_model = valid_mod.transformModel(curr_year)
         else:
             FileDataHandler.mag_field_model = valid_mod
 
@@ -172,30 +171,19 @@ class FileDataHandler(object):
             base = datetime(int(dec_year), 1, 1)
             dec = timedelta(seconds=(base.replace(year=base.year + 1) -
                             base).total_seconds() * (dec_year-int(dec_year)))
-            GM_start_date = _to_orekit_date(base + dec)
+            GM_start_date = to_orekit_date(base + dec)
             dec_year = GM_end_date
             base = datetime(int(dec_year), 1, 1)
             dec = timedelta(seconds=(base.replace(year=base.year + 1) -
                             base).total_seconds() * (dec_year-int(dec_year)))
-            GM_end_date = _to_orekit_date(base + dec)
+            GM_end_date = to_orekit_date(base + dec)
             checklist['MagField_dates'] = [GM_start_date, GM_end_date]
             start_dates.append(GM_start_date)
             end_dates.append(GM_end_date)
 
         if checklist:  # if any data loaded define first and last date
-            for idx, date in enumerate(start_dates):
-                if idx == 0:
-                    first_date = date
-                else:
-                    if first_date.compareTo(date) < 0:
-                        first_date = date
-
-            for idx, date in enumerate(end_dates):
-                if idx == 0:
-                    last_date = date
-                else:
-                    if last_date.compareTo(date) > 0:
-                        last_date = date
+            first_date = min(start_dates)
+            last_date = min(end_dates)
 
             checklist['MinMax_dates'] = [first_date, last_date]
 
@@ -222,7 +210,7 @@ class FileDataHandler(object):
             ValueError: if no data loaded for current epoch
         """
         min_max = FileDataHandler._data_checklist['MinMax_dates']
-        oDate = _to_orekit_date(epoch)
+        oDate = to_orekit_date(epoch)
         if oDate.compareTo(min_max[0]) < 0:
             err_msg = "No file loaded with valid data for current epoch " + \
                       str(oDate) + "! Earliest possible epoch: " + min_max[0]

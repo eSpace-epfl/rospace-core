@@ -221,7 +221,7 @@ class SimTimePublisher(object):
             if sleep_time > 0:
                 sleep(sleep_time)
             elif self.ClockService.syncSubscribers == 0:
-                rospy.logwarn("Propagator too slow for publishing rate.")
+                rospy.logwarn("Driving node too slow for publishing rate.")
 
             self._comp_time = None
         else:
