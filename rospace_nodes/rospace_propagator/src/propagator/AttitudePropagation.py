@@ -20,6 +20,7 @@ from DipoleModel import DipoleModel
 from org.orekit.attitudes import Attitude
 from org.orekit.python import PythonAttitudePropagation as PAP
 from org.orekit.python import PythonStateEquation as PSE
+from org.orekit.frames import TopocentricFrame
 from org.orekit.bodies import BodyShape
 from org.orekit.forces import ForceModel
 from org.orekit.forces.drag.atmosphere import Atmosphere
@@ -173,28 +174,22 @@ class AttitudePropagation(PAP):
         self.satPos_i = spacecraftState.getPVCoordinates().getPosition()
 
         gP = self.earth.transform(self.satPos_i, self.refFrame, self.refDate)
+
+        topoframe = TopocentricFrame(self.earth, gP, 'ENU')
+        topo2inertial = topoframe.getTransformTo(self.refFrame, self.refDate)
+
         lat = gP.getLatitude()
         lon = gP.getLongitude()
         alt = gP.getAltitude() / 1e3  # Mag. Field needs degrees and [km]
-        slo, clo = sin(lon), cos(lon)
-        sla, cla = sin(lat), cos(lat)
-        geo2inertial = np.array([
-                        [-slo, -clo*sla, clo*cla],
-                        [clo, -slo*sla, slo*cla],
-                        [0., cla, sla]])
 
         # get B-field in geodetic system (X:East, Y:North, Z:Nadir)
         B_geo = FileDataHandler.mag_field_model.calculateField(
                             degrees(lat), degrees(lon), alt).getFieldVector()
 
         # convert geodetic frame to inertial and from [nT] to [T]
-        B_i = geo2inertial.dot(np.array([B_geo.getX(),
-                                         B_geo.getY(),
-                                         B_geo.getZ()])) * 1e-9
+        B_i = topo2inertial.transformVector(Vector3D(1e-9, B_geo))
 
-        B_b = self.inertial2Sat.applyTo(Vector3D(float(B_i[0]),
-                                                 float(B_i[1]),
-                                                 float(B_i[2])))
+        B_b = self.inertial2Sat.applyTo(B_i)
         B_field = np.array([B_b.x, B_b.y, B_b.z])
 
         self.dipoleM.initializeHysteresisModel(B_field)
@@ -435,33 +430,27 @@ class AttitudePropagation(PAP):
         """
         if self.to_add[1]:
             gP = self.earth.transform(self.satPos_i, self.refFrame, self.refDate)
+
+            topoframe = TopocentricFrame(self.earth, gP, 'ENU')
+            topo2inertial = topoframe.getTransformTo(self.refFrame, self.refDate)
+
             lat = gP.getLatitude()
             lon = gP.getLongitude()
             alt = gP.getAltitude() / 1e3  # Mag. Field needs degrees and [km]
-            slo, clo = sin(lon), cos(lon)
-            sla, cla = sin(lat), cos(lat)
-            geo2inertial = np.array([[-slo, -clo*sla, clo*cla],
-                                     [clo, -slo*sla, slo*cla],
-                                     [0., cla, sla]])
 
             # get B-field in geodetic system (X:East, Y:North, Z:Nadir)
             B_geo = FileDataHandler.mag_field_model.calculateField(
                                 degrees(lat), degrees(lon), alt).getFieldVector()
 
             # convert geodetic frame to inertial and from [nT] to [T]
-            B_i = geo2inertial.dot(np.array([B_geo.getX(),
-                                             B_geo.getY(),
-                                             B_geo.getZ()])) * 1e-9
+            B_i = topo2inertial.transformVector(Vector3D(1e-9, B_geo))
 
-            B_b = self.inertial2Sat.applyTo(Vector3D(float(B_i[0]),
-                                                     float(B_i[1]),
-                                                     float(B_i[2])))
+            B_b = self.inertial2Sat.applyTo(B_i)
             B_b = np.array([B_b.x, B_b.y, B_b.z])
 
             dipoleVector = self.dipoleM.getDipoleVectors(B_b)
 
             torque = np.sum(np.cross(dipoleVector, B_b), axis=0)
-            # np.savetxt(self.f, (self.dipoleM._B_hyst_last, self.dipoleM._H_hyst_last))
 
             return Vector3D(float(torque[0]), float(torque[1]), float(torque[2]))
         else:

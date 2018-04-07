@@ -12,6 +12,8 @@ import PropagatorBuilder as PB
 import os
 from math import degrees, sin, cos
 
+import timeit
+
 from FileDataHandler import FileDataHandler
 
 import orekit
@@ -23,6 +25,7 @@ from orekit.pyhelpers import setup_orekit_curdir
 from org.orekit.data import DataProvidersManager, ZipJarCrawler
 from org.orekit.time import TimeScalesFactory, AbsoluteDate
 from org.orekit.attitudes import Attitude, FixedRate, InertialProvider
+from org.orekit.frames import TopocentricFrame
 
 from org.hipparchus.geometry.euclidean.threed import Vector3D
 
@@ -281,7 +284,7 @@ class OrekitPropagator(object):
 
         return [cart_teme, att, force_sF, dtorque, B_field_b]
 
-    def _calculate_magnetic_field(self, oDate):
+    def _calculate_magnetic_field_old(self, oDate):
         """Calculates magnetic field at position of spacecraft
 
         Args:
@@ -319,6 +322,30 @@ class OrekitPropagator(object):
                                             float(B_i[2])))
 
         return B_b
+
+    def _calculate_magnetic_field(self, oDate):
+        spacecraftState = self._propagator_num.getInitialState()
+        satPos = spacecraftState.getPVCoordinates().getPosition()
+        inertial2Sat = spacecraftState.getAttitude().getRotation()
+        frame = spacecraftState.getFrame()
+
+        gP = self._earth.transform(satPos, frame, oDate)
+
+        topoframe = TopocentricFrame(self._earth, gP, 'ENU')
+        topo2inertial = topoframe.getTransformTo(frame, oDate)
+
+        lat = gP.getLatitude()
+        lon = gP.getLongitude()
+        alt = gP.getAltitude() / 1e3  # Mag. Field needs degrees and [km]
+
+        # get B-field in geodetic system (X:East, Y:North, Z:Nadir)
+        B_geo = FileDataHandler.mag_field_model.calculateField(
+                            degrees(lat), degrees(lon), alt).getFieldVector()
+
+        # convert geodetic frame to inertial and from [nT] to [T]
+        B_i = topo2inertial.transformVector(Vector3D(1e-9, B_geo))
+
+        return inertial2Sat.applyTo(B_i)
 
     def change_attitude_provider(self):
         """
