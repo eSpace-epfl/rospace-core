@@ -4,7 +4,7 @@ propagator_settings:
     State:
       type: 'KeplerianEME2000'
       settings:
-        mass: 4.0 # kg
+        mass: 3.0 # kg
         rotation: 1 0 0 0 # quaternions
         spin: 10 5 5 # omega in [deg/s]
         acceleration: 0 0 0
@@ -77,9 +77,9 @@ propagator_settings:
     settings:
       Discretization:
         satellite_dim:  # has to be cuboid!
-          l_x: 0.793
-          l_y: 0.612
-          l_z: 0.513
+          l_x: 0.3
+          l_y: 0.1
+          l_z: 0.1
         inner_cuboids:  # number by which satellite has to be divided into smaller cuboids
           numCub_x: 5
           numCub_y: 5
@@ -110,23 +110,11 @@ propagator_settings:
               Hc: 12.
             H3:
               vol: 2.375e-8
-              dir: 0 1 0
+              dir: 0 0 1
               Bs: 0.027
               Br: 0.004
               Hc: 12.
             H4:
-              vol: 2.375e-8
-              dir: 0 0 1
-              Bs: 0.027
-              Br: 0.004
-              Hc: 12.
-            H5:
-              vol: 2.375e-8
-              dir: 0 0 1
-              Bs: 0.027
-              Br: 0.004
-              Hc: 12.
-            H6:
               vol: 2.375e-8
               dir: 0 0 1
               Bs: 0.027
@@ -150,7 +138,7 @@ propagator_settings:
         Iy: 0 0.02552 0
         Iz: 0 0 0.02565
       integrator:
-        maxDT: 10
+        maxDT: 5
         minStep: 0.01
         maxStep: 1000.0
         initStep: 0.1

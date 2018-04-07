@@ -4,7 +4,7 @@
 
 	<node pkg="rospace_propagator" name="propagator_abs" type="propagation_node.py" output="screen">
 		<param name="oe_ta_rel" type="bool" value="False" />
-		<param name="oe_ch_init" type="yaml" value="{a: 7000, e: 0.0001, i: 68, O: 60, w: 120, v: 0.001}" />
+		<param name="oe_ch_init" type="yaml" value="{a: 7000, e: 0.0001, i: 55, O: 60, w: 120, v: 0.001}" />
 		<param name="oe_ta_init" type="yaml" value="{a: 7000, e: 0.0001, i: 30, O: 60, w: 120, v: 0.001}" />
 	
 		<param name="oe_epoch" value="20120913T17:00:00"/>

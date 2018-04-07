@@ -263,7 +263,7 @@ class AttitudePropagation(PAP):
                 y[1] = self.omega.y
                 y[2] = self.omega.z
                 # get rotation in quaternions:
-                # scalar part is Q0 in Orekit, but q3 in integration
+                # scalar part is Q0 in Orekit, but q4 in integration
                 y[3] = self.rotation.q1
                 y[4] = self.rotation.q2
                 y[5] = self.rotation.q3

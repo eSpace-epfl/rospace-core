@@ -356,6 +356,6 @@ if __name__ == '__main__':
             pub_pose_ta.publish(msg_pose_ta)
             pub_dtorque_ta.publish(msg_dtorque_ta)
             pub_FT_ta.publish(msg_FT_ta)
-            pub_Bfield_ch.publish(msg_B_field_ta)
+            pub_Bfield_ta.publish(msg_B_field_ta)
 
         SimTime.sleep_to_keep_frequency()
