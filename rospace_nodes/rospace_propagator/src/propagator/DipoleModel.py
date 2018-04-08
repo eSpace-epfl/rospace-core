@@ -77,7 +77,9 @@ class DipoleModel(object):
 
     def _compute_m_hyst(self, B_field):
         _H = B_field / self.MU_0
+
         H_hyst = np.dot(self._direction_hyst, _H)[:, None]
+
         sign = np.where(H_hyst > self._H_hyst_last, -1., 1.)  # defining left or right hysteresis
         change = np.where(H_hyst == self._H_hyst_last, 0., 1.)  # keep old value if no change
 

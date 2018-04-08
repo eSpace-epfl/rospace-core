@@ -16,8 +16,8 @@ propagator_settings:
     Gravity:
       type: "EigenGravityWGS84"
       settings: # Spherical Harmonics Field Coeffs
-        degree: 80
-        order: 80
+        degree: 40
+        order: 40
     Thrust:
       type: ThrustModelVariable
       settings: ""
@@ -50,24 +50,24 @@ propagator_settings:
           dragCoeff: 2.0
           liftRatio: 0.0 
     SolarModel:
-        type: "SolarPressureBoxModel"
+        type: "" # "SolarPressureBoxModel"
         settings:
           abs_Estimated: True # false = fixed
           ref_Estimated: True # false = fixed 
     DragModel:
-        type: "DragDTM2000CELESTRACK"
+        type: "" #"DragDTM2000CELESTRACK"
         settings:
           cD_Estimated: True # if false cD fixed
     ThirdBody:
-      Sun: True
-      Moon: True
+      Sun: False
+      Moon: False
     SolidTides: # bodies which generate tides
-      add: True
+      add: False
       settings:
         Sun: True
         Moon: True
     OceanTides:
-      add: True
+      add: False
       settings:
         degree: 5
         order: 5
@@ -89,7 +89,7 @@ propagator_settings:
           numSR_y: 2
           numSR_z: 2
       GravityGradient:
-        add: True
+        add: False
         FC_degree: 60
         FC_order: 60
       MagneticTorque:
@@ -97,48 +97,60 @@ propagator_settings:
         settings:
           Hysteresis:
             H1:
-              vol: 2.375e-8
+              vol: 7.46128e-8
               dir: 0 1 0
-              Bs: 0.027
-              Br: 0.004
-              Hc: 12.
+              Bs: 0.74
+              Br: 0.35
+              Hc: 0.96
             H2:
-              vol: 2.375e-8
+              vol: 7.46128e-8
               dir: 0 1 0
-              Bs: 0.027
-              Br: 0.004
-              Hc: 12.
+              Bs: 0.74
+              Br: 0.35
+              Hc: 0.96
             H3:
-              vol: 2.375e-8
-              dir: 0 0 1
-              Bs: 0.027
-              Br: 0.004
-              Hc: 12.
+              vol: 7.46128e-8
+              dir: 0 1 0
+              Bs: 0.74
+              Br: 0.35
+              Hc: 0.96
             H4:
-              vol: 2.375e-8
+              vol: 7.46128e-8
               dir: 0 0 1
-              Bs: 0.027
-              Br: 0.004
-              Hc: 12.
+              Bs: 0.74
+              Br: 0.35
+              Hc: 0.96
+            H5:
+              vol: 7.46128e-8
+              dir: 0 0 1
+              Bs: 0.74
+              Br: 0.35
+              Hc: 0.96
+            H6:
+              vol: 7.46128e-8
+              dir: 0 0 1
+              Bs: 0.74
+              Br: 0.35
+              Hc: 0.96
           BarMagnet:
             BM1:
               m: 0.3
               dir: 1 0 0
       SolarPressure:
-        add: True
+        add: False
         AbsorbCoeff: 0.34
         ReflectCoeff: 0.66
         SolarArray_AbsorbCoeff: 0.34
         SolarArray_ReflectCoeff: 0.66
       AeroDrag:
-        add: True
+        add: False
         DragCoeff: 2.0
       inertiaTensor: # based on above facet dimensions
         Ix: 0.00551 0 0
         Iy: 0 0.02552 0
         Iz: 0 0 0.02565
       integrator:
-        maxDT: 5
+        maxDT: 10
         minStep: 0.01
         maxStep: 1000.0
         initStep: 0.1

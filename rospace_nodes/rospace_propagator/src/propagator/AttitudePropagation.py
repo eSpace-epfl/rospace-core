@@ -42,6 +42,8 @@ from org.hipparchus.geometry.euclidean.threed import Rotation, Vector3D
 from org.hipparchus.exception import MathIllegalArgumentException
 from org.hipparchus.exception import MathIllegalStateException
 
+from org.orekit.bodies import GeodeticPoint
+
 
 def _log_value(name, value, date, f):
     f.write(name + ": " + str(value) + " " + str(date) + '\n')
