@@ -22,6 +22,7 @@ import traceback
 
 from FileDataHandler import FileDataHandler
 from DipoleModel import DipoleModel
+from DisturbanceTorques import DisturbanceTorqueArray as DTarray
 
 from org.orekit.attitudes import Attitude
 from org.orekit.python import PythonAttitudePropagation as PAP
@@ -83,9 +84,6 @@ class AttitudePropagation(PAP):
         '''Angular velocity of satellite in direction of principle axes.'''
 
         self.rotation = attitude.getRotation()
-
-        self.state = StateEquation(7)
-        '''StateEquation object. Holds 7 equations to be integrated.'''
 
         self.integrator = Integrators(intSettings, tol)
         '''DormandPrince853 & singleStep RK object for attitude propagation.'''
@@ -164,6 +162,9 @@ class AttitudePropagation(PAP):
         addD = False if self.AtmoModel is None else True
         self.setAddedDisturbanceTorques(addG, addM, addSP, addD)
 
+        self.DT = DTarray(self.StateObserver, self.refFrame, self.refDate, inCub, AttitudeFM, self.earth, self.sun, meshDA)
+        self.state = StateEquation(7, self.DT)
+        '''StateEquation object. Holds 7 equations to be integrated.'''
         # self.f = open('/home/christian/Documents/ETH/MasterThesis/Profiling/Vectorization/output.txt', 'a+')
         # self.f = open('/home/christian/Documents/ETH/MasterThesis/Validation/Attitude/DipolModel/first_run/B_H.out', 'a+')
 
@@ -242,21 +243,24 @@ class AttitudePropagation(PAP):
                     self.StateObserver.spacecraftState.getMass()
 
                 self.state.torque_control = self.getExternalTorque()
-                self.to_add = self.getAddedDisturbanceTorques()
+                # self.to_add = self.getAddedDisturbanceTorques()
 
-                self._initialize_disturbance_calculation()
-                gTorque = self.getGravTorqueArray()
-                mTorque = self.getMagTorque()
-                sTorque = self.getSolarTorqueArray()
-                aTorque = self.getAeroTorqueArray()
-                self.setDisturbanceTorques(gTorque, mTorque, sTorque, aTorque)
+                # self._initialize_disturbance_calculation()
+                # gTorque = self.getGravTorqueArray()
+                # mTorque = self.getMagTorque()
+                # sTorque = self.getSolarTorqueArray()
+                # aTorque = self.getAeroTorqueArray()
+                # self.setDisturbanceTorques(gTorque, mTorque, sTorque, aTorque)
 
                 # _compare_results(gTorque, gTorqueRef, self.f)
 
-                self.state.torque_dist = gTorque.add(
-                    mTorque.add(
-                        sTorque.add(
-                            aTorque)))
+                # self.state.torque_dist = gTorque.add(
+                #     mTorque.add(
+                #         sTorque.add(
+                #             aTorque)))
+
+                self.DT.to_add = self.getAddedDisturbanceTorques()
+                self.DT.update_satellite_state(self.refDate)
 
                 y = orekit.JArray('double')(7)
                 y[0] = self.omega.x  # angular momentum
@@ -282,6 +286,8 @@ class AttitudePropagation(PAP):
                                        self.rotation,
                                        self.omega,
                                        Vector3D.ZERO)
+
+                self.setDisturbanceTorques(self.DT.gTorque, self.DT.mTorque, self.DT.sTorque, self.DT.aTorque)
                 self.refDate = date
                 self.setReferenceAttitude(newAttitude)
 
@@ -748,38 +754,50 @@ class StateEquation(PSE):
     in quaternions and it's angular rate along the principal axes
     """
 
-    def __init__(self, Dimension):
+    def __init__(self, Dimension, DT_instance):
         PSE.__init__(self, Dimension)
 
         self.torque_control = Vector3D.ZERO
         '''External torque provided by ROS Node.'''
 
-        self.torque_dist = Vector3D.ZERO
-        '''Disturbance torque computed before integration'''
-
         self.inertiaT = None
-        '''Inertia Tensor given for principal axes.'''
+        '''Inertia Tensor given for principal axes. Constant through integration'''
+
+        self.in2Sat_rotation = None
+
+        self.omega = None
+
+        self.DistTorque = DT_instance
 
     def init(self, t0, y0, finalTime):
         """No initialization needed"""
 
     def computeDerivatives(self, t, y):
         try:
+            # update rotation and compute torque at new attitude
+            self.in2Sat_rotation = Rotation(float(y[6]),
+                                            float(y[3]),
+                                            float(y[4]),
+                                            float(y[5]), True)
+
+            self.omega = np.array([y[0], y[1], y[2]])
+            DT = self.DistTorque.compute_torques(self.in2Sat_rotation, self.omega)
+
             yDot = orekit.JArray('double')(self.getDimension())
 
             # angular velocity body rates (omega):
             yDot[0] = 1.0 / self.inertiaT[0][0] * \
-                (self.torque_control.getX() + self.torque_dist.getX() +
+                (self.torque_control.getX() + DT.getX() +
                  (self.inertiaT[1][1] - self.inertiaT[2][2]) *
                  y[1] * y[2])
 
             yDot[1] = 1.0 / self.inertiaT[1][1] * \
-                (self.torque_control.getY() + self.torque_dist.getY() +
+                (self.torque_control.getY() + DT.getY() +
                  (self.inertiaT[2][2] - self.inertiaT[0][0]) *
                  y[2] * y[0])
 
             yDot[2] = 1.0 / self.inertiaT[2][2] * \
-                (self.torque_control.getZ() + self.torque_dist.getZ() +
+                (self.torque_control.getZ() + DT.getZ() +
                  (self.inertiaT[0][0] - self.inertiaT[1][1]) *
                  y[0] * y[1])
 
