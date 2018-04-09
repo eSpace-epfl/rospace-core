@@ -81,17 +81,17 @@ propagator_settings:
           l_y: 0.1
           l_z: 0.1
         inner_cuboids:  # number by which satellite has to be divided into smaller cuboids
-          numCub_x: 5
-          numCub_y: 5
-          numCub_z: 5
+          numCub_x: 4
+          numCub_y: 4
+          numCub_z: 4
         surface_rectangles:  # number by which surface of satellite is divided into smaller rectangular sufraces
           numSR_x: 2
           numSR_y: 2
           numSR_z: 2
       GravityGradient:
-        add: False
-        FC_degree: 60
-        FC_order: 60
+        add: True
+        FC_degree: 40
+        FC_order: 40
       MagneticTorque:
         add: True
         settings:
@@ -99,58 +99,58 @@ propagator_settings:
             H1:
               vol: 7.46128e-8
               dir: 0 1 0
-              Bs: 0.74
-              Br: 0.35
-              Hc: 0.96
+              Bs: 0.027
+              Br: 0.004
+              Hc: 12.
             H2:
               vol: 7.46128e-8
               dir: 0 1 0
-              Bs: 0.74
-              Br: 0.35
-              Hc: 0.96
+              Bs: 0.027
+              Br: 0.004
+              Hc: 12.
             H3:
               vol: 7.46128e-8
               dir: 0 1 0
-              Bs: 0.74
-              Br: 0.35
-              Hc: 0.96
+              Bs: 0.027
+              Br: 0.004
+              Hc: 12.
             H4:
               vol: 7.46128e-8
               dir: 0 0 1
-              Bs: 0.74
-              Br: 0.35
-              Hc: 0.96
+              Bs: 0.027
+              Br: 0.004
+              Hc: 12.
             H5:
               vol: 7.46128e-8
               dir: 0 0 1
-              Bs: 0.74
-              Br: 0.35
-              Hc: 0.96
+              Bs: 0.027
+              Br: 0.004
+              Hc: 12.
             H6:
               vol: 7.46128e-8
               dir: 0 0 1
-              Bs: 0.74
-              Br: 0.35
-              Hc: 0.96
+              Bs: 0.027
+              Br: 0.004
+              Hc: 12.
           BarMagnet:
             BM1:
               m: 0.3
               dir: 1 0 0
       SolarPressure:
-        add: False
+        add: True
         AbsorbCoeff: 0.34
         ReflectCoeff: 0.66
         SolarArray_AbsorbCoeff: 0.34
         SolarArray_ReflectCoeff: 0.66
       AeroDrag:
-        add: False
+        add: True
         DragCoeff: 2.0
       inertiaTensor: # based on above facet dimensions
         Ix: 0.00551 0 0
         Iy: 0 0.02552 0
         Iz: 0 0 0.02565
       integrator:
-        maxDT: 1.
+        maxDT: 2.
         minStep: 0.01
         maxStep: 1.
         initStep: 0.1
