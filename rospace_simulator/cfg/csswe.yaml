@@ -10,9 +10,9 @@ propagator_settings:
         acceleration: 0 0 0
     integrator: # Steps have to be floats
       minStep: 0.001
-      maxStep: 1000.0
+      maxStep: 0.1
       initStep: 0.1
-      positionTolerance: 0.1
+      positionTolerance: 0.01
     Gravity:
       type: "EigenGravityWGS84"
       settings: # Spherical Harmonics Field Coeffs

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <launch>
 
-	<arg name="full_directory" value="/home/lanegger/bags/dt_in_integrator" />
+	<arg name="full_directory" value="/home/lanegger/bags/step_max_0_1" />
 	<arg name="bag_name" value="run_pmac" />
 	<arg name="end_time" value="605200" /> 
 
