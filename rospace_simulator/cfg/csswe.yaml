@@ -150,9 +150,9 @@ propagator_settings:
         Iy: 0 0.02552 0
         Iz: 0 0 0.02565
       integrator:
-        maxDT: 10
-        minStep: 0.01
-        maxStep: 1000.0
+        maxDT: 0.1
+        minStep: 0.001
+        maxStep: 0.1
         initStep: 0.1
         absTol: -1.0 # if negative use tolerance from orbit propagation
         relTol: -1.0 # if negative use tolerance from orbit propagation
