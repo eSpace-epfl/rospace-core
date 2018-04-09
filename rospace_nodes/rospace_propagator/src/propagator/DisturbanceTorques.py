@@ -223,7 +223,6 @@ class DisturbanceTorqueArray(DisturbanceTorqueInterface):
         '''call before integration'''
         self.curr_date = current_date
         self.spacecraft_state = self.state_observer.spacecraftState
-        self.inertial2Sat = self.spacecraft_state.getAttitude().getRotation()
 
         self.satPos_i = self.spacecraft_state.getPVCoordinates().getPosition()
         self.satVel_i = self.spacecraft_state.getPVCoordinates().getVelocity()
