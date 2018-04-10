@@ -38,6 +38,6 @@ docs_and_tests:
 
   artifacts:
     paths:
-    - docs/*
-    - public/*
+    - ~/docs/*
+    - ~/public/*
 
