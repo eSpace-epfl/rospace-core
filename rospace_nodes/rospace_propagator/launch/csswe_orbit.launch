@@ -2,13 +2,15 @@
     <arg name="ns_chaser" />
     <arg name="ns_target" />
 
-	<node pkg="rospace_propagator" name="propagator_rel" type="propagation_node.py" output="screen" cwd="node">
-		<param name="oe_ta_rel" type="bool" value="True" />
-		<param name="oe_ch_init" type="yaml" value="{a: 14400, e: 0.5, i: 30, O: 60, w: 120, v: 0}" />
-		<param name="oe_ta_init" type="yaml" value="{ada: -0.1, adL: -20, adEx: 0, adEy: 0, adIx: 0, adIy: 0 }" />
-
-		<param name="oe_epoch" value="20171114T15:56:00" />
-		<param name="TIME_SHIFT" type="double" value="10.0" />
+	<node pkg="rospace_propagator" name="propagator_abs" type="propagation_node.py" output="screen">
+		<param name="oe_ta_rel" type="bool" value="False" />
+		<param name="oe_ch_init" type="yaml" value="{a: 7000, e: 0.0001, i: 55, O: 60, w: 120, v: 0.001}" />
+		<param name="oe_ta_init" type="yaml" value="{a: 7000, e: 0.0001, i: 30, O: 60, w: 120, v: 0.001}" />
+	
+		<param name="oe_epoch" value="20120913T17:00:00"/>
+		<param name="TIME_SHIFT" type="double" value="400.0" />
+		<param name="frequency" value="0.0" />
+		<param name="step_size" value="60." />
 
 		<param name="ns_chaser" value="$(arg ns_chaser)" />
 		<param name="ns_target" value="$(arg ns_target)" />
@@ -24,6 +26,6 @@
 		<remap from="B_field_chaser" to="/$(arg ns_chaser)/B_field" />
 		<remap from="B_field_target" to="/$(arg ns_target)/B_field" />
 		<remap from="force" to="/$(arg ns_chaser)/force" />
-		<remap from="IspMean" to="/$(arg ns_chaser)/IspMean" />   
+		<remap from="IspMean" to="/$(arg ns_chaser)/IspMean" />
 	</node>
 </launch>

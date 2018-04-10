@@ -15,7 +15,7 @@ import message_filters
 import rospace_msgs
 import rospace_lib
 from rospace_msgs.msg import SatelitePose
-from geometry_msgs.msg import PoseStamped
+from rospace_msgs.msg import PoseVelocityStamped
 
 sensor_cfg = 0
 position_mode = 0
@@ -25,6 +25,7 @@ frame_cfg = 0
 parent_position = np.array([0, 0, 0])
 parent_orientation = np.array([0, 0, 0, 1])
 
+
 def handle_sync(pose_msg, parent_msg):
     global parent_orientation
     global parent_position
@@ -32,6 +33,7 @@ def handle_sync(pose_msg, parent_msg):
     parent_position = np.array([parent_msg.pose.position.x*1000, parent_msg.pose.position.y*1000, parent_msg.pose.position.z*1000])
 
     handle_pose(pose_msg)
+
 
 def handle_pose(msg):
     global sensor_cfg
@@ -43,7 +45,7 @@ def handle_pose(msg):
     pos = np.array([msg.pose.position.x*1000, msg.pose.position.y*1000, msg.pose.position.z*1000])
 
     if position_mode == "zero_pos":
-        pos = np.array([0,0,0])
+        pos = np.array([0, 0, 0])
     elif position_mode =="relative":
         pos = pos - parent_position
 
@@ -125,7 +127,7 @@ if __name__ == '__main__':
 
     if position_mode == "absolute" or position_mode == "zero_pos":
         rospy.Subscriber('pose',
-                         PoseStamped,
+                         PoseVelocityStamped,
                          handle_pose)
 
         rospy.Subscriber('target_oe',
@@ -133,8 +135,8 @@ if __name__ == '__main__':
                          handle_target_oe)
 
     elif position_mode == "relative":
-        pose_sub = message_filters.Subscriber('pose', PoseStamped)
-        relative_parent_sub = message_filters.Subscriber('relative_parent', PoseStamped)
+        pose_sub = message_filters.Subscriber('pose', PoseVelocityStamped)
+        relative_parent_sub = message_filters.Subscriber('relative_parent', PoseVelocityStamped)
         ts = message_filters.TimeSynchronizer([pose_sub, relative_parent_sub], 10)
         ts.registerCallback(handle_sync)
 

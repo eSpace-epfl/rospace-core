@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 
+# @copyright Copyright (c) 2018, Christian Lanegger (lanegger.christian@gmail.com)
+#
+# @license zlib license
+#
+# This file is licensed under the terms of the zlib license.
+# See the LICENSE.md file in the root of this repository
+# for complete details.
+
 from __future__ import division
 
 import os
@@ -159,9 +167,10 @@ class ServiceCallerWidget(QWidget):
         else:
             val = self.PubFreq_val_box.value() - 50.0
 
-        if val < 0.1:
-            val = 0.1
+        if val < 0.0:
+            val = 0.0
 
+        print val
         self.PubFreq_val_box.setValue(val)
         self.change_dt()  # don't stop simulation
 
@@ -175,6 +184,7 @@ class ServiceCallerWidget(QWidget):
 
     @Slot()
     def change_dt(self):
+        print self.PubFreq_val_box.value()
         if self.dtSize_val_box.value() > 10000.0:
             self.dtSize_val_box.setValue(10000.0)
         if self.dtSize_val_box.value() <= 0.0001:
@@ -182,8 +192,8 @@ class ServiceCallerWidget(QWidget):
 
         if self.PubFreq_val_box.value() > 500.0:
             self.PubFreq_val_box.setValue(500.0)
-        if self.PubFreq_val_box.value() < 0.1:
-            self.PubFreq_val_box.setValue(0.1)
+        if self.PubFreq_val_box.value() < 0.0:
+            self.PubFreq_val_box.setValue(0.0)
 
         if (self.dtSize_val != self.dtSize_val_box.value() or
                 self.PubFreq_val != self.PubFreq_val_box.value()):

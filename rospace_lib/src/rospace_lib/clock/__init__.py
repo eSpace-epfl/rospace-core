@@ -7,6 +7,6 @@
 # for complete details.
 
 from rospace_lib.clock.epoch import Epoch
-from rospace_lib.clock.SimTimeHandler import SimTimeHandler
+from rospace_lib.clock.SimTimeUpdater import SimTimeUpdater
 from rospace_lib.clock.SimTimeService import SimTimeService
-from rospace_lib.clock.SimTimeClock import SimTimeClock
+from rospace_lib.clock.SimTimePublisher import SimTimePublisher
