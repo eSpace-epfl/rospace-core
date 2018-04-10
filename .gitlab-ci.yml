@@ -22,6 +22,7 @@ before_script:
 
 docs_and_tests:
   script:
+    - mkdir ~/public
     - cd ~/catkin_ws
     - catkin_make
     - pytest ${CI_PROJECT_DIR}/rospace_lib/ -s > ~/public/keporbtest.log
