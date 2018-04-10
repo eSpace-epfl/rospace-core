@@ -17,7 +17,7 @@ def callback_pose(data):
     rotation_rate[1] = data.spin.y
     rotation_rate[2] = data.spin.z
 
-    rate_gyro.set_true_value(rotation_rate)
+    rate_gyro.set_true_value(rotation_rate, 0)
 
 def publishIMUMessage():
     pub = rospy.Publisher('imu', Imu, queue_size=10)
