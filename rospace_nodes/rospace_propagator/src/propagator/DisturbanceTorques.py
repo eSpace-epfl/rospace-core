@@ -1,3 +1,17 @@
+# @copyright Copyright (c) 2018, Christian Lanegger (lanegger.christian@gmail.com)
+#
+# @license zlib license
+#
+# This file is licensed under the terms of the zlib license.
+# See the LICENSE.md file in the root of this repository
+# for complete details.
+
+# #####################################################################
+# PRELIMINARY CODE: This code is still under construction.
+# Methods used from here could result to unexpected behavior and should
+# therefore be used with care.
+#######################################################################
+
 import abc
 import numpy as np
 from math import sqrt, degrees
@@ -171,6 +185,7 @@ class DisturbanceTorqueArray(DisturbanceTorqueInterface):
             D_REF = float(149597870000.0)
             # Reference solar radiation pressure at D_REF (N/m^2).
             P_REF = float(4.56e-6)
+            # Reference flux normalized for a 1m distance (N).
             self.K_REF = float(P_REF * D_REF * D_REF)
 
         if 'AtmoModel' in AttitudeFM:
@@ -484,6 +499,10 @@ class DisturbanceTorqueArray(DisturbanceTorqueInterface):
 
 
 class PyRotation(object):
+    '''This class uses the Rotation class methods from the Hipparchus library
+    rewritten in Python to create and obtain the same rotation matrix which
+    would be returned by the Hipparchus library, only as a numpy array.
+    '''
     def __init__(self, q0, q1, q2, q3):
         self.q0 = q0
         self.q1 = q1
