@@ -2,6 +2,7 @@ image: osrf/ros:lunar-desktop-xenial
 
 before_script:
   ## Setup ROS workspace
+  - echo ${CI_PROJECT_DIR}
   - mkdir -p ~/catkin_ws/src
   - cd ~/catkin_ws/src
   - if [ ! -f CMakeLists.txt ]; then catkin_init_workspace; else echo "CMakeList file already there";fi
@@ -25,7 +26,7 @@ docs_and_tests:
     - mkdir ~/public
     - cd ~/catkin_ws
     - catkin_make
-    - pytest ${CI_PROJECT_DIR}/rospace_lib/ -s > ~/public/keporbtest.log
+    - pytest ${CI_PROJECT_DIR}/rospace_lib/ -s
     - rostest --text ${CI_PROJECT_DIR}/rospace_plugins/rqt_simtime_plugin/test/simtime_plugin.test
     - rostest --text ${CI_PROJECT_DIR}/rospace_lib/test/testSimTime.test
 
