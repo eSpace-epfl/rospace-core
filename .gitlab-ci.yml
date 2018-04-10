@@ -38,9 +38,10 @@ docs_and_tests:
     - pdoc --html --html-dir ~/docs ${CI_PROJECT_DIR}/rospace_lib/src/rospace_lib
     - pdoc --html --html-dir ~/docs ${CI_PROJECT_DIR}/rospace_plugins/rqt_simtime_plugin/src/rqt_simtime_plugin/
     - pdoc --html --html-dir ~/docs ${CI_PROJECT_DIR}/rospace_nodes/rospace_propagator/src/propagator/
+    - cd ~
     - zip -r ~/docs.zip ~/docs/*
 
   artifacts:
     paths:
-    - ~/docs.zip
+    - docs.zip
 
