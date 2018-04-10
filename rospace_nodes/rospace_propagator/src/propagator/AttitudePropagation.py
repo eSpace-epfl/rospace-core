@@ -139,6 +139,8 @@ class AttitudePropagation(PAP):
             # self.MagneticModel = AttitudeFM['MagneticModel']
             self.earth = BodyShape.cast_(AttitudeFM['Earth'])
             self._initialize_dipole_model(AttitudeFM['MagneticModel'])
+        else:
+            self.dipoleM = None
 
         if 'SolarModel' in AttitudeFM:
             self.SolarModel = AttitudeFM['SolarModel']

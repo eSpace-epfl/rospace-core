@@ -275,12 +275,15 @@ if __name__ == '__main__':
     thrust_force = message_filters.Subscriber('force', WrenchStamped)
     thrust_ispM = message_filters.Subscriber('IspMean', ThrustIsp)
 
+    activate_chaser = False
+
     # Init publisher and rate limiter
-    pub_ch = rospy.Publisher('oe_chaser', SatelitePose, queue_size=10)
-    pub_pose_ch = rospy.Publisher('pose_chaser', PoseVelocityStamped, queue_size=10)
-    pub_dtorque_ch = rospy.Publisher('dtorque_chaser', SatelliteTorque, queue_size=10)
-    pub_FT_ch = rospy.Publisher('forcetorque_chaser', WrenchStamped, queue_size=10)
-    pub_Bfield_ch = rospy.Publisher('B_field_chaser', Vector3Stamped, queue_size=10)
+    if activate_chaser:
+        pub_ch = rospy.Publisher('oe_chaser', SatelitePose, queue_size=10)
+        pub_pose_ch = rospy.Publisher('pose_chaser', PoseVelocityStamped, queue_size=10)
+        pub_dtorque_ch = rospy.Publisher('dtorque_chaser', SatelliteTorque, queue_size=10)
+        pub_FT_ch = rospy.Publisher('forcetorque_chaser', WrenchStamped, queue_size=10)
+        pub_Bfield_ch = rospy.Publisher('B_field_chaser', Vector3Stamped, queue_size=10)
 
     pub_ta = rospy.Publisher('oe_target', SatelitePose, queue_size=10)
     pub_pose_ta = rospy.Publisher('pose_target', PoseVelocityStamped, queue_size=10)
@@ -295,18 +298,19 @@ if __name__ == '__main__':
     FileDataHandler.load_magnetic_field_models(SimTime.datetime_oe_epoch)
     FileDataHandler.create_data_validity_checklist()
 
-    prop_chaser = OrekitPropagator()
-    # get settings from yaml file
-    ch_prop_file = "/" + rospy.get_param("~ns_chaser") + "/propagator_settings"
-    propSettings = rospy.get_param(ch_prop_file, 0)
-    prop_chaser.initialize(propSettings,
-                           init_state_ch,
-                           SimTime.datetime_oe_epoch)
+    if activate_chaser:
+        prop_chaser = OrekitPropagator()
+        # get settings from yaml file
+        ch_prop_file = "/" + rospy.get_param("~ns_chaser") + "/propagator_settings"
+        propSettings = rospy.get_param(ch_prop_file, 0)
+        prop_chaser.initialize(propSettings,
+                               init_state_ch,
+                               SimTime.datetime_oe_epoch)
 
-    # add callback to thrust function
-    Tsync = message_filters.TimeSynchronizer([thrust_force, thrust_ispM], 10)
-    Tsync.registerCallback(prop_chaser.thrust_torque_callback)
-    # att_sub.registerCallback(prop_chaser.attitude_fixed_rot_callback)
+        # add callback to thrust function
+        Tsync = message_filters.TimeSynchronizer([thrust_force, thrust_ispM], 10)
+        Tsync.registerCallback(prop_chaser.thrust_torque_callback)
+        # att_sub.registerCallback(prop_chaser.attitude_fixed_rot_callback)
 
     prop_target = OrekitPropagator()
     # get settings from yaml file
@@ -326,31 +330,38 @@ if __name__ == '__main__':
             # check if data still loaded
             FileDataHandler.check_data_availability(epoch_now)
             # propagate to epoch_now
-            [cart_ch, att_ch, force_ch, d_torque_ch, B_field_ch] = \
-                prop_chaser.propagate(epoch_now)
+            if activate_chaser:
+                [cart_ch, att_ch, force_ch, d_torque_ch, B_field_ch] = \
+                    prop_chaser.propagate(epoch_now)
             [cart_ta, att_ta, force_ta, d_torque_ta, B_field_ta] = \
                 prop_target.propagate(epoch_now)
 
             rospy_now = rospy.Time.now()
 
-            [msg_ch, msg_pose_ch] = cart_to_msgs(cart_ch, att_ch, rospy_now)
+
+
+            if activate_chaser:
+                [msg_ch, msg_pose_ch] = cart_to_msgs(cart_ch, att_ch, rospy_now)
+                [msg_FT_ch, msg_dtorque_ch] = force_torque_to_msgs(force_ch,
+                                                                   d_torque_ch,
+                                                                   rospy_now)
+                msg_B_field_ch = Bfield_to_msgs(B_field_ch, rospy_now)
+                pub_ch.publish(msg_ch)
+                pub_pose_ch.publish(msg_pose_ch)
+                pub_dtorque_ch.publish(msg_dtorque_ch)
+                pub_FT_ch.publish(msg_FT_ch)
+                pub_Bfield_ch.publish(msg_B_field_ch)
+
             [msg_ta, msg_pose_ta] = cart_to_msgs(cart_ta, att_ta, rospy_now)
 
-            [msg_FT_ch, msg_dtorque_ch] = force_torque_to_msgs(force_ch,
-                                                               d_torque_ch,
-                                                               rospy_now)
+
             [msg_FT_ta, msg_dtorque_ta] = force_torque_to_msgs(force_ta,
                                                                d_torque_ta,
                                                                rospy_now)
 
-            msg_B_field_ch = Bfield_to_msgs(B_field_ch, rospy_now)
+
             msg_B_field_ta = Bfield_to_msgs(B_field_ta, rospy_now)
 
-            pub_ch.publish(msg_ch)
-            pub_pose_ch.publish(msg_pose_ch)
-            pub_dtorque_ch.publish(msg_dtorque_ch)
-            pub_FT_ch.publish(msg_FT_ch)
-            pub_Bfield_ch.publish(msg_B_field_ch)
 
             pub_ta.publish(msg_ta)
             pub_pose_ta.publish(msg_pose_ta)
