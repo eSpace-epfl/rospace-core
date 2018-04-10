@@ -25,7 +25,7 @@ class SimtimePluginTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         rospy.init_node('test_node_simtime_plugin', anonymous=True)
-        SimtimePluginTest._SimClock = SimTimeClock()
+        SimtimePluginTest._SimClock = SimTimePublisher()
         SimtimePluginTest._SimClock.set_up_simulation_time()
 
     def test_correct_value_initialization(self):

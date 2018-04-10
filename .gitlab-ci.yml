@@ -23,7 +23,7 @@ before_script:
 
 docs_and_tests:
   script:
-    - mkdir ~/public
+    - mkdir -p ~/public/docs
     - cd ~/catkin_ws
     - catkin_make
     - source ~/catkin_ws/devel/setup.bash
@@ -32,13 +32,11 @@ docs_and_tests:
     - rostest --text ${CI_PROJECT_DIR}/rospace_plugins/rqt_simtime_plugin/test/simtime_plugin.test
     - rostest --text ${CI_PROJECT_DIR}/rospace_lib/test/testSimTime.test
 
-    - pdoc --html --html-dir ~/docs ${CI_PROJECT_DIR}/rospace_lib/src/rospace_lib
-    - pdoc --html --html-dir ~/docs ${CI_PROJECT_DIR}/rospace_plugins/rqt_simtime_plugin/src/rqt_simtime_plugin/
-    - pdoc --html --html-dir ~/docs ${CI_PROJECT_DIR}/rospace_nodes/rospace_propagator/src/propagator/
-    - cp -r ~/docs ~/public
+    - pdoc --html --html-dir ~/public/docs ${CI_PROJECT_DIR}/rospace_lib/src/rospace_lib
+    - pdoc --html --html-dir ~/public/docs ${CI_PROJECT_DIR}/rospace_plugins/rqt_simtime_plugin/src/rqt_simtime_plugin/
+    - pdoc --html --html-dir ~/public/docs ${CI_PROJECT_DIR}/rospace_nodes/rospace_propagator/src/propagator/
 
   artifacts:
     paths:
-    - ~/docs/*
     - ~/public/*
 
