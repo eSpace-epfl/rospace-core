@@ -272,18 +272,6 @@ class KepOrbElemTest(unittest.TestCase):
         target2 = OscKepOrbElem()
         target2.from_mean_elems(target)
 
-        print "e", source.e - target2.e
-        print "w", source.w - target2.w
-        print "O", source.O - target2.O
-        print "m", source.m - target2.m
-        print "v", source.v - target2.v
-        print "i", source.i - target2.i
-        print "a", source.a - target2.a
-
-
-
-
-        print "GUGUS"
 
 
 if __name__ == '__main__':
