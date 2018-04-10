@@ -15,7 +15,7 @@ before_script:
 
   ## Install dependencies
   - apt-get -qq update
-  - apt-get -qq install software-properties-common -y
+  - apt-get -qq install software-properties-common wget -y
   - apt-get -qq update
   - apt-get -qq install libopencv-dev python-pip -y
   - pip install numpy sgp4 pytest pdoc matplotlib scikit-learn scipy numpy
