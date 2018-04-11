@@ -7,7 +7,7 @@ import rospy
 from PyQt5.QtWidgets import QApplication
 
 from rqt_simtime_plugin import *
-from epoch_clock import *
+from rospace_lib.clock import *
 
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + "/../src")  # hack...
@@ -25,7 +25,7 @@ class SimtimePluginTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         rospy.init_node('test_node_simtime_plugin', anonymous=True)
-        SimtimePluginTest._SimClock = SimTimeClock()
+        SimtimePluginTest._SimClock = SimTimePublisher()
         SimtimePluginTest._SimClock.set_up_simulation_time()
 
     def test_correct_value_initialization(self):

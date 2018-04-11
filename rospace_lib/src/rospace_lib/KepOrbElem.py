@@ -22,6 +22,8 @@ import orekit
 from orekit.pyhelpers import setup_orekit_curdir
 import inspect
 import thread
+import os
+from java.io import File
 from threading import Thread
 from org.orekit.propagation.semianalytical.dsst import DSSTPropagator
 from java.util import Arrays
@@ -433,13 +435,39 @@ class KepOrbElem(BaseState):
         self.w = other.w
 
 
+    def load_orekit(self):
+        if KepOrbElem.vm is not None:
+	    return
+
+        # Init vm
+        KepOrbElem.vm =  orekit.initVM()
+        
+        # Load orekit data
+        path_to_file = None
+        # search for file on pythonpath
+        for paths in os.environ['PYTHONPATH'].split(os.pathsep):
+            for root, dirs, files in os.walk(paths):
+                if 'orekit-data.zip' in files:
+                    path_to_file = os.path.join(root, 'orekit-data.zip')
+
+        if path_to_file is None:
+            # desperate search on current directory
+            setup_orekit_curdir()
+        else:
+            DM = DataProvidersManager.getInstance()
+            datafile = File(path_to_file)
+            crawler = ZipJarCrawler(datafile)
+            DM.clearProviders()
+            DM.addProvider(crawler)
+
+	# create gravity provider
+	KepOrbElem.provider = GravityFieldFactory.getUnnormalizedProvider(6,6)
+
     def osc_elems_transformation_ore(self, other, dir):
 
         self._orekit_lock.acquire()
-        if KepOrbElem.vm is None:
-            KepOrbElem.vm =  orekit.initVM()
-            setup_orekit_curdir()
-            KepOrbElem.provider = GravityFieldFactory.getUnnormalizedProvider(6,6)
+      
+        self.load_orekit()
 
         KepOrbElem.vm.attachCurrentThread()
 
