@@ -6,12 +6,6 @@
 # See the LICENSE.md file in the root of this repository
 # for complete details.
 
-# #####################################################################
-# PRELIMINARY CODE: This code is still under construction.
-# Methods used from here could result to unexpected behavior and should
-# therefore be used with care.
-#######################################################################
-
 import orekit
 import numpy as np
 import traceback
@@ -21,10 +15,6 @@ from DisturbanceTorques import DisturbanceTorqueArray as DTarray
 from org.orekit.attitudes import Attitude
 from org.orekit.python import PythonAttitudePropagation as PAP
 from org.orekit.python import PythonStateEquation as PSE
-from org.orekit.bodies import BodyShape
-from org.orekit.forces import ForceModel
-from org.orekit.forces.drag.atmosphere import Atmosphere
-from org.orekit.utils import PVCoordinatesProvider
 
 from org.hipparchus.ode import ODEState
 from org.hipparchus.ode import OrdinaryDifferentialEquation, ExpandableODE
@@ -37,7 +27,31 @@ from org.hipparchus.exception import MathIllegalStateException
 
 
 class AttitudePropagation(PAP):
-    """Implements an attitude propagation which is called by Orekit's attitude provider."""
+    """Implements an attitude propagation which is called by Orekit's attitude provider.
+
+    The integration of the attitude is embedded into Orekit's orbit integration
+    and the computation is done before every orbit integration step.
+    For attitude integration two integrators from the Hipparchus library are
+    being initialized for performance reasons (see :class:`AttitudePropagation.Integrators`).
+    For small orbit time steps a single Runge-Kutta integrator is used. For larger orbit
+    integration steps the Dormand Prince integrator solves the equation of motion.
+    The maximal step size for which the single step RK integrator is used can be
+    set in the settings yaml-file.
+
+    The maximal step size should not be set to a larger value since the simulation
+    could fail due to numerical instability.
+
+    Args:
+        attitude: initial attitude object from spacecraft
+        referenceDate: initial epoch as AbsoluteDate object
+        inertiaT: numpy array of diagonal entries of inertia tensor
+        tol: tolerances for Dormand Prince integrator
+        intSettings: dictionary with integrator settings
+        inCub: dictionary with information about satellite's inner body discretization
+        meshDA: dictionary with information about satellite's surface discretization
+        AttitdueFM: dictionary with Force Model objects needed for disturbance torques
+
+    """
 
     def __init__(self,
                  attitude,
@@ -54,12 +68,13 @@ class AttitudePropagation(PAP):
         '''Angular velocity of satellite in direction of principle axes.'''
 
         self.rotation = attitude.getRotation()
+        '''Rotation object of spacecrafts attitude'''
 
         self.integrator = Integrators(intSettings, tol)
-        '''DormandPrince853 & singleStep RK object for attitude propagation.'''
+        '''DormandPrince853 & classical RK object for attitude propagation.'''
 
         self.StateObserver = AttitudeFM['StateObserver']
-        '''Dictionary of force models for gravity torques & inertia tensor.'''
+        '''State observer object added to satellite's orbit propagator as Force Model.'''
 
         self.inertiaT = inertiaT / self.StateObserver.spacecraftState.getMass()
         '''Inertial tensor linearly dependent on mass given for principal axes.'''
@@ -70,23 +85,23 @@ class AttitudePropagation(PAP):
         self.refFrame = attitude.getReferenceFrame()
         '''Reference frame in which attitude is computed'''
 
-        self.DT = DTarray(self.StateObserver,
-                          self.refFrame,
+        self.DT = DTarray(self.refFrame,
                           self.refDate,
                           inCub,
-                          AttitudeFM,
-                          meshDA)
+                          meshDA,
+                          AttitudeFM)
         '''Disturbance torque object'''
 
         self.state = StateEquation(7, self.DT)
         '''StateEquation object. Holds 7 equations to be integrated.'''
 
     def getAttitude(self, pvProv, date, frame):
-        """Method called by Orekit at every state integration step.
+        """Method called by Orekit at every orbit integration step.
 
-        This Method calculates the disturbance torques if initialized
-        and then integrates the 7 state equations to determine
-        the satellites attitude at the next time step.
+        This Method updates the the satellite state and rotations in the
+        disturbance torque class, calls the integrators with the updated
+        state vector and stores and returns the new Attitude with the new
+        spin vector.
 
         The parameters of the state equation are the angular rate along
         the satellite's principle axes (1:3) and the rotation given in
@@ -94,7 +109,7 @@ class AttitudePropagation(PAP):
 
         The date provided as argument must no necessarily be advancing in
         time. Also earlier time can be given, resulting in a negative time
-        difference
+        difference.
 
         Args:
             pvProv: the satellites orbit given as PVCoordinatesProvider object
@@ -105,10 +120,7 @@ class AttitudePropagation(PAP):
             Attitude: new attitude @ date
 
         Raises:
-            MathIllegalArgumentException: if integration step is too small
-            MathIllegalArgumentException: if the location of an event cannot be bracketed
-            MathIllegalStateException: if the number of functions evaluations is exceeded
-            Exception: if anything else went wrong (should never raise this)
+            Exception: if something went wrong in JAVA classes the traceback is printed
         """
         try:
             if self.refDate.equals(date):
@@ -168,7 +180,18 @@ class StateEquation(PSE):
     """Class in format to be used with Hipparchus library for integration.
 
     Integrates satellite's state equations and returns its new attitude
-    in quaternions and it's angular rate along the principal axes
+    in quaternions and it's angular rate along the principal axes.
+
+    The computeDerivatives method overridden in this class, computes the
+    EoM of satellite's attitude based on equations (17-1a), (17-1b), (17-2),
+    (17-3) from the book:
+    'SPACECRAFT ATTITUDE DETERMINATION AND CONTROL' by James R. Wertz
+
+    The inertial tensor provided has to be a diagonal matrix.
+
+    Constructor Args:
+        Dimension: dimension of state vector
+        DT_instance: disturbance torque object
     """
 
     def __init__(self, Dimension, DT_instance):
@@ -180,11 +203,8 @@ class StateEquation(PSE):
         self.inertiaT = None
         '''Inertia Tensor given for principal axes. Constant through integration'''
 
-        self.in2Sat_rotation = None
-
-        self.omega = None
-
         self.DistTorque = DT_instance
+        '''Disturbance torque object'''
 
     def init(self, t0, y0, finalTime):
         """No initialization needed"""
@@ -192,13 +212,13 @@ class StateEquation(PSE):
     def computeDerivatives(self, t, y):
         try:
             # update rotation and compute torque at new attitude
-            self.in2Sat_rotation = Rotation(float(y[6]),
-                                            float(y[3]),
-                                            float(y[4]),
-                                            float(y[5]), True)
+            in2Sat_rotation = Rotation(float(y[6]),
+                                       float(y[3]),
+                                       float(y[4]),
+                                       float(y[5]), True)
 
-            self.omega = np.array([y[0], y[1], y[2]])
-            DT = self.DistTorque.compute_torques(self.in2Sat_rotation, self.omega)
+            omega = np.array([y[0], y[1], y[2]])
+            DT = self.DistTorque.compute_torques(in2Sat_rotation, omega, t)
 
             yDot = orekit.JArray('double')(self.getDimension())
 
@@ -224,6 +244,8 @@ class StateEquation(PSE):
             yDot[5] = 0.5 * (y[1] * y[3] - y[0] * y[4] + y[2] * y[6])
             yDot[6] = 0.5 * (-y[0] * y[3] - y[1] * y[4] - y[2] * y[5])
 
+            self.t_last = t
+
             return yDot
 
         except Exception as err:
@@ -232,16 +254,31 @@ class StateEquation(PSE):
 
 
 class Integrators(object):
-    '''Class performs RK-single step.'''
+    """Class holding a classical Runge Kutta and a DormandPrinve853 integrator.
+
+    This class is integrating the state equations either using a single step
+    integration with a Runge Kutta integrator or using multiple variable steps
+    with a DormandPrince853 integrator from the Hipparchus library.
+
+    For small orbit integration steps a single step Runge-Kutta integrator is
+    used. For larger steps the DormandPrince.
+    For time steps smaller than variable maxDT a single step integration is performed,
+    for time steps larger than maxDT a multiple variable steps integration is used.
+
+    Constructor Args:
+        intSettings: dictionary holding DormandPrince853 integrator settings
+        tol: tolerances for DormandPrince853 integrator
+    """
 
     def __init__(self, intSettings, tol):
         self.maxDT = intSettings['maxDT']
+        '''Value representing maximal step size for which a single step integrator is used.'''
 
         self.integrator_RK = ClassicalRungeKuttaIntegrator(float(1.0))  # 1.0 chosen arbitrarily
+        '''Classical Runge Kutta integrator object'''
 
-        minStep = intSettings['minStep']
-        maxStep = intSettings['maxStep']
-        initStep = intSettings['initStep']
+        self.integrator_DP853 = None
+        '''DormandPrince853 integrator object'''
 
         minStep = intSettings['minStep']
         maxStep = intSettings['maxStep']
@@ -260,6 +297,25 @@ class Integrators(object):
         self.integrator_DP853.setInitialStepSize(initStep)
 
     def integrate(self, state, y0, dt):
+        """Intermediate method switching between integrator object depending on
+        orbit time step and calling their integrate methods.
+
+        For small orbit integration steps a single step Runge-Kutta integrator is
+        used. For larger steps the DormandPrince integrator used be used otherwise
+        simulation could become numerically instable.
+
+        Args:
+            state: state object holding differential equations to be integrated
+            y0: JArray with initial values of state vector
+            dt: time to which should be integrated
+
+        Returns:
+            JArray object: integrated state vector
+
+        Raises:
+            MathIllegalArgumentException: if integration step too small
+            MathIllegalStateException: if the number of functions evaluations is exceeded
+        """
 
         if abs(dt) <= self.maxDT:
             equations = OrdinaryDifferentialEquation.cast_(state)
@@ -276,7 +332,6 @@ class Integrators(object):
                 raise illArg
             except MathIllegalStateException as illStat:
                 raise illStat
-
             result = new_state.getPrimaryState()  # primary state from ODEState
 
         return result

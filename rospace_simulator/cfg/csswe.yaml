@@ -93,7 +93,7 @@ propagator_settings:
         FC_degree: 40
         FC_order: 40
       MagneticTorque:
-        add: True
+        add: False
         settings:
           Hysteresis:
             H1:
