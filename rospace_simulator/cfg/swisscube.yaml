@@ -7,9 +7,9 @@ propagator_settings:
     State:
       type: 'KeplerianEME2000'
       settings:
-        mass: 0.8 # kg
+        mass: 1.0 # kg
         rotation: 1 0 0 0 # quaternions
-        spin: 10 5 5 # omega in [deg/s]
+        spin: 0 0 0 # omega in [deg/s]
         acceleration: 0 0 0
     integrator: # Steps have to be floats
       minStep: 0.01
@@ -104,11 +104,11 @@ propagator_settings:
               dCenter: 0 0 -0.5 
               normalV: 0 0 1
       GravityGradient:
-        add: True
+        add: False
         FC_degree: 10
         FC_order: 10
       MagneticTorque:
-        add: True
+        add: False
         settings:
           Hysteresis:
             H1:
@@ -152,18 +152,18 @@ propagator_settings:
               m: 0.3
               dir: 1 0 0
       SolarPressure:
-        add: True
+        add: False
         AbsorbCoeff: 0.98
         ReflectCoeff: 0.02
         SolarArray_AbsorbCoeff: 0.90
         SolarArray_ReflectCoeff: 0.10
       AeroDrag:
-        add: True
+        add: False
         DragCoeff: 2.0
       inertiaTensor: # based on above facet dimensions
-        Ix: 2.5084825 0 0
-        Iy: 0 2.230045 0
-        Iz: 0 0 1.5942825
+        Ix: 0.001666667 0 0
+        Iy: 0 0.001666667 0
+        Iz: 0 0 0.001666667
       integrator:
         maxDT: 0
         minStep: 0.01
