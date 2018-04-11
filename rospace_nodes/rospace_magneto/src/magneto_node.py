@@ -25,7 +25,9 @@ def callback_B_field(data):
 
     msg = WrenchStamped()
     msg.header.stamp = data.header.stamp
-    msg.wrench.torque.x = torque
+    msg.wrench.torque.x = torque[0]
+    msg.wrench.torque.y = torque[1]
+    msg.wrench.torque.z = torque[2]
 
     pubTorque.publish(msg)
 
@@ -48,6 +50,8 @@ if __name__ == '__main__':
         pubTorque = rospy.Publisher("force", WrenchStamped, queue_size=10)
         subsB = rospy.Subscriber("B_field", Vector3Stamped, callback_B_field)
         subsI = rospy.Subscriber("I_magneto", Vector3Stamped, callback_I_magneto)
+
+        rospy.spin()
 
     except rospy.ROSInterruptException:
         pass
