@@ -7,6 +7,35 @@
 # for complete details.
 import numpy as np
 
+class ThreeAxisMagnetoTorquer(object):
+    def __init__(self):
+        self.x_torquer = OneAxisMagnetoTorquer()
+        self.x_torquer._orientation = np.array([1, 0, 0])
+
+        self.y_torquer = OneAxisMagnetoTorquer()
+        self.y_torquer._orientation = np.array([0, 1, 0])
+
+        self.z_torquer = OneAxisMagnetoTorquer()
+        self.z_torquer._orientation = np.array([0, 0, 1])
+
+
+    def set_I(self, I ):
+        self.x_torquer.set_I(I[0])
+        self.y_torquer.set_I(I[1])
+        self.z_torquer.set_I(I[2])
+
+    def set_B_field(self, B):
+        self.x_torquer.set_B_field(B)
+        self.y_torquer.set_B_field(B)
+        self.z_torquer.set_B_field(B)
+
+    def get_torque(self):
+        x_torque = self.x_torquer.get_torque()
+        y_torque = self.y_torquer.get_torque()
+        z_torque = self.z_torquer.get_torque()
+
+        # all torques in same frame, so combine..
+        return x_torque + y_torque + z_torque
 
 class OneAxisMagnetoTorquer(object):
     """
@@ -14,7 +43,7 @@ class OneAxisMagnetoTorquer(object):
     Modelling is done according to Swisscube Document
         Phase D: Characterization of the SwissCube magnetometers and
         magnetotorquers, "S3-D-ADCS-1-7-MM_MT_Characterization.pdf", 2008
-        by G. Bourban, M. Noca, P. Kejik, R.Popovic
+        by G. Bourban, M. Noca, P. Kejik, R. Popovic
 
 
     """
