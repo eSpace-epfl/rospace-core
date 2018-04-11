@@ -272,8 +272,8 @@ if __name__ == '__main__':
     SimTime.set_up_simulation_time()
 
     # Subscribe to propulsion node and attitude control
-    thrust_force = message_filters.Subscriber('force', WrenchStamped)
-    thrust_ispM = message_filters.Subscriber('IspMean', ThrustIsp)
+    # thrust_force = rospy.Subscriber('force', WrenchStamped, prop_target.)
+    #thrust_ispM = message_filters.Subscriber('IspMean', ThrustIsp)
 
     activate_chaser = False
 
@@ -307,10 +307,11 @@ if __name__ == '__main__':
                                init_state_ch,
                                SimTime.datetime_oe_epoch)
 
-        # add callback to thrust function
-        Tsync = message_filters.TimeSynchronizer([thrust_force, thrust_ispM], 10)
-        Tsync.registerCallback(prop_chaser.thrust_torque_callback)
-        # att_sub.registerCallback(prop_chaser.attitude_fixed_rot_callback)
+
+    # add callback to thrust function
+    # Tsync = message_filters.TimeSynchronizer([thrust_force, thrust_ispM], 10)
+    # Tsync.registerCallback(prop_chaser.thrust_torque_callback)
+
 
     prop_target = OrekitPropagator()
     # get settings from yaml file
@@ -320,6 +321,7 @@ if __name__ == '__main__':
                            init_state_ta,
                            SimTime.datetime_oe_epoch)
 
+    sub_target_force = rospy.Subscriber('force', WrenchStamped, prop_target.thrust_torque_callback)
     rospy.loginfo("Propagators initialized!")
 
     while not rospy.is_shutdown() and not ExitServer.exiting:
