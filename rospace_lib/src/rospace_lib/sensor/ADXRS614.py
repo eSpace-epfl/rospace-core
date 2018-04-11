@@ -41,14 +41,14 @@ class ADXRS614(object):
     """
     def __init__(self):
         # saturation values (from [2])
-        self._min_rotation = np.deg2rad(-75.0)  # [rad/s]
-        self._max_rotation = np.deg2rad(75.0)   # [rad/s]
+        self.min_rotation = np.deg2rad(-75.0)  # [rad/s]
+        self.max_rotation = np.deg2rad(75.0)   # [rad/s]
 
         # Noises obtained using the method described in [1] and the allen deviation in the datasheet [2]
         # A marked plot of these readings is in the /res folder of this node
-        self._white_noise_density = np.deg2rad(0.03)  # [rad/s * 1/sqrt(Hz)] resp. \sigma_{g} in [1]
-        self._random_walk = np.deg2rad(0.0001)  # [rad/s^2 * 1/sqrt(Hz)] resp. \sigma_{bg} in [1]
-        self._update_rate = 1  # [hz]
+        self.white_noise_density = np.deg2rad(0.03)  # [rad/s * 1/sqrt(Hz)] resp. \sigma_{g} in [1]
+        self.random_walk = np.deg2rad(0.0001)  # [rad/s^2 * 1/sqrt(Hz)] resp. \sigma_{bg} in [1]
+        self.update_rate = 1  # [hz]
 
         # "ideal world value"
         self._current_true_rotation_rate = 0.0
@@ -61,16 +61,16 @@ class ADXRS614(object):
     def get_value(self):
         # Please refer to [1] for an explanation of this model.
         # first, update random walk noise
-        sigma_bgd = self._random_walk * 1.0/np.sqrt(1.0/self._update_rate)
+        sigma_bgd = self.random_walk * 1.0 / np.sqrt(1.0 / self.update_rate)
         self._bd = self._bd + np.random.normal(0.0, sigma_bgd)
 
         # sample higher freq gaussian white noise
-        sigma_gd = self._white_noise_density * 1.0/np.sqrt(1.0/self._update_rate)
+        sigma_gd = self.white_noise_density * 1.0 / np.sqrt(1.0 / self.update_rate)
         nd = np.random.normal(0.0, sigma_gd)
 
         # truncate by min/max values
-        truncated_true_rotation = min(self._max_rotation, self._current_true_rotation_rate)
-        truncated_true_rotation = max(self._min_rotation, truncated_true_rotation)
+        truncated_true_rotation = min(self.max_rotation, self._current_true_rotation_rate)
+        truncated_true_rotation = max(self.min_rotation, truncated_true_rotation)
 
         # return true value disturbed by white noise (nd) and random walk (bd)
         return truncated_true_rotation + nd + self._bd

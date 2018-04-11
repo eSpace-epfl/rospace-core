@@ -7,30 +7,34 @@
 # See the LICENSE.md file in the root of this repository
 # for complete details.
 import rospy
-from sensor_msgs.msg import Imu
 from rospace_msgs.msg import PoseVelocityStamped
-from ADXRS614 import *
+from sensor_msgs.msg import Imu
+
+from rospace_lib.sensor.ADXRS614 import *
+
 
 def callback_pose(data):
     rotation_rate = np.zeros(3)
     rotation_rate[0] = data.spin.x
     rotation_rate[1] = data.spin.y
     rotation_rate[2] = data.spin.z
+    last_callback_time.secs = data.header.stamp.secs
+    last_callback_time.nsecs = data.header.stamp.nsecs
 
     rate_gyro.set_true_value(rotation_rate, 0)
 
 def publishIMUMessage():
     pub = rospy.Publisher('imu', Imu, queue_size=10)
 
-    rate = rospy.Rate(1) # 10hz
+    rate = rospy.Rate(10) # 10hz
 
 
 
     while not rospy.is_shutdown():
-        rate_gyro_reading = np.rad2deg(rate_gyro.get_value())
+        rate_gyro_reading = rate_gyro.get_value()
 
         msg = Imu()
-        msg.header.stamp = rospy.Time.now()
+        msg.header.stamp = last_callback_time
         msg.angular_velocity.x = rate_gyro_reading[0]
         msg.angular_velocity.y = rate_gyro_reading[1]
         msg.angular_velocity.z = rate_gyro_reading[2]
@@ -43,6 +47,8 @@ if __name__ == '__main__':
     try:
         rate_gyro = ThreeAxisADXRS614()
         rospy.init_node('imu_node', anonymous=True)
+
+        last_callback_time = rospy.Time(0,0)
         subs = rospy.Subscriber("pose", PoseVelocityStamped, callback_pose)
         publishIMUMessage()
     except rospy.ROSInterruptException:
