@@ -1258,6 +1258,10 @@ class AttPropagation(AttitudeFactory):
         surfaceMesh = None
 
         AttitudeFM = dict()
+        AttitudeFM['Earth'] = earth
+
+        to_add_list = [gravitySettings['add'], magSettings['add'],
+                       solarSettings['add'], dragSettings['add']]
 
         # add Spacecraft State observer as force model to be able
         # to extract spacecraft state during integration
@@ -1338,7 +1342,6 @@ class AttPropagation(AttitudeFactory):
 
         if magSettings['add']:
             AttitudeFM['MagneticModel'] = magSettings['settings']
-            AttitudeFM['Earth'] = earth
 
         provider = AttitudePropagation(builderInstance.initialState.getAttitude(),
                                        builderInstance.refDate,
@@ -1349,18 +1352,18 @@ class AttPropagation(AttitudeFactory):
                                        surfaceMesh,
                                        AttitudeFM)
 
+        # add torques which are set to true in yaml file
+        provider.setAddedDisturbanceTorques(to_add_list[0], to_add_list[1],
+                                            to_add_list[2], to_add_list[3])
+
         if solarSettings['add']:
+            # add night eclipse detector to turn of solar pressure torque when in umbra
             NightEclipseDetector.attitudeProvider = provider
             propagator.addEventDetector(dayNightEvent)
             # disable torque if starting at umbra:
             if dayNightEvent.g(propagator.getInitialState()) < 0:
                 DT = NightEclipseDetector.attitudeProvider.getAddedDisturbanceTorques()
                 NightEclipseDetector.attitudeProvider.setAddedDisturbanceTorques(DT[0], DT[1], False, DT[3])
-
-        # # for now assume constant dipole vector:
-        # x = [float(x) for x in magSettings['Dipole'].split(" ")]
-        # dipole = Vector3D(magSettings['Area'], Vector3D(x[0], x[1], x[2]))
-        # provider.setDipoleVector(dipole)
 
         propagator.setAttitudeProvider(provider)
 
