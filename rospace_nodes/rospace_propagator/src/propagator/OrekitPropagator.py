@@ -375,7 +375,7 @@ class OrekitPropagator(object):
             attProv = PAP.cast_(self._propagator_num.getAttitudeProvider())
             attProv.setExternalTorque(N_T)
 
-    def thrust_torque_callback(self, thrust_force, thrust_ispM):
+    def thrust_torque_callback(self, force_torque, thrust_ispM):
         """
         Callback function for subscriber to the propulsion node.
 
@@ -396,13 +396,13 @@ class OrekitPropagator(object):
         """
 
         # this currently only called in by chaser object
-        self.F_T = np.array([thrust_force.wrench.force.x,
-                             thrust_force.wrench.force.y,
-                             thrust_force.wrench.force.z])
+        self.F_T = np.array([force_torque.wrench.force.x,
+                             force_torque.wrench.force.y,
+                             force_torque.wrench.force.z])
 
         self.Isp = thrust_ispM.Isp_val
 
         # Torque:
-        self.torque = np.array([thrust_force.wrench.torque.x,
-                                thrust_force.wrench.torque.y,
-                                thrust_force.wrench.torque.z])
+        self.torque = np.array([force_torque.wrench.torque.x,
+                                force_torque.wrench.torque.y,
+                                force_torque.wrench.torque.z])

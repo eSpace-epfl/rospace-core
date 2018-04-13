@@ -14,9 +14,8 @@ import math
 from ThrustModel import ThrustModel
 from AttitudePropagation import AttitudePropagation
 from StateObserver import StateObserver
-from FileDataHandler import FileDataHandler
 
-from org.orekit.python import PythonEventHandler, PythonOrekitFixedStepHandler
+from org.orekit.python import PythonEventHandler
 
 from org.orekit.utils import PVCoordinatesProvider
 
@@ -37,9 +36,7 @@ from org.orekit.propagation.numerical import NumericalPropagator
 from org.orekit.forces import BoxAndSolarArraySpacecraft
 from org.orekit.forces.radiation import SolarRadiationPressure
 from org.orekit.propagation.events import EclipseDetector
-from org.orekit.propagation.events import EventDetector
 from org.orekit.propagation.events.handlers import EventHandler
-from org.orekit.propagation.sampling import OrekitFixedStepHandler
 from org.orekit.forces.radiation import IsotropicRadiationClassicalConvention
 from org.orekit.forces.drag import DragForce
 from org.orekit.forces.gravity import HolmesFeatherstoneAttractionModel
@@ -52,7 +49,6 @@ from org.orekit.forces.drag.atmosphere.data import MarshallSolarActivityFutureEs
 from org.orekit.forces.drag.atmosphere.data import CelesTrackWeather
 from org.orekit.attitudes import NadirPointing, Attitude
 from org.orekit.data import DataProvidersManager
-from org.orekit.models.earth import GeoMagneticModelLoader
 
 from org.hipparchus.ode.nonstiff import DormandPrince853Integrator
 from org.hipparchus.geometry.euclidean.threed import Vector3D, Rotation
