@@ -7,14 +7,13 @@
 # for complete details.
 
 import abc
-import itertools
 import numpy as np
 import math
 
 from ThrustModel import ThrustModel
 from AttitudePropagation import AttitudePropagation
 from StateObserver import StateObserver
-from FileDataHandler import FileDataHandler
+from SatelliteDiscretization import DiscretizationInterface as DiscInterface
 
 from org.orekit.python import PythonEventHandler, PythonOrekitFixedStepHandler
 
@@ -927,7 +926,7 @@ class AttPropagation(AttitudeFactory):
 
         iT_dict = setup['inertiaTensor']
         int_dict = setup['integrator']
-        discSettings = setup['Discretization']
+        discretization = setup['Discretization']
 
         gravitySettings = setup['GravityGradient']
         solarSettings = setup['SolarPressure']
@@ -954,9 +953,23 @@ class AttPropagation(AttitudeFactory):
         Iz = [float(x) for x in iT_dict['Iz'].split(" ")]
         inertiaT = np.array([Ix, Iy, Iz])
 
+        # find discretization class if needed
+        if 'type' in discretization:
+            type_disc = None
+            types_clases = [cls() for cls in DiscInterface.__subclasses__()]
+            for disc in types_clases:
+                # look for subclasses with same name and store correct class
+                if discretization['type'] == disc.__class__.__name__:
+                    type_disc = 'type'
+                    break
+            if type_disc is None and \
+               (gravitySettings['add'] or solarSettings['add'] or dragSettings['add']):
+                # discretization type not defined but discretization needed..
+                raise ValueError("No discretization type defined in settings file!")
+
         # add Gravity Gradient Torque to Attitude Propagation:
         if gravitySettings['add']:
-            innerCuboids = discretize_inner_body(discSettings)
+            innerCuboids = disc.discretize_inner_body(discretization['settings'])
 
             # use own Gravity Model with own Field Coefficients
             degree = gravitySettings['FC_degree']
@@ -969,8 +982,8 @@ class AttPropagation(AttitudeFactory):
                                         gravField)
 
         if solarSettings['add'] or dragSettings['add']:
-
-            surfaceMesh = discretize_outer_surface(solarSettings, discSettings)
+            surfaceMesh = disc.discretize_outer_surface(solarSettings,
+                                                        discretization['settings'])
             sun = CelestialBodyFactory.getSun()
 
             if solarSettings['add']:
