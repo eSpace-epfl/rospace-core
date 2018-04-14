@@ -90,6 +90,11 @@ propagator_settings:
             numSR_x: 2
             numSR_y: 2
             numSR_z: 2
+          Booms:
+            B1:
+              length: 32.0  # [m]
+              dir: 0 0 1
+              mass: 0.68  # [kg]
       GravityGradient:
         add: True
         FC_degree: 10

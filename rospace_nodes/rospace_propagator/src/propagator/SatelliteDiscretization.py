@@ -16,7 +16,7 @@ class DiscretizationInterface(object):
 
     @staticmethod
     @abc.abstractmethod
-    def discretize_inner_body(discSettings):
+    def discretize_inner_body(sat_mass, discSettings):
         pass
 
     @staticmethod
@@ -77,10 +77,9 @@ class BoxWingModel(DiscretizationInterface):
         inCub = dict()
         CoM = []
         CoM_np = np.empty([0, 3])
-        # MassCub = []
-        # massFrac = 1.0 / numC_tot
-
-        inCub['mass_frac'] = 1.0 / numC_tot  # mass equally distributed for now
+        dm_Cub = np.empty([0, 1])
+        dm_boom = np.empty([0, 1])
+        massFrac = 1.0 / numC_tot
 
         # compute center of mass for each cuboid starting at
         # top, back, right corner
@@ -94,11 +93,24 @@ class BoxWingModel(DiscretizationInterface):
                     CoM.append(Vector3D(float(CoM_x),
                                         float(CoM_y),
                                         float(CoM_z)))
-                    CoM_np = np.append(CoM_np, [[CoM_x, CoM_y, CoM_z]], axis=0)
-                    # MassCub.append(massFrac)
+                    CoM_np = np.append(CoM_np, [[CoM_x, CoM_y, CoM_z]], axis=0)  # for numpy disturbance torque
+                    dm_Cub = np.append(dm_Cub, [[massFrac]], axis=0)  # uniform distribution for satellite atm
 
-        inCub['CoM'] = CoM
+        # add booms to list:
+        for boom in discSettings['Booms'].items():
+            boom_dir = np.asarray([float(x) for x in boom[1]['dir'].split(" ")])
+            norm_dir = np.linalg.norm(boom_dir)
+            if norm_dir > 1.:
+                # normalize if necessary
+                boom_dir = boom_dir / norm_dir
+
+            CoM_np = np.append(CoM_np, [float(boom[1]['length']) * boom_dir], axis=0)
+            dm_boom = np.append(dm_boom, [[float(boom[1]['mass'])]], axis=0)
+
+        # inCub['CoM'] = CoM
         inCub['CoM_np'] = CoM_np
+        inCub['dm'] = dm_Cub
+        inCub['dm_boom'] = dm_boom
 
         return inCub
 
