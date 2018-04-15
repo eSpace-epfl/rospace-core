@@ -4,8 +4,8 @@ propagator_settings:
     State:
       type: 'KeplerianEME2000'
       settings:
-        mass: 55.0 # kg
-        rotation: 1 0 0 0 # quaternions
+        mass: 45.0 # kg
+        rotation: 'nadir' # quaternions
         spin: 0 0 0 # omega in [deg/s]
         acceleration: 0 0 0
     integrator: # Steps have to be floats
@@ -16,10 +16,10 @@ propagator_settings:
     Gravity:
       type: "EigenGravityWGS84"
       settings: # Spherical Harmonics Field Coeffs
-        degree: 40
-        order: 40
+        degree: 20
+        order: 20
     Thrust:
-      type: ThrustModelVariable
+      type: "" # ThrustModelVariable
       settings: ""
     SatShape: # Settings for creation of spacecraft model
         type: "FacetsAndFixedSolarArray"
@@ -79,42 +79,42 @@ propagator_settings:
         type: 'BoxWingModel'
         settings:
           satellite_dim:  # has to be cuboid!
-            l_x: 0.3
-            l_y: 0.1
-            l_z: 0.1
+            l_x: 1.5
+            l_y: 0.5
+            l_z: 0.5
           inner_cuboids:  # number by which satellite has to be divided into smaller cuboids
-            numCub_x: 4
-            numCub_y: 4
-            numCub_z: 4
+            numCub_x: 3
+            numCub_y: 3
+            numCub_z: 3
           surface_rectangles:  # number by which surface of satellite is divided into smaller rectangular sufraces
             numSR_x: 2
             numSR_y: 2
             numSR_z: 2
           Booms:
             B1:
-              length: 32.0  # [m]
+              length: 30.5  # [m]
               dir: 0 0 1
               mass: 0.68  # [kg]
       GravityGradient:
         add: True
-        FC_degree: 10
-        FC_order: 10
+        FC_degree: 40
+        FC_order: 40
       MagneticTorque:
         add: False
         settings:
       SolarPressure:
-        add: True
+        add: False
         AbsorbCoeff: 0.98
         ReflectCoeff: 0.02
         SolarArray_AbsorbCoeff: 0.90
         SolarArray_ReflectCoeff: 0.10
       AeroDrag:
-        add: True
+        add: False
         DragCoeff: 2.0
       inertiaTensor: # based on above facet dimensions
-        Ix: 2.5084825 0 0
-        Iy: 0 2.230045 0
-        Iz: 0 0 1.5942825
+        Ix: 2847.22 0 0
+        Iy: 0 2847.22 0
+        Iz: 0 0 29.83
       integrator:
         maxDT: 2.
         minStep: 0.01

@@ -82,11 +82,13 @@ def _build_default_gravity_Field(methodName):
     return GravityFieldFactory.getNormalizedProvider(10, 10)
 
 
-def _build_default_earth(methodName):
+def _build_default_earth():
     '''
     Build earth object using OneAxisElliposoid and GTOD as body frame.
 
     Uses Constants based on WGS84 Standard from Orekit library.
+
+    This method is called when PropagatorBuilder object is created.
 
     Args:
         methodName: name of method calling this function (for printing warning)
@@ -95,12 +97,6 @@ def _build_default_earth(methodName):
         ReferenceEllipsoid: Earth Body with rotating body frame
 
     '''
-    mesg = "\033[93m  [WARN] [Builder." + methodName \
-           + "]: No earth defined. Creating default Earth using" \
-           + " ReferenceElliposoid with GTOD and IERS2010 conventions as"\
-           + " body frame and constants based on the WGS84 Standard.\033[0m"
-    print mesg
-
     return ReferenceEllipsoid(Cst.WGS84_EARTH_EQUATORIAL_RADIUS,
                               Cst.WGS84_EARTH_FLATTENING,
                               FramesFactory.getGTOD(IERS.IERS_2010, False),
@@ -204,7 +200,7 @@ class PropagatorBuilder(Builder):
         self.initialOrbit = None
         self.initialState = None
         self.gravField = None
-        self.earth = None
+        self.earth = _build_default_earth()
 
         self.thrustM = None
 
@@ -224,6 +220,7 @@ class PropagatorBuilder(Builder):
         for model in StatFactory:
             if model.isApplicable(ST['type']):
                 [inFrame, inOrbit, inState] = model.Setup(self.refDate,
+                                                          self.earth,
                                                           self.stateElements,
                                                           ST['settings'])
 
@@ -302,10 +299,10 @@ class PropagatorBuilder(Builder):
         GM = self.orbSettings['Gravity']
         for model in GMFactory:
             if model.isApplicable(GM['type']):
-                [prop, earth, gravField, file] = model.Setup(self.propagator,
-                                                             GM['settings'])
+                [prop, gravField, file] = model.Setup(self.propagator,
+                                                      GM['settings'],
+                                                      self.earth)
                 self.propagator = prop
-                self.earth = earth
                 self.gravField = gravField
 
                 print "  [INFO]: Gravity perturbation added. Using \'%s\' file."\
@@ -349,11 +346,6 @@ class PropagatorBuilder(Builder):
             else:
                 gravField = self.gravField
 
-            if self.earth is None:
-                earth = _build_default_earth('_build_solid_tides')
-            else:
-                earth = self.earth
-
             body_list = []
             for Body, addBody in STides['settings'].items():
                 if addBody:
@@ -371,7 +363,7 @@ class PropagatorBuilder(Builder):
                 # create Solid Tides force model including pole tides and
                 # using default step and default number of point for integrator
                 # tidal effects are ignored when interpolating EOP
-                ST = SolidTides(earth.getBodyFrame(),
+                ST = SolidTides(self.earth.getBodyFrame(),
                                 gravField.getAe(),
                                 gravField.getMu(),
                                 gravField.getTideSystem(),
@@ -398,14 +390,9 @@ class PropagatorBuilder(Builder):
             else:
                 gravField = self.gravField
 
-            if self.earth is None:
-                earth = _build_default_earth('_build_ocean_tides')
-            else:
-                earth = self.earth
-
             conventions = IERS.IERS_2010
 
-            OT = OceanTides(earth.getBodyFrame(),
+            OT = OceanTides(self.earth.getBodyFrame(),
                             gravField.getAe(),
                             gravField.getMu(),
                             OTides['settings']['degree'],
@@ -506,10 +493,7 @@ class PropagatorBuilder(Builder):
             Object: Earth object which was created during gravity build. If
                     none was created a default Earth object is created.
         """
-        if self.earth is None:
-            return _build_default_earth('get_earth')
-        else:
-            return self.earth
+        return self.earth
 
     def get_thrust_model(self):
         """
@@ -534,8 +518,26 @@ class StateFactory(object):
         """check for desired state build type"""
 
     @abc.abstractmethod
-    def Setup(epoch, state, setup):
+    def Setup(epoch, earth, state, setup):
         """Build spacecraft state based on type selected"""
+
+
+def _build_satellite_attitude(setup, orbit_pv, inertialFrame, earth, epoch):
+    if setup['rotation'] == 'nadir':
+            satRot = NadirPointing(inertialFrame, earth). \
+                      getAttitude(orbit_pv, epoch, inertialFrame). \
+                      getRotation()
+    else:
+        satRot = [float(x) for x in setup['rotation'].split(" ")]
+        satRot = Rotation(satRot[0], satRot[1], satRot[2], satRot[3], False)
+
+    spin = [math.radians(float(x)) for x in setup['spin'].split(" ")]
+    spin = Vector3D(float(spin[0]), float(spin[1]), float(spin[2]))
+
+    acc = [math.radians(float(x)) for x in setup['acceleration'].split(" ")]
+    acc = Vector3D(float(acc[0]), float(acc[1]), float(acc[2]))
+
+    return Attitude(epoch, inertialFrame, satRot, spin, acc)
 
 
 class KeplerianEME2000(StateFactory):
@@ -549,7 +551,7 @@ class KeplerianEME2000(StateFactory):
             return False
 
     @staticmethod
-    def Setup(epoch, state, setup):
+    def Setup(epoch, earth, state, setup):
         """
         Create initial spacecraft state and orbit based on Keplerian elements.
 
@@ -582,16 +584,9 @@ class KeplerianEME2000(StateFactory):
                                       epoch,
                                       Cst.WGS84_EARTH_MU)
 
-        satRot = [float(x) for x in setup['rotation'].split(" ")]
-        satRot = Rotation(satRot[0], satRot[1], satRot[2], satRot[3], False)
-
-        spin = [math.radians(float(x)) for x in setup['spin'].split(" ")]
-        spin = Vector3D(float(spin[0]), float(spin[1]), float(spin[2]))
-
-        acc = [math.radians(float(x)) for x in setup['acceleration'].split(" ")]
-        acc = Vector3D(float(acc[0]), float(acc[1]), float(acc[2]))
-
-        satAtt = Attitude(epoch, inertialFrame, satRot, spin, acc)
+        orbit_pv = PVCoordinatesProvider.cast_(initialOrbit)
+        satAtt = _build_satellite_attitude(setup, orbit_pv, inertialFrame,
+                                           earth, epoch)
 
         initialState = SpacecraftState(initialOrbit, satAtt, satMass)
 
@@ -609,7 +604,7 @@ class CartesianITRF(StateFactory):
             return False
 
     @staticmethod
-    def Setup(epoch, state, setup):
+    def Setup(epoch, earth, state, setup):
         """
         Create initial spacecraft state and orbit using PV-Coordinates in ITRF2008 Frame.
 
@@ -624,7 +619,7 @@ class CartesianITRF(StateFactory):
             initialState: Spacecraft state
         """
 
-        SatMass = setup['mass']
+        satMass = setup['mass']
 
         p = Vector3D(float(state.R[0]),
                      float(state.R[1]),
@@ -645,7 +640,11 @@ class CartesianITRF(StateFactory):
                                       epoch,
                                       Cst.WGS84_EARTH_MU)
 
-        initialState = SpacecraftState(initialOrbit, SatMass)
+        orbit_pv = PVCoordinatesProvider.cast_(initialOrbit)
+        satAtt = _build_satellite_attitude(setup, orbit_pv, inertialFrame,
+                                           earth, epoch)
+
+        initialState = SpacecraftState(initialOrbit, satAtt, satMass)
 
         return [inertialFrame, initialOrbit, initialState]
 
@@ -661,7 +660,7 @@ class CartesianEME2000(StateFactory):
             return False
 
     @staticmethod
-    def Setup(epoch, state, setup):
+    def Setup(epoch, earth, state, setup):
         """
         Create initial spacecraft state and orbit using PV-Coordinates in J2000 Frame.
 
@@ -676,7 +675,7 @@ class CartesianEME2000(StateFactory):
             initialState: Spacecraft state
         """
 
-        SatMass = setup['mass']
+        satMass = setup['mass']
 
         p = Vector3D(float(state.R[0]),
                      float(state.R[1]),
@@ -693,7 +692,11 @@ class CartesianEME2000(StateFactory):
                                       epoch,
                                       Cst.WGS84_EARTH_MU)
 
-        initialState = SpacecraftState(initialOrbit, SatMass)
+        orbit_pv = PVCoordinatesProvider.cast_(initialOrbit)
+        satAtt = _build_satellite_attitude(setup, orbit_pv, inertialFrame,
+                                           earth, epoch)
+
+        initialState = SpacecraftState(initialOrbit, satAtt, satMass)
 
         return [inertialFrame, initialOrbit, initialState]
 #####################################################################
@@ -712,7 +715,7 @@ class GravityFactory(object):
         """check for desired Gravity Model"""
 
     @abc.abstractmethod
-    def Setup(propagator, setup):
+    def Setup(propagator, setup, earth):
         """Create gravity field and add force model to propagator."""
 
 
@@ -726,7 +729,7 @@ class EigenGravityWGS84(GravityFactory):
             return False
 
     @staticmethod
-    def Setup(propagator, setup):
+    def Setup(propagator, setup, earth):
         """
         Add gravity perturbation using the HolmesFeatherstoneAttractionModel.
 
@@ -753,12 +756,6 @@ class EigenGravityWGS84(GravityFactory):
         gfReader = ICGEMFormatReader(supported, False)
         GravityFieldFactory.addPotentialCoefficientsReader(gfReader)
 
-        earth = ReferenceEllipsoid(Cst.WGS84_EARTH_EQUATORIAL_RADIUS,
-                                   Cst.WGS84_EARTH_FLATTENING,
-                                   FramesFactory.getGTOD(IERS.IERS_2010, False),
-                                   Cst.WGS84_EARTH_MU,
-                                   Cst.WGS84_EARTH_ANGULAR_VELOCITY)
-
         degree = setup['degree']
         order = setup['order']
         gravField = GravityFieldFactory.getNormalizedProvider(degree, order)
@@ -774,7 +771,7 @@ class EigenGravityWGS84(GravityFactory):
             # error should be thrown before this when creating gravModel!
             raise ValueError('No gravity potential file loaded!')
 
-        return [propagator, earth, gravField, file_name]
+        return [propagator, gravField, file_name]
 
 
 class EGM96GravityWGS84(GravityFactory):
@@ -787,7 +784,7 @@ class EGM96GravityWGS84(GravityFactory):
             return False
 
     @staticmethod
-    def Setup(propagator, setup):
+    def Setup(propagator, setup, earth):
         """
         Add gravity perturbation using the HolmesFeatherstoneAttractionModel.
 
@@ -815,12 +812,6 @@ class EGM96GravityWGS84(GravityFactory):
         gfReader = EGMFormatReader(supported, False)
         GravityFieldFactory.addPotentialCoefficientsReader(gfReader)
 
-        earth = ReferenceEllipsoid(Cst.WGS84_EARTH_EQUATORIAL_RADIUS,
-                                   Cst.WGS84_EARTH_FLATTENING,
-                                   FramesFactory.getGTOD(IERS.IERS_2010, False),
-                                   Cst.WGS84_EARTH_MU,
-                                   Cst.WGS84_EARTH_ANGULAR_VELOCITY)
-
         degree = setup['degree']
         order = setup['order']
 
@@ -837,7 +828,7 @@ class EGM96GravityWGS84(GravityFactory):
             # error should be trhown before this when creating gravModel!
             raise ValueError('No gravity potential file loaded!')
 
-        return [propagator, earth, gravField, file_name]
+        return [propagator, gravField, file_name]
 #####################################################################
 
 
@@ -879,11 +870,7 @@ class AttNadir(AttitudeFactory):
             Propagator: propagator
         """
         propagator = builderInstance.propagator
-
-        if builderInstance.earth is not None:
-            earth = builderInstance.earth
-        else:
-            earth = _build_default_earth('AttNadir')
+        earth = builderInstance.earth
 
         attitude = NadirPointing(builderInstance.inertialFrame,
                                  earth)
@@ -919,10 +906,7 @@ class AttPropagation(AttitudeFactory):
 
         propagator = builderInstance.propagator
         setup = builderInstance.attSettings['settings']
-        if builderInstance.earth is not None:
-            earth = builderInstance.earth
-        else:
-            earth = _build_default_earth('Attitude Propagation')
+        earth = builderInstance.earth
 
         iT_dict = setup['inertiaTensor']
         int_dict = setup['integrator']
@@ -1254,10 +1238,7 @@ class DragDTM2000MSAFE(DragFactory):
         """
 
         propagator = builderInstance.propagator
-        if builderInstance.earth is not None:
-            earth = builderInstance.earth
-        else:
-            earth = _build_default_earth('DragDTM2000')
+        earth = builderInstance.earth
         starfighter = builderInstance.spacecraft
         dragModel = builderInstance.orbSettings['DragModel']
         sun = CelestialBodyFactory.getSun()
@@ -1311,10 +1292,7 @@ class DragDTM2000CELESTRACK(DragFactory):
             atmosphere: DTM2000 model of atmosphere
         """
         propagator = builderInstance.propagator
-        if builderInstance.earth is not None:
-            earth = builderInstance.earth
-        else:
-            earth = _build_default_earth('DragDTM2000')
+        earth = builderInstance.earth
         starfighter = builderInstance.spacecraft
         dragModel = builderInstance.orbSettings['DragModel']
         sun = CelestialBodyFactory.getSun()
@@ -1380,10 +1358,7 @@ class SolarPressureBoxModel(SolarPressureFactory):
         """
 
         propagator = builderInstance.propagator
-        if builderInstance.earth is not None:
-            earth = builderInstance.earth
-        else:
-            earth = _build_default_earth('SolarPressureBoxModel')
+        earth = builderInstance.earth
 
         starfighter = builderInstance.spacecraft
         solarSett = builderInstance.orbSettings['SolarModel']

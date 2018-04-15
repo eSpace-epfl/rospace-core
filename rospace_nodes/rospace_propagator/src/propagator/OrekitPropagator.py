@@ -162,7 +162,6 @@ class OrekitPropagator(object):
         self._propagator_num = None
         self._hasAttitudeProp = False
         self._hasThrust = False
-        self._GMmodel = None
 
     def initialize(self, propSettings, state, epoch):
         """
