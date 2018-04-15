@@ -1,5 +1,5 @@
 propagator_settings:
-  name: "CHASER"
+  name: "TRANSIT"
   orbitProp:
     State:
       type: 'KeplerianEME2000'
@@ -10,7 +10,7 @@ propagator_settings:
         acceleration: 0 0 0
     integrator: # Steps have to be floats
       minStep: 0.01
-      maxStep: 1000.0
+      maxStep: 1.0
       initStep: 0.1
       positionTolerance: 0.1
     Gravity:
@@ -55,7 +55,7 @@ propagator_settings:
           abs_Estimated: True # false = fixed
           ref_Estimated: True # false = fixed 
     DragModel:
-        type: "DragDTM2000CELESTRACK"
+        type: "" # "DragDTM2000CELESTRACK"
         settings:
           cD_Estimated: True # if false cD fixed
     ThirdBody:
