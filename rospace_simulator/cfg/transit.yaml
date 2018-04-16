@@ -93,15 +93,35 @@ propagator_settings:
           Booms:
             B1:
               length: 30.5  # [m]
+              dir: 0 0 -1
+              mass: 1.4  # [kg]
+            B2:
+              length: 30.5  # [m]
               dir: 0 0 1
-              mass: 0.68  # [kg]
+              mass: 1.4  # [kg]
+            B3:
+              length: 6.  # [m]
+              dir: 1 0 0
+              mass: 1.4  # [kg]
+            B4:
+              length: 6.  # [m]
+              dir: -1 0 0
+              mass: 1.4  # [kg]
+            B5:
+              length: 12.2  # [m]
+              dir: 0 -1 0
+              mass: 1.4  # [kg]
+            B6:
+              length: 12.2  # [m]
+              dir: 0 1 0
+              mass: 1.4  # [kg]
       GravityGradient:
         add: True
         FC_degree: 40
         FC_order: 40
       MagneticTorque:
         add: False
-        settings:
+        settings: ''
       SolarPressure:
         add: False
         AbsorbCoeff: 0.98
@@ -112,8 +132,8 @@ propagator_settings:
         add: False
         DragCoeff: 2.0
       inertiaTensor: # based on above facet dimensions
-        Ix: 2847.22 0 0
-        Iy: 0 2847.22 0
+        Ix: 2982.8 0 0
+        Iy: 0 2982.8 0
         Iz: 0 0 29.83
       integrator:
         maxDT: 2.
