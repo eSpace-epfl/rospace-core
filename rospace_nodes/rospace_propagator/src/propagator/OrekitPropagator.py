@@ -260,45 +260,6 @@ class OrekitPropagator(object):
 
         return [cart_teme, att, force_sF, dtorque, B_field_b]
 
-    def _calculate_magnetic_field_old(self, oDate):
-        """Calculates magnetic field at position of spacecraft
-
-        Args:
-            oDate: Absolute date object with time of spacecraft state
-
-        Returns:
-            numpy.array: Magnetic field vector in TEME frame
-        """
-        spacecraftState = self._propagator_num.getInitialState()
-        satPos = spacecraftState.getPVCoordinates().getPosition()
-        inertial2Sat = spacecraftState.getAttitude().getRotation()
-        frame = spacecraftState.getFrame()
-
-        gP = self._earth.transform(satPos, frame, oDate)
-        lat = gP.getLatitude()
-        lon = gP.getLongitude()
-        alt = gP.getAltitude() / 1e3  # Mag. Field needs degrees and [km]
-        slo, clo = sin(lon), cos(lon)
-        sla, cla = sin(lat), cos(lat)
-        geo2inertial = np.array([[-slo, -clo*sla, clo*cla],
-                                 [clo, -slo*sla, slo*cla],
-                                 [0., cla, sla]])
-
-        # get B-field in geodetic system (X:East, Y:North, Z:Nadir)
-        B_geo = FileDataHandler.mag_field_model.calculateField(
-                            degrees(lat), degrees(lon), alt).getFieldVector()
-
-        # convert geodetic frame to inertial and from [nT] to [T]
-        B_i = geo2inertial.dot(np.array([B_geo.x,
-                                         B_geo.y,
-                                         B_geo.z])) * 1e-9
-
-        B_b = inertial2Sat.applyTo(Vector3D(float(B_i[0]),
-                                            float(B_i[1]),
-                                            float(B_i[2])))
-
-        return B_b
-
     def _calculate_magnetic_field(self, oDate):
         spacecraftState = self._propagator_num.getInitialState()
         satPos = spacecraftState.getPVCoordinates().getPosition()
