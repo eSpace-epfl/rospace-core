@@ -2,7 +2,6 @@ image: osrf/ros:lunar-desktop-xenial
 
 before_script:
   ## Setup ROS workspace
-  - echo ${CI_PROJECT_DIR}
   - mkdir -p ~/catkin_ws/src
   - cd ~/catkin_ws/src
   - if [ ! -f CMakeLists.txt ]; then catkin_init_workspace; else echo "CMakeList file already there";fi
@@ -41,6 +40,8 @@ docs_and_tests:
     - pdoc --html --html-dir ~/docs ${CI_PROJECT_DIR}/rospace_nodes/rospace_propagator/src/propagator/
     - zip -r ${CI_PROJECT_DIR}/docs.zip ~/docs/*
 
+# hack due to https://github.com/codecov/codecov-python/issues/146
+    - CI_REPOSITORY_URL=${CI_REPOSITORY_URL/eSpace-epfl\/}
     - codecov -e
 
 
