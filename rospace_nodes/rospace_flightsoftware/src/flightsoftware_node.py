@@ -9,41 +9,37 @@
 import rospy
 from geometry_msgs.msg import Vector3Stamped, WrenchStamped
 
-from rospace_lib.actuators import *
+import numpy as np
+from rospace_lib.swisscube import *
 
+def callback_b_field(data):
 
-def aocs_controller(data):
-    B_field_vector = np.zeros(3)
-    B_field_vector[0] = data.vector.x
-    B_field_vector[1] = data.vector.y
-    B_field_vector[2] = data.vector.z
+    B_field = np.zeros(3)
 
-    torquer.set_B_field(B_field_vector)
+    B_field[0] = data.vector.x
+    B_field[1] = data.vector.y
+    B_field[2] = data.vector.z
 
-    # get current torque
-    torque = torquer.get_torque()
+    timestamp = data.header.stamp.to_sec()
 
-    msg = WrenchStamped()
+    mt_current = ctrl.run_controller(B_field, -1, timestamp)
+    print mt_current
+    msg = Vector3Stamped()
     msg.header.stamp = data.header.stamp
-    msg.wrench.torque.x = torque[0]
-    msg.wrench.torque.y = torque[1]
-    msg.wrench.torque.z = torque[2]
+    msg.vector.x = mt_current[0]
+    msg.vector.y = mt_current[1]
+    msg.vector.z = mt_current[2]
+    pub_magnetotorquer.publish(msg)
 
-    pubTorque.publish(msg)
-
-
-def callback_I_magneto(data):
-    I_vector = np.zeros(3)
-    I_vector[0] = data.vector.x
-    I_vector[1] = data.vector.y
-    I_vector[2] = data.vector.z
-
-    torquer.set_I(I_vector[0])
 
 
 if __name__ == '__main__':
     try:
         # do whatever
+        rospy.init_node("test")
+        ctrl = BDotController()
+        subs_magnetfield = rospy.Subscriber("B_field",Vector3Stamped, callback=callback_b_field)
+        pub_magnetotorquer = rospy.Publisher("torque_current", Vector3Stamped, queue_size=10)
         rospy.spin()
 
     except rospy.ROSInterruptException:

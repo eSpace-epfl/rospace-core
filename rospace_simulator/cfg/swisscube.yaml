@@ -9,7 +9,7 @@ propagator_settings:
       settings:
         mass: 1.0 # kg
         rotation: 1 0 0 0 # quaternions
-        spin: 0 0 0 # omega in [deg/s]
+        spin: 4 8 10 # omega in [deg/s]
         acceleration: 0 0 0
     integrator: # Steps have to be floats
       minStep: 0.01

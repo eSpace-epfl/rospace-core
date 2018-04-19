@@ -38,12 +38,12 @@ def callback_I_magneto(data):
     I_vector[1] = data.vector.y
     I_vector[2] = data.vector.z
 
-    torquer.set_I(I_vector[0])
+    torquer.set_I(I_vector)
 
 
 if __name__ == '__main__':
     try:
-        torquer = OneAxisMagnetoTorquer()
+        torquer = ThreeAxisMagnetoTorquer()
         rospy.init_node('imu_node', anonymous=True)
 
         last_callback_time = rospy.Time(0,0)

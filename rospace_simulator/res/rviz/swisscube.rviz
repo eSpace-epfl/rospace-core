@@ -8,7 +8,6 @@ Panels:
         - /Status1
         - /Grid1
         - /RobotModel1
-        - /RobotModel1/Status1
         - /RobotModel1/Links1
         - /TF1
         - /TF1/Frames1
@@ -73,12 +72,7 @@ Visualization Manager:
           Show Trail: false
           Value: true
         Link Tree Style: Links in Alphabetic Order
-        chaser:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        target:
+        swisscube:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -98,7 +92,7 @@ Visualization Manager:
           Value: false
         swisscube:
           Value: true
-      Marker Scale: 500000
+      Marker Scale: 1
       Name: TF
       Show Arrows: false
       Show Axes: true

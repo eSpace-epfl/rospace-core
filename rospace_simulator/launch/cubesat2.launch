@@ -44,14 +44,20 @@
 
         </node>
 
+	<node pkg="appleseed_node" name="basic" type="basic" output="screen" />
+	<node pkg="appleseed_node" name="ros_adapter" type="ros_adapter" output="screen" >
+		<remap from="pose" to="/$(arg ns_cubesat)/pose" />
 
-        <node pkg="rospace_magneto" name="rospace_magneto" type="magneto_node.py" output="screen">
+</node>
+
+
+       <!-- <node pkg="rospace_magneto" name="rospace_magneto" type="magneto_node.py" output="screen">
             <remap from="force" to="/force" />
         </node>
         <node pkg="rospace_flightsoftware" name="rospace_flightsoftware" type="flightsoftware_node.py" output="screen" >
             <remap from="torque_current" to="I_magneto" />
         </node>
-
+     -->
 
         <!-- Launch TF publisher for visualizations -->
         <node pkg="rospace_simulator" name="tf_pub" type="satelite_tf_publisher.py" output="screen">
@@ -63,9 +69,9 @@
         </node>
     </group>
 
-    <!-- start rviz -->
+    <!-- start rviz 
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find rospace_simulator)/res/rviz/swisscube.rviz" required="true" />
-
+-->
 
      <!-- Launch Visualizer -->
     <!-- <node name="rqt_ekf" pkg="rqt_space_plugins" type="rqt_orbit_ekf" /> -->
