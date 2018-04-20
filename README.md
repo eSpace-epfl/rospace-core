@@ -1,5 +1,9 @@
 # ROSpace
 
+[![pipeline status](https://gitlab.com/eSpace-epfl/rospace/rdv-cap-sim/badges/master/pipeline.svg)](https://gitlab.com/eSpace-epfl/rospace/rdv-cap-sim/commits/master)
+[![codecov](https://codecov.io/gl/rospace/rdv-cap-sim/branch/master/graph/badge.svg?token=BKZJjUEI6Y)](https://codecov.io/gl/rospace/rdv-cap-sim)
+[![coverage report](https://gitlab.com/eSpace-epfl/rospace/rdv-cap-sim/badges/master/coverage.svg)](https://gitlab.com/eSpace-epfl/rospace/rdv-cap-sim/commits/master)
+
 ### What
 ROSpace is a multipurpose simulation tool aimed at simulating physically
  accurate in-orbit satellite operations. It can be used to test among
