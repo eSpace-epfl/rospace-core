@@ -103,6 +103,17 @@ class KepOrbElem(BaseState):
         self._m = None  # mean anomaly
         self._v = None  # true anomaly
 
+    def __getstate__(self):
+        """Return state values to be pickled."""
+        return (self.a, self.e, self.i, self.O, self.w, self.v)
+
+    def __setstate__(self, state):
+        """Restore state from unpickled state values."""
+        self._lock = RLock()
+
+        self.a, self.e, self.i, self.O, self.w = state[0:5]
+        self.v = state[5]
+
     @property
     def E(self):
         """Eccentric Anomaly [rad]"""
@@ -661,6 +672,46 @@ class KepOrbElem(BaseState):
             self.w = self.w - 2*np.pi
 
         self.m = m  # assign m latest, as other properties might be used for ocnversion!
+
+    def get_pof(self):
+        """
+            Get the transformation matrix from Earth-Inertial to Perifocal frame of reference.
+
+            Source:
+                Chapter 4.5 in [1]
+
+            Returns:
+                B (np.array): Transformation matrix such that p_PERI = B * p_TEME
+        """
+
+        c_O = np.cos(self.O)
+        s_O = np.sin(self.O)
+        c_w = np.cos(self.w)
+        s_w = np.sin(self.w)
+        c_i = np.cos(self.i)
+        s_i = np.sin(self.i)
+
+        p_i = c_O * c_w - s_O * c_i * s_w
+        p_j = s_O * c_w + c_O * c_i * s_w
+        p_k = s_i * s_w
+        p = np.array([p_i, p_j, p_k])
+
+        q_i = -c_O * s_w - s_O * c_i * c_w
+        q_j = -s_O * s_w + c_O * c_i * c_w
+        q_k = s_i * c_w
+        q = np.array([q_i, q_j, q_k])
+
+        w_i = s_i * s_O
+        w_j = -s_i * c_O
+        w_k = c_i
+        w = np.array([w_i, w_j, w_k])
+
+        B = np.identity(3)
+        B[0, 0:3] = p
+        B[1, 0:3] = q
+        B[2, 0:3] = w
+
+        return B
 
 
 class OscKepOrbElem(KepOrbElem):
