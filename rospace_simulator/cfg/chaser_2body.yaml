@@ -1,4 +1,4 @@
-name: "CSO-v0"
+name: "CSO-2-body"
 
 frames:
   chaser_cog:
@@ -47,9 +47,12 @@ propagator_settings:
   name: "CHASER"
   orbitProp:
     State:
-      type: 'Keplerian'
+      type: 'KeplerianEME2000'
       settings:
         mass: 30.0 # kg
+        rotation: 1 0 0 0 # quaternions
+        spin: 10 5 5 # omega in [deg/s]
+        acceleration: 0 0 0
     Gravity:
       type: "" # "GravityPertAndRefEllipsoid"
       settings: # Spherical Harmonics Field Coeffs
@@ -115,7 +118,7 @@ propagator_settings:
         order: 5
     addRelativity: False
   attitudeProvider:
-    type:  'AttNadir'
+    type:  "" #'AttNadir'
     settings:
       Discretization:
         satellite_dim:  # has to be cuboid!

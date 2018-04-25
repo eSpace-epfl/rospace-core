@@ -4,11 +4,14 @@ propagator_settings:
   name: "TARGET"
   orbitProp:
     State:
-      type: 'Keplerian'
+      type: 'KeplerianEME2000'
       settings:
         mass: 0.82 # kg
+        rotation: 1 0 0 0 # quaternions
+        spin: 0 0 0 # omega in [deg/s]
+        acceleration: 0 0 0
     Gravity:
-      type: "" #"GravityPertAndRefEllipsoid"
+      type: "" #"EigenGravityWGS84"
       settings: # Spherical Harmonics Field Coeffs
         degree: 140
         order: 140
@@ -16,7 +19,7 @@ propagator_settings:
       type: None
       settings: ""
     SatShape: # Settings for creation of spacecraft model
-      type: "FacetsAndFixedSolarArray"
+      type: "" #"FacetsAndFixedSolarArray"
       settings:
         Facets: ## area in [m2]
           front:
