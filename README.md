@@ -2,7 +2,6 @@
 
 [![pipeline status](https://gitlab.com/eSpace-epfl/rospace/rdv-cap-sim/badges/master/pipeline.svg)](https://gitlab.com/eSpace-epfl/rospace/rdv-cap-sim/commits/master)
 [![codecov](https://codecov.io/gl/rospace/rdv-cap-sim/branch/master/graph/badge.svg?token=BKZJjUEI6Y)](https://codecov.io/gl/rospace/rdv-cap-sim)
-[![coverage report](https://gitlab.com/eSpace-epfl/rospace/rdv-cap-sim/badges/master/coverage.svg)](https://gitlab.com/eSpace-epfl/rospace/rdv-cap-sim/commits/master)
 
 ### What
 ROSpace is a multipurpose simulation tool aimed at simulating physically
@@ -15,7 +14,10 @@ could potentially allow for other type orbits.
 
 ### How
 ROSpace is built around the [Orekit toolkit](https://www.orekit.org/)
-and ROS (Robot Operating System)[http://www.ros.org/].
+and ROS [Robot Operating System](http://www.ros.org/). The use of the
+Orekit library is especially is important due to having been
+[validated](https://www.orekit.org/static/faq.html) in various
+real-world scenarios and data.
 
 ### Who
 ROSpace has been initiated by the
