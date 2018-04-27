@@ -287,6 +287,9 @@ if __name__ == '__main__':
 
     OrekitPropagator.init_jvm()
 
+    # Initialize Data handlers, loading data in orekit .zip file
+    FileDataHandler.load_magnetic_field_models(SimTime.datetime_oe_epoch)
+
     prop_chaser = OrekitPropagator()
     # get settings from yaml file
     ch_prop_file = "/" + rospy.get_param("~ns_chaser") + "/propagator_settings"
@@ -317,8 +320,6 @@ if __name__ == '__main__':
         Tsync = message_filters.TimeSynchronizer([external_force_ta, thrust_ispM_ta], 10)
         Tsync.registerCallback(prop_target.thrust_torque_callback)
 
-    # Initialize Data handlers, loading data in orekit .zip file
-    FileDataHandler.load_magnetic_field_models(SimTime.datetime_oe_epoch)
     FileDataHandler.create_data_validity_checklist()
 
     rospy.loginfo("Propagators initialized!")
