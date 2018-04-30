@@ -2,7 +2,6 @@ image: osrf/ros:lunar-desktop-xenial
 
 before_script:
   ## Setup ROS workspace
-  - echo ${CI_PROJECT_DIR}
   - mkdir -p ~/catkin_ws/src
   - cd ~/catkin_ws/src
   - if [ ! -f CMakeLists.txt ]; then catkin_init_workspace; else echo "CMakeList file already there";fi
@@ -12,14 +11,13 @@ before_script:
   - wstool up
   - git clone https://github.com/catkin/catkin_simple.git
   - cd ~/catkin_ws
-  - ls -a
 
   ## Install dependencies
   - apt-get -qq update
   - apt-get -qq install software-properties-common wget default-jdk-headless zip -y
   - apt-get -qq update
   - apt-get -qq install python-pip -y
-  - pip install numpy sgp4 pytest pdoc matplotlib scikit-learn scipy numpy
+  - pip install numpy sgp4 pytest pdoc matplotlib scikit-learn scipy numpy codecov pytest-cov
 
 docs_and_tests:
   script:
@@ -27,8 +25,10 @@ docs_and_tests:
     - cd ~/catkin_ws
     - catkin_make
     - source ~/catkin_ws/devel/setup.bash
-    - pytest ${CI_PROJECT_DIR}/rospace_lib/ -s
-    - pytest ${CI_PROJECT_DIR}/rospace_nodes/rospace_propagator/ -s
+
+    - cd ${CI_PROJECT_DIR}
+    - pytest ${CI_PROJECT_DIR}/rospace_lib/ -v -s --cov=./
+    - pytest ${CI_PROJECT_DIR}/rospace_nodes/rospace_propagator/ -v -s --cov=./
 
 # removing this rostest as it needs a gui
 #    - rostest --text ${CI_PROJECT_DIR}/rospace_plugins/rqt_simtime_plugin/test/simtime_plugin.test
@@ -39,6 +39,11 @@ docs_and_tests:
     - pdoc --html --html-dir ~/docs ${CI_PROJECT_DIR}/rospace_plugins/rqt_simtime_plugin/src/rqt_simtime_plugin/
     - pdoc --html --html-dir ~/docs ${CI_PROJECT_DIR}/rospace_nodes/rospace_propagator/src/propagator/
     - zip -r ${CI_PROJECT_DIR}/docs.zip ~/docs/*
+
+# hack due to https://github.com/codecov/codecov-python/issues/146
+    - CI_REPOSITORY_URL=${CI_REPOSITORY_URL/eSpace-epfl\/}
+    - codecov -e
+
 
   artifacts:
     paths:
