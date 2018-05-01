@@ -5,9 +5,11 @@ codecov:
 coverage:
   precision: 2
   round: down
-  range: "70...100"
+  range: "25...80"
 
   status:
+    target: auto
+    threshold: 0.5
     project: yes
     patch: yes
     changes: no
