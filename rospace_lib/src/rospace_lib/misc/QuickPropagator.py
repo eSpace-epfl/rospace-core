@@ -9,7 +9,6 @@
 """Class containing a propagator object that holds the orekit propagator itself and other useful information."""
 
 import yaml
-import os
 
 from datetime import datetime
 
@@ -24,7 +23,7 @@ from org.hipparchus.geometry.euclidean.threed import Vector3D
 from org.orekit.time import AbsoluteDate, TimeScalesFactory
 
 
-class Propagator(object):
+class QuickPropagator(object):
     """
         Class that holds the definition of the orekit propagator.
 

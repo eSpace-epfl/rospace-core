@@ -12,4 +12,4 @@ from rospace_lib.Constants import *
 from rospace_lib.KepOrbElem import *
 from rospace_lib.QNSRelOrbElements import *
 from rospace_lib.clock import *
-from rospace_lib.propagator import *
+from rospace_lib.misc import *

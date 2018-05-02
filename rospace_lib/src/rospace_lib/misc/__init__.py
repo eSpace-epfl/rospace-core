@@ -6,4 +6,4 @@
 # See the LICENSE.md file in the root of this repository
 # for complete details.
 
-from rospace_lib.propagator.Propagator import Propagator
+from rospace_lib.misc.QuickPropagator import QuickPropagator
