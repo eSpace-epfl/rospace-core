@@ -14,7 +14,7 @@ import os
 from datetime import datetime
 
 # from propagator.FileDataHandler import FileDataHandler
-from propagator.OrekitPropagator import OrekitPropagator
+from propagator.OrekitPropagator import *
 from org.orekit.propagation import SpacecraftState
 from org.orekit.frames import FramesFactory
 from org.orekit.orbits import CartesianOrbit
