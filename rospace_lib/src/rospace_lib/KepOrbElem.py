@@ -105,14 +105,16 @@ class KepOrbElem(BaseState):
 
     def __getstate__(self):
         """Return state values to be pickled."""
-        return (self.a, self.e, self.i, self.O, self.w, self.v)
+        result = self.__dict__.copy()
+        del result['_lock']
+        del result['_orekit_lock']
+        return result
 
     def __setstate__(self, state):
         """Restore state from unpickled state values."""
+        self.__dict__ = state
         self._lock = RLock()
-
-        self.a, self.e, self.i, self.O, self.w = state[0:5]
-        self.v = state[5]
+        self._orekit_lock = Lock()
 
     @property
     def E(self):
