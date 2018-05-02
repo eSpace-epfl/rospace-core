@@ -1,7 +1,7 @@
 # ROSpace
 
-[![pipeline status](https://gitlab.com/eSpace-epfl/rospace/rdv-cap-sim/badges/master/pipeline.svg)](https://gitlab.com/eSpace-epfl/rospace/rdv-cap-sim/commits/master)
-[![codecov](https://codecov.io/gl/rospace/rdv-cap-sim/branch/master/graph/badge.svg?token=BKZJjUEI6Y)](https://codecov.io/gl/rospace/rdv-cap-sim)
+[![pipeline status](https://gitlab.com/eSpace-epfl/rospace/core/badges/master/pipeline.svg)](https://gitlab.com/eSpace-epfl/rospace/core/commits/master)
+[![codecov](https://codecov.io/gl/rospace/core/branch/master/graph/badge.svg?token=BKZJjUEI6Y)](https://codecov.io/gl/rospace/core)
 
 ### What
 ROSpace is a multipurpose simulation tool aimed at simulating physically

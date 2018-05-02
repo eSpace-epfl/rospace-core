@@ -26,4 +26,4 @@ If you create a new file please use this license header:
 Additionally we require a Developer Certificate of Origin (DCO), look
 at [CONTRIBUTING.md][contributing] to learn more how to sign your commits.
 
-[contributing]: https://gitlab.com/OneSpace/rdv-cap-sim/raw/master/CONTRIBUTING.md#sign-your-work
+[contributing]: https://gitlab.com/OneSpace/rospace/core/raw/master/CONTRIBUTING.md#sign-your-work
