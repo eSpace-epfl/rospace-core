@@ -8,12 +8,12 @@
 
 """Class containing a propagator object that holds the orekit propagator itself and other useful information."""
 
-import sys
 import yaml
+import os
 
 from datetime import datetime
 
-from propagator.FileDataHandler import FileDataHandler
+# from propagator.FileDataHandler import FileDataHandler
 from propagator.OrekitPropagator import OrekitPropagator
 from org.orekit.propagation import SpacecraftState
 from org.orekit.frames import FramesFactory
@@ -68,10 +68,8 @@ class Propagator(object):
         # FileDataHandler.create_data_validity_checklist()
 
         # Open the configuration file
-        abs_path = sys.argv[0]
-        path_idx = abs_path.find('planning')
-        abs_path = abs_path[0:path_idx]
-        settings_path = abs_path + 'rdv-cap-sim/rospace_simulator/cfg/' + name + '.yaml'
+        abs_path = os.path.dirname(os.path.abspath(__file__))
+        settings_path = os.path.join(abs_path, '../../../../rospace_simulator/cfg/' + name + '.yaml')
         settings = file(settings_path, 'r')
         propSettings = yaml.load(settings)
 
