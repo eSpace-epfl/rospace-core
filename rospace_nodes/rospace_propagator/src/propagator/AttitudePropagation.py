@@ -142,7 +142,7 @@ class AttitudePropagation(PAP):
                 y[1] = self.omega.y
                 y[2] = self.omega.z
                 # get rotation in quaternions:
-                # scalar part is Q0 in Orekit, but q4 in integration
+                # scalar part is q0 in Orekit, but q4 in integration
                 y[3] = self.rotation.q1
                 y[4] = self.rotation.q2
                 y[5] = self.rotation.q3
@@ -210,6 +210,14 @@ class StateEquation(PSE):
         """No initialization needed"""
 
     def computeDerivatives(self, t, y):
+        '''Get the current time derivative of the state vector.
+
+        Args:
+            t: current value of the independent time variable
+            y: array containing the current value of the state vector
+        Returns:
+            JArray: time derivative of the state vector
+        '''
         try:
             # update rotation and compute torque at new attitude
             in2Sat_rotation = Rotation(float(y[6]),

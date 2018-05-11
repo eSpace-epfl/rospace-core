@@ -632,7 +632,7 @@ class CartesianITRF(StateFactory):
 
         # Inertial frame where the satellite is defined (and earth)
         inertialFrame = FramesFactory.getEME2000()
-        # don't ignore tidal effects
+        # False bool -> don't ignore tidal effects
         orbitFrame = FramesFactory.getITRF(IERS.IERS_2010, False)
         ITRF2EME = orbitFrame.getTransformTo(inertialFrame, epoch)
         pv_EME = ITRF2EME.transformPVCoordinates(PVCoordinates(p, v))
