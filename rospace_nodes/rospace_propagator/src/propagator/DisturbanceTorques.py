@@ -12,6 +12,8 @@ from math import sqrt, degrees
 import itertools
 import traceback
 
+from time import sleep
+
 from FileDataHandler import FileDataHandler
 from DipoleModel import DipoleModel
 
@@ -342,7 +344,8 @@ class DisturbanceTorqueArray(DisturbanceTorqueInterface):
             sat2body = sat2bodyRot.getMatrix()
 
             satM = self.spacecraft_state.getMass()
-            mCub = self.inCub['mass_frac'] * satM
+            mCub = self.inCub['dm'] * satM
+            mCub = np.concatenate((mCub, self.inCub['dm_boom']), axis=0)  # boom store with mass
             CoM = self.inCub['CoM_np']
 
             dmPos_s = CoM + self.satPos_s

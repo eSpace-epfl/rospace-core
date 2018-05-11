@@ -7,13 +7,14 @@
 # for complete details.
 
 import abc
-import itertools
 import numpy as np
 import math
 
 from ThrustModel import ThrustModel
 from AttitudePropagation import AttitudePropagation
 from StateObserver import StateObserver
+
+from SatelliteDiscretization import DiscretizationInterface as DiscInterface
 
 from org.orekit.python import PythonEventHandler
 
@@ -79,11 +80,13 @@ def _build_default_gravity_Field(methodName):
     return GravityFieldFactory.getNormalizedProvider(10, 10)
 
 
-def _build_default_earth(methodName):
+def _build_default_earth():
     '''
     Build earth object using OneAxisElliposoid and GTOD as body frame.
 
     Uses Constants based on WGS84 Standard from Orekit library.
+
+    This method is called when PropagatorBuilder object is created.
 
     Args:
         methodName: name of method calling this function (for printing warning)
@@ -92,12 +95,6 @@ def _build_default_earth(methodName):
         ReferenceEllipsoid: Earth Body with rotating body frame
 
     '''
-    mesg = "\033[93m  [WARN] [Builder." + methodName \
-           + "]: No earth defined. Creating default Earth using" \
-           + " ReferenceElliposoid with GTOD and IERS2010 conventions as"\
-           + " body frame and constants based on the WGS84 Standard.\033[0m"
-    print mesg
-
     return ReferenceEllipsoid(Cst.WGS84_EARTH_EQUATORIAL_RADIUS,
                               Cst.WGS84_EARTH_FLATTENING,
                               FramesFactory.getGTOD(IERS.IERS_2010, False),
@@ -201,7 +198,7 @@ class PropagatorBuilder(Builder):
         self.initialOrbit = None
         self.initialState = None
         self.gravField = None
-        self.earth = None
+        self.earth = _build_default_earth()
 
         self.thrustM = None
 
@@ -221,6 +218,7 @@ class PropagatorBuilder(Builder):
         for model in StatFactory:
             if model.isApplicable(ST['type']):
                 [inFrame, inOrbit, inState] = model.Setup(self.refDate,
+                                                          self.earth,
                                                           self.stateElements,
                                                           ST['settings'])
 
@@ -299,10 +297,10 @@ class PropagatorBuilder(Builder):
         GM = self.orbSettings['Gravity']
         for model in GMFactory:
             if model.isApplicable(GM['type']):
-                [prop, earth, gravField, file] = model.Setup(self.propagator,
-                                                             GM['settings'])
+                [prop, gravField, file] = model.Setup(self.propagator,
+                                                      GM['settings'],
+                                                      self.earth)
                 self.propagator = prop
-                self.earth = earth
                 self.gravField = gravField
 
                 print "  [INFO]: Gravity perturbation added. Using \'%s\' file."\
@@ -346,11 +344,6 @@ class PropagatorBuilder(Builder):
             else:
                 gravField = self.gravField
 
-            if self.earth is None:
-                earth = _build_default_earth('_build_solid_tides')
-            else:
-                earth = self.earth
-
             body_list = []
             for Body, addBody in STides['settings'].items():
                 if addBody:
@@ -368,7 +361,7 @@ class PropagatorBuilder(Builder):
                 # create Solid Tides force model including pole tides and
                 # using default step and default number of point for integrator
                 # tidal effects are ignored when interpolating EOP
-                ST = SolidTides(earth.getBodyFrame(),
+                ST = SolidTides(self.earth.getBodyFrame(),
                                 gravField.getAe(),
                                 gravField.getMu(),
                                 gravField.getTideSystem(),
@@ -395,14 +388,9 @@ class PropagatorBuilder(Builder):
             else:
                 gravField = self.gravField
 
-            if self.earth is None:
-                earth = _build_default_earth('_build_ocean_tides')
-            else:
-                earth = self.earth
-
             conventions = IERS.IERS_2010
 
-            OT = OceanTides(earth.getBodyFrame(),
+            OT = OceanTides(self.earth.getBodyFrame(),
                             gravField.getAe(),
                             gravField.getMu(),
                             OTides['settings']['degree'],
@@ -503,10 +491,7 @@ class PropagatorBuilder(Builder):
             Object: Earth object which was created during gravity build. If
                     none was created a default Earth object is created.
         """
-        if self.earth is None:
-            return _build_default_earth('get_earth')
-        else:
-            return self.earth
+        return self.earth
 
     def get_thrust_model(self):
         """
@@ -531,8 +516,26 @@ class StateFactory(object):
         """check for desired state build type"""
 
     @abc.abstractmethod
-    def Setup(epoch, state, setup):
+    def Setup(epoch, earth, state, setup):
         """Build spacecraft state based on type selected"""
+
+
+def _build_satellite_attitude(setup, orbit_pv, inertialFrame, earth, epoch):
+    if setup['rotation'] == 'nadir':
+            satRot = NadirPointing(inertialFrame, earth). \
+                      getAttitude(orbit_pv, epoch, inertialFrame). \
+                      getRotation()
+    else:
+        satRot = [float(x) for x in setup['rotation'].split(" ")]
+        satRot = Rotation(satRot[0], satRot[1], satRot[2], satRot[3], False)
+
+    spin = [math.radians(float(x)) for x in setup['spin'].split(" ")]
+    spin = Vector3D(float(spin[0]), float(spin[1]), float(spin[2]))
+
+    acc = [math.radians(float(x)) for x in setup['acceleration'].split(" ")]
+    acc = Vector3D(float(acc[0]), float(acc[1]), float(acc[2]))
+
+    return Attitude(epoch, inertialFrame, satRot, spin, acc)
 
 
 class KeplerianEME2000(StateFactory):
@@ -546,7 +549,7 @@ class KeplerianEME2000(StateFactory):
             return False
 
     @staticmethod
-    def Setup(epoch, state, setup):
+    def Setup(epoch, earth, state, setup):
         """
         Create initial spacecraft state and orbit based on Keplerian elements.
 
@@ -579,16 +582,9 @@ class KeplerianEME2000(StateFactory):
                                       epoch,
                                       Cst.WGS84_EARTH_MU)
 
-        satRot = [float(x) for x in setup['rotation'].split(" ")]
-        satRot = Rotation(satRot[0], satRot[1], satRot[2], satRot[3], False)
-
-        spin = [math.radians(float(x)) for x in setup['spin'].split(" ")]
-        spin = Vector3D(float(spin[0]), float(spin[1]), float(spin[2]))
-
-        acc = [math.radians(float(x)) for x in setup['acceleration'].split(" ")]
-        acc = Vector3D(float(acc[0]), float(acc[1]), float(acc[2]))
-
-        satAtt = Attitude(epoch, inertialFrame, satRot, spin, acc)
+        orbit_pv = PVCoordinatesProvider.cast_(initialOrbit)
+        satAtt = _build_satellite_attitude(setup, orbit_pv, inertialFrame,
+                                           earth, epoch)
 
         initialState = SpacecraftState(initialOrbit, satAtt, satMass)
 
@@ -606,7 +602,7 @@ class CartesianITRF(StateFactory):
             return False
 
     @staticmethod
-    def Setup(epoch, state, setup):
+    def Setup(epoch, earth, state, setup):
         """
         Create initial spacecraft state and orbit using PV-Coordinates in ITRF2008 Frame.
 
@@ -621,7 +617,7 @@ class CartesianITRF(StateFactory):
             initialState: Spacecraft state
         """
 
-        SatMass = setup['mass']
+        satMass = setup['mass']
 
         p = Vector3D(float(state.R[0]),
                      float(state.R[1]),
@@ -642,7 +638,11 @@ class CartesianITRF(StateFactory):
                                       epoch,
                                       Cst.WGS84_EARTH_MU)
 
-        initialState = SpacecraftState(initialOrbit, SatMass)
+        orbit_pv = PVCoordinatesProvider.cast_(initialOrbit)
+        satAtt = _build_satellite_attitude(setup, orbit_pv, inertialFrame,
+                                           earth, epoch)
+
+        initialState = SpacecraftState(initialOrbit, satAtt, satMass)
 
         return [inertialFrame, initialOrbit, initialState]
 
@@ -658,7 +658,7 @@ class CartesianEME2000(StateFactory):
             return False
 
     @staticmethod
-    def Setup(epoch, state, setup):
+    def Setup(epoch, earth, state, setup):
         """
         Create initial spacecraft state and orbit using PV-Coordinates in J2000 Frame.
 
@@ -673,7 +673,7 @@ class CartesianEME2000(StateFactory):
             initialState: Spacecraft state
         """
 
-        SatMass = setup['mass']
+        satMass = setup['mass']
 
         p = Vector3D(float(state.R[0]),
                      float(state.R[1]),
@@ -690,7 +690,11 @@ class CartesianEME2000(StateFactory):
                                       epoch,
                                       Cst.WGS84_EARTH_MU)
 
-        initialState = SpacecraftState(initialOrbit, SatMass)
+        orbit_pv = PVCoordinatesProvider.cast_(initialOrbit)
+        satAtt = _build_satellite_attitude(setup, orbit_pv, inertialFrame,
+                                           earth, epoch)
+
+        initialState = SpacecraftState(initialOrbit, satAtt, satMass)
 
         return [inertialFrame, initialOrbit, initialState]
 #####################################################################
@@ -709,7 +713,7 @@ class GravityFactory(object):
         """check for desired Gravity Model"""
 
     @abc.abstractmethod
-    def Setup(propagator, setup):
+    def Setup(propagator, setup, earth):
         """Create gravity field and add force model to propagator."""
 
 
@@ -723,7 +727,7 @@ class EigenGravityWGS84(GravityFactory):
             return False
 
     @staticmethod
-    def Setup(propagator, setup):
+    def Setup(propagator, setup, earth):
         """
         Add gravity perturbation using the HolmesFeatherstoneAttractionModel.
 
@@ -750,12 +754,6 @@ class EigenGravityWGS84(GravityFactory):
         gfReader = ICGEMFormatReader(supported, False)
         GravityFieldFactory.addPotentialCoefficientsReader(gfReader)
 
-        earth = ReferenceEllipsoid(Cst.WGS84_EARTH_EQUATORIAL_RADIUS,
-                                   Cst.WGS84_EARTH_FLATTENING,
-                                   FramesFactory.getGTOD(IERS.IERS_2010, False),
-                                   Cst.WGS84_EARTH_MU,
-                                   Cst.WGS84_EARTH_ANGULAR_VELOCITY)
-
         degree = setup['degree']
         order = setup['order']
         gravField = GravityFieldFactory.getNormalizedProvider(degree, order)
@@ -771,7 +769,7 @@ class EigenGravityWGS84(GravityFactory):
             # error should be thrown before this when creating gravModel!
             raise ValueError('No gravity potential file loaded!')
 
-        return [propagator, earth, gravField, file_name]
+        return [propagator, gravField, file_name]
 
 
 class EGM96GravityWGS84(GravityFactory):
@@ -784,7 +782,7 @@ class EGM96GravityWGS84(GravityFactory):
             return False
 
     @staticmethod
-    def Setup(propagator, setup):
+    def Setup(propagator, setup, earth):
         """
         Add gravity perturbation using the HolmesFeatherstoneAttractionModel.
 
@@ -812,12 +810,6 @@ class EGM96GravityWGS84(GravityFactory):
         gfReader = EGMFormatReader(supported, False)
         GravityFieldFactory.addPotentialCoefficientsReader(gfReader)
 
-        earth = ReferenceEllipsoid(Cst.WGS84_EARTH_EQUATORIAL_RADIUS,
-                                   Cst.WGS84_EARTH_FLATTENING,
-                                   FramesFactory.getGTOD(IERS.IERS_2010, False),
-                                   Cst.WGS84_EARTH_MU,
-                                   Cst.WGS84_EARTH_ANGULAR_VELOCITY)
-
         degree = setup['degree']
         order = setup['order']
 
@@ -834,7 +826,7 @@ class EGM96GravityWGS84(GravityFactory):
             # error should be trhown before this when creating gravModel!
             raise ValueError('No gravity potential file loaded!')
 
-        return [propagator, earth, gravField, file_name]
+        return [propagator, gravField, file_name]
 #####################################################################
 
 
@@ -853,327 +845,6 @@ class AttitudeFactory(object):
     @abc.abstractmethod
     def Setup(builderInstance):
         """Create setup for attitude provider and add it to propagator."""
-
-
-def discretize_inner_body(discSettings):
-    """
-    Discretized a shoebox-type satellite in cuboid of equal mass.
-
-    Depends on defined number of cuboid in x,y and z
-    direction and total size of satellite.
-
-    Args:
-        discSettings: dictionary with satellite_dim, and number of cuboid in
-                      all 3 directions
-
-    Example of discSettings layout:
-        discSettings:
-            satellite_dim:
-              l_x: 0.793
-              l_y: 0.612
-              l_z: 0.513
-            inner_cuboids:
-              numCub_x: 2
-              numCub_y: 2
-              numCub_z: 2
-
-    Returns:
-        inCub: dictionary with center of mass of each cuboid in satellite
-               frame and its corresponding mass
-    """
-
-    s_l_x = float(discSettings['satellite_dim']['l_x'])
-    s_l_y = float(discSettings['satellite_dim']['l_y'])
-    s_l_z = float(discSettings['satellite_dim']['l_z'])
-
-    # separate cuboid into number of smaller cuboid and store
-    # coordinates of center of mass in satellite frame
-    numC_x = discSettings['inner_cuboids']['numCub_x']
-    numC_y = discSettings['inner_cuboids']['numCub_y']
-    numC_z = discSettings['inner_cuboids']['numCub_z']
-
-    # dimension of inner cuboid:
-    c_l_x = s_l_x / numC_x
-    c_l_y = s_l_y / numC_y
-    c_l_z = s_l_z / numC_z
-
-    # total number of cuboid
-    numC_tot = numC_x * numC_y * numC_z
-
-    # populate satellite with cuboid:
-    inCub = dict()
-    CoM = []
-    CoM_np = np.empty([0, 3])
-    MassCub = []
-    massFrac = 1.0 / numC_tot
-
-    ##################################
-    # delete this once change in attitude prop
-    inCub['mass_frac'] = 1.0 / numC_tot  # mass equally distributed
-    ####################################
-
-    # compute center of mass for each cuboid starting at
-    # top, back, right corner
-    for ix in xrange(numC_x):
-        CoM_x = 0.5 * c_l_x - 0.5 * s_l_x + ix * c_l_x
-        for iy in xrange(numC_y):
-            CoM_y = 0.5 * c_l_y - 0.5 * s_l_y + iy * c_l_y
-            for iz in xrange(numC_z):
-                CoM_z = 0.5 * c_l_z - 0.5 * s_l_z + iz * c_l_z
-
-                CoM.append(Vector3D(float(CoM_x),
-                                    float(CoM_y),
-                                    float(CoM_z)))
-                CoM_np = np.append(CoM_np, [[CoM_x, CoM_y, CoM_z]], axis=0)
-                MassCub.append(massFrac)
-
-    inCub['CoM'] = CoM
-    inCub['CoM_np'] = CoM_np
-
-    return inCub
-
-
-def discretize_outer_surface(solarSettings, discSettings):
-    """
-    Discretization of outer surface of a shoebox satellite into planes of equal area.
-
-    Depends on defined number of surfaces in x,y and z direction and total size
-    of satellite.
-
-    Args:
-        solarSettings: dictionary with settings for solar arrays
-        discSettings: dictionary for discretization of outer surface
-
-    Example of solarSettings:
-        solarSettings:
-              l_x: 1
-              l_z: 1
-              numSRSolar_x: 2
-              numSRSolar_z: 2
-              PosAndDir:
-                SA1:
-                  dCenter: 0 0 0.5
-                  normalV: 0 0 1
-                SA2:
-                  dCenter: 0 0 -0.5
-                  normalV: 0 0 1
-
-    Example of discSettings:
-        discSettings:
-            satellite_dim:
-              l_x: 0.793
-              l_y: 0.612
-              l_z: 0.513
-            inner_cuboids:
-              numCub_x: 2
-              numCub_y: 2
-              numCub_z: 2
-
-    Returns:
-     mesh_dA: dictionary with center of mass and normal vector of each surface
-              in satellite frame and its corresponding area and reflection
-              coefficient
-    """
-
-    s_l_x = float(discSettings['satellite_dim']['l_x'])
-    s_l_y = float(discSettings['satellite_dim']['l_y'])
-    s_l_z = float(discSettings['satellite_dim']['l_z'])
-
-    if s_l_x <= 0. or s_l_y <= 0. or s_l_z <= 0.:
-        raise ValueError("Dimensions of satellite must be bigger than zero!")
-
-    sat_Ca = solarSettings['AbsorbCoeff']
-    sat_Cs = solarSettings['ReflectCoeff']
-    sol_Ca = solarSettings['SolarArray_AbsorbCoeff']
-    sol_Cs = solarSettings['SolarArray_ReflectCoeff']
-
-    numSR_x = int(discSettings['surface_rectangles']['numSR_x'])
-    numSR_y = int(discSettings['surface_rectangles']['numSR_y'])
-    numSR_z = int(discSettings['surface_rectangles']['numSR_z'])
-
-    if numSR_x <= 0 or numSR_y <= 0 or numSR_z <= 0:
-        raise ValueError("Number of cuboid must be bigger than zero!")
-
-    c_l_x = s_l_x / numSR_x
-    c_l_y = s_l_y / numSR_y
-    c_l_z = s_l_z / numSR_z
-
-    area_x = c_l_y * c_l_z  # front and back area
-    area_y = c_l_x * c_l_z  # top and bottom area
-    area_z = c_l_x * c_l_y  # left and right area
-
-    # Center of all Planes
-    front_CoM_x = float(s_l_x * 0.5)
-    back_CoM_x = float(-s_l_x * 0.5)
-    bottom_CoM_y = float(s_l_y * 0.5)
-    top_CoM_y = float(-s_l_y * 0.5)
-    left_CoM_z = float(s_l_z * 0.5)
-    right_CoM_z = float(-s_l_z * 0.5)
-
-    # define normal vectors:
-    front_Normal = Vector3D.PLUS_I
-    back_Normal = Vector3D.MINUS_I
-    bottom_Normal = Vector3D.PLUS_J
-    top_Normal = Vector3D.MINUS_J
-    left_Normal = Vector3D.PLUS_K
-    right_Normal = Vector3D.MINUS_K
-
-    CoM = []
-    CoM_np = np.empty([0, 3])
-    Normal = []
-    Normal_np = np.empty([0, 3])
-    Area = []
-    Coefs = []
-    mesh_dA = dict()
-
-    # front/back from left to right, top to bottom:
-    for iy in xrange(numSR_y):
-        CoM_y = 0.5 * c_l_y - 0.5 * s_l_y + iy * c_l_y
-        for iz in xrange(numSR_z):
-            CoM_z = 0.5 * c_l_z - 0.5 * s_l_z + iz * c_l_z
-
-            CoM.append(Vector3D(front_CoM_x,
-                                CoM_y,
-                                CoM_z))
-            CoM.append(Vector3D(back_CoM_x,
-                                CoM_y,
-                                CoM_z))
-
-            CoM_np = np.append(CoM_np, [[front_CoM_x, CoM_y, CoM_z]], axis=0)
-            CoM_np = np.append(CoM_np, [[back_CoM_x, CoM_y, CoM_z]], axis=0)
-
-            Normal.append(front_Normal)
-            Normal.append(back_Normal)
-
-            Normal_np = np.append(Normal_np, [[1.0, 0.0, 0.0]], axis=0)
-            Normal_np = np.append(Normal_np, [[-1.0, 0.0, 0.0]], axis=0)
-
-            Area.extend([area_x]*2)
-            Coefs.extend([np.array([sat_Ca, sat_Cs])]*2)
-
-    # top/bottom from left to right, back to front:
-    for ix in xrange(numSR_x):
-        CoM_x = 0.5 * c_l_x - 0.5 * s_l_x + ix * c_l_x
-        for iz in xrange(numSR_z):
-            CoM_z = 0.5 * c_l_z - 0.5 * s_l_z + iz * c_l_z
-
-            CoM.append(Vector3D(CoM_x,
-                                bottom_CoM_y,
-                                CoM_z))
-            CoM.append(Vector3D(CoM_x,
-                                top_CoM_y,
-                                CoM_z))
-
-            CoM_np = np.append(CoM_np, [[CoM_x, bottom_CoM_y, CoM_z]], axis=0)
-            CoM_np = np.append(CoM_np, [[CoM_x, top_CoM_y, CoM_z]], axis=0)
-
-            Normal.append(bottom_Normal)
-            Normal.append(top_Normal)
-
-            Normal_np = np.append(Normal_np, [[0.0, 1.0, 0.0]], axis=0)
-            Normal_np = np.append(Normal_np, [[0.0, -1.0, 0.0]], axis=0)
-
-            Area.extend([area_y]*2)
-            Coefs.extend([np.array([sat_Ca, sat_Cs])]*2)
-
-    # left/right from top to bottom, back to front:
-    for ix in xrange(numSR_x):
-        CoM_x = 0.5 * c_l_x - 0.5 * s_l_x + ix * c_l_x
-        for iy in xrange(numSR_y):
-            CoM_y = 0.5 * c_l_y - 0.5 * s_l_y + iy * c_l_y
-
-            CoM.append(Vector3D(CoM_x,
-                                CoM_y,
-                                left_CoM_z))
-            CoM.append(Vector3D(CoM_x,
-                                CoM_y,
-                                right_CoM_z))
-
-            CoM_np = np.append(CoM_np, [[CoM_x, CoM_y, left_CoM_z]], axis=0)
-            CoM_np = np.append(CoM_np, [[CoM_x, CoM_y, right_CoM_z]], axis=0)
-
-            Normal.append(left_Normal)
-            Normal.append(right_Normal)
-
-            Normal_np = np.append(Normal_np, [[0.0, 0.0, 1.0]], axis=0)
-            Normal_np = np.append(Normal_np, [[0.0, 0.0, -1.0]], axis=0)
-
-            Area.extend([area_z]*2)
-            Coefs.extend([np.array([sat_Ca, sat_Cs])]*2)
-
-    # discretization of 2D solar arrays
-    if 'SolarArrays' in discSettings:
-        solarSettings = discSettings['SolarArrays']
-
-        dCList = []
-        normalList = []
-
-        for SolarArray in solarSettings['PosAndDir'].values():
-            # deviation of Solar Array from Satellite CoM:
-            dC = [float(x) for x in SolarArray['dCenter'].split(" ")]
-            normal = [float(x) for x in SolarArray['normalV'].split(" ")]
-            dCList.append(np.array(dC))
-            normalList.append(np.array(normal))
-
-        assert len(dCList) == len(normalList)
-
-        sol_l_x = float(solarSettings['l_x'])
-        sol_l_z = float(solarSettings['l_z'])
-
-        if sol_l_x <= 0. or sol_l_z <= 0.:
-            raise ValueError("Dimensions of solar panels must be bigger than zero!")
-
-        numSRSolar_x = solarSettings['numSRSolar_x']
-        numSRSolar_z = solarSettings['numSRSolar_z']
-
-        if numSRSolar_x <= 0 or numSRSolar_z <= 0:
-            raise ValueError("Number of rectangles must be bigger than zero!")
-
-        c_l_x = sol_l_x / numSRSolar_x
-        c_l_z = sol_l_z / numSRSolar_z
-
-        solArea = c_l_x * c_l_z
-
-        for ix in xrange(numSRSolar_x):
-            CoM_x = 0.5 * c_l_x - 0.5 * sol_l_x + ix * c_l_x
-            for iz in xrange(numSRSolar_z):
-                CoM_z = 0.5 * c_l_z - 0.5 * sol_l_z + iz * c_l_z
-
-                for dC, normal in itertools.izip(dCList, normalList):
-                    CoM.append(Vector3D(float(dC[0] + CoM_x),
-                                        float(dC[1]),
-                                        float(dC[2] + CoM_z)))
-                    CoM_np = np.append(CoM_np, [[dC[0] + CoM_x, dC[1], dC[2] + CoM_z]], axis=0)
-
-                    Normal.append(Vector3D(float(normal[0]),
-                                           float(normal[1]),
-                                           float(normal[2])))
-                    Normal_np = np.append(Normal_np, [[normal[0], normal[1], normal[2]]], axis=0)
-
-                    Area.append(solArea)
-                    Coefs.append(np.array([sol_Ca, sol_Cs]))
-
-    # fill dictionary with lists:
-    mesh_dA['CoM'] = CoM
-    mesh_dA['CoM_np'] = CoM_np.astype(float)
-    mesh_dA['Normal'] = Normal
-    mesh_dA['Normal_np'] = Normal_np.astype(float)
-    mesh_dA['Area'] = Area
-    mesh_dA['Area_np'] = np.asarray(Area)
-    mesh_dA['Coefs'] = Coefs
-
-    # add to coefs diffusive reflection coefficient
-    Coefs_np = np.asarray(Coefs)
-    col = np.array([1 - np.sum(Coefs_np, axis=1)])
-    Coefs_np = np.concatenate((Coefs_np, col.T), axis=1)
-    try:
-        assert(any(Coefs_np[:, 2] >= 0))
-    except AssertionError:
-        raise AssertionError(
-            "Negative diffuse reflection coefficient not possible!")
-    mesh_dA['Coefs_np'] = Coefs_np
-
-    return mesh_dA
 
 
 class AttNadir(AttitudeFactory):
@@ -1197,11 +868,7 @@ class AttNadir(AttitudeFactory):
             Propagator: propagator
         """
         propagator = builderInstance.propagator
-
-        if builderInstance.earth is not None:
-            earth = builderInstance.earth
-        else:
-            earth = _build_default_earth('AttNadir')
+        earth = builderInstance.earth
 
         attitude = NadirPointing(builderInstance.inertialFrame,
                                  earth)
@@ -1237,14 +904,11 @@ class AttPropagation(AttitudeFactory):
 
         propagator = builderInstance.propagator
         setup = builderInstance.attSettings['settings']
-        if builderInstance.earth is not None:
-            earth = builderInstance.earth
-        else:
-            earth = _build_default_earth('Attitude Propagation')
+        earth = builderInstance.earth
 
         iT_dict = setup['inertiaTensor']
         int_dict = setup['integrator']
-        discSettings = setup['Discretization']
+        discretization = setup['Discretization']
 
         gravitySettings = setup['GravityGradient']
         solarSettings = setup['SolarPressure']
@@ -1271,9 +935,23 @@ class AttPropagation(AttitudeFactory):
         Iz = [float(x) for x in iT_dict['Iz'].split(" ")]
         inertiaT = np.array([Ix, Iy, Iz])
 
+        # find discretization class if needed
+        if 'type' in discretization:
+            type_disc = None
+            types_clases = [cls() for cls in DiscInterface.__subclasses__()]
+            for disc in types_clases:
+                # look for subclasses with same name and store correct class
+                if discretization['type'] == disc.__class__.__name__:
+                    type_disc = 'type'
+                    break
+            if type_disc is None and \
+               (gravitySettings['add'] or solarSettings['add'] or dragSettings['add']):
+                # discretization type not defined but discretization needed..
+                raise ValueError("No discretization type defined in settings file!")
+
         # add Gravity Gradient Torque to Attitude Propagation:
         if gravitySettings['add']:
-            innerCuboids = discretize_inner_body(discSettings)
+            innerCuboids = disc.discretize_inner_body(discretization['settings'])
 
             # use own Gravity Model with own Field Coefficients
             degree = gravitySettings['FC_degree']
@@ -1286,8 +964,8 @@ class AttPropagation(AttitudeFactory):
                                         gravField)
 
         if solarSettings['add'] or dragSettings['add']:
-
-            surfaceMesh = discretize_outer_surface(solarSettings, discSettings)
+            surfaceMesh = disc.discretize_outer_surface(solarSettings,
+                                                        discretization['settings'])
             sun = CelestialBodyFactory.getSun()
 
             if solarSettings['add']:
@@ -1558,10 +1236,7 @@ class DragDTM2000MSAFE(DragFactory):
         """
 
         propagator = builderInstance.propagator
-        if builderInstance.earth is not None:
-            earth = builderInstance.earth
-        else:
-            earth = _build_default_earth('DragDTM2000')
+        earth = builderInstance.earth
         starfighter = builderInstance.spacecraft
         dragModel = builderInstance.orbSettings['DragModel']
         sun = CelestialBodyFactory.getSun()
@@ -1615,10 +1290,7 @@ class DragDTM2000CELESTRACK(DragFactory):
             atmosphere: DTM2000 model of atmosphere
         """
         propagator = builderInstance.propagator
-        if builderInstance.earth is not None:
-            earth = builderInstance.earth
-        else:
-            earth = _build_default_earth('DragDTM2000')
+        earth = builderInstance.earth
         starfighter = builderInstance.spacecraft
         dragModel = builderInstance.orbSettings['DragModel']
         sun = CelestialBodyFactory.getSun()
@@ -1684,10 +1356,7 @@ class SolarPressureBoxModel(SolarPressureFactory):
         """
 
         propagator = builderInstance.propagator
-        if builderInstance.earth is not None:
-            earth = builderInstance.earth
-        else:
-            earth = _build_default_earth('SolarPressureBoxModel')
+        earth = builderInstance.earth
 
         starfighter = builderInstance.spacecraft
         solarSett = builderInstance.orbSettings['SolarModel']

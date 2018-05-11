@@ -4,10 +4,10 @@ propagator_settings:
   name: "TARGET"
   orbitProp:
     State:
-      type: 'KeplerianEME2000'
+      type: 'KeplerianEME2000' # CartesianITRF
       settings:
         mass: 0.82 # kg
-        rotation: 1 0 0 0 # quaternions
+        rotation: 1 0 0 0 # quaternions - q0 = scalar part
         spin: 0 0 0 # omega in [deg/s]
         acceleration: 0 0 0
     Gravity:

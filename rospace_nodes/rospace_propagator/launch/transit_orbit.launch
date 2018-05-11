@@ -4,13 +4,13 @@
 
 	<node pkg="rospace_propagator" name="propagator_abs" type="propagation_node.py" output="screen">
 		<param name="oe_ta_rel" type="bool" value="False" />
-		<param name="oe_ch_init" type="yaml" value="{a: 7000, e: 0.0001, i: 55, O: 60, w: 120, v: 0.001}" />
+		<param name="oe_ch_init" type="yaml" value="{a: 7128, e: 0.0032, i: 90.01, O: 60, w: 120, v: 0.001}" />
 		<param name="oe_ta_init" type="yaml" value="{a: 7000, e: 0.0001, i: 30, O: 60, w: 120, v: 0.001}" />
 	
-		<param name="oe_epoch" value="20120913T17:00:00"/>
-		<param name="TIME_SHIFT" type="double" value="400.0" />
+		<param name="oe_epoch" value="19631001T12:00:00"/>
+		<param name="TIME_SHIFT" type="double" value="100.0" />
 		<param name="frequency" value="0.0" />
-		<param name="step_size" value="30." />
+		<param name="step_size" value="1." />
 
 		<param name="ns_chaser" value="$(arg ns_chaser)" />
 		<param name="ns_target" value="$(arg ns_target)" />

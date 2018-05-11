@@ -12,8 +12,6 @@ import PropagatorBuilder as PB
 import os
 from math import degrees, sin, cos
 
-import timeit
-
 from FileDataHandler import FileDataHandler, to_orekit_date
 
 import orekit
@@ -28,7 +26,7 @@ from org.orekit.frames import TopocentricFrame
 from org.hipparchus.geometry.euclidean.threed import Vector3D
 
 
-class DisturbanceTorques(object):
+class DisturbanceTorqueStorage(object):
     '''Stores disturbance torques in satellite frame and their activation
     status in numpy array.
 
@@ -148,7 +146,7 @@ class OrekitPropagator(object):
 
     def _write_d_torques(self):
 
-        dtorque = DisturbanceTorques()
+        dtorque = DisturbanceTorqueStorage()
 
         if self._hasAttitudeProp:
             dtorque.add = self.attProv.getAddedDisturbanceTorques()
@@ -164,7 +162,6 @@ class OrekitPropagator(object):
         self._propagator_num = None
         self._hasAttitudeProp = False
         self._hasThrust = False
-        self._GMmodel = None
 
     def initialize(self, propSettings, state, epoch):
         """

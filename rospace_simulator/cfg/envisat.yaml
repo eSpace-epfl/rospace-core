@@ -5,6 +5,9 @@ propagator_settings:
       type: 'CartesianITRF'
       settings:
         mass: 7990.0 # kg
+        rotation: 'nadir' # quaternions or nadir
+        spin: 10 5 5 # omega in [deg/s]
+        acceleration: 0 0 0
     integrator: # Steps have to be floats
       minStep: 0.001
       maxStep: 60
