@@ -2,7 +2,7 @@
     <arg name="ns_chaser" />
     <arg name="ns_target" />
 
-	<node pkg="rospace_propagator" name="propagator_abs" type="propagation_node.py" output="screen" launch-prefix="yappi -b -f callgrind -o /home/christian/Documents/ETH/MasterThesis/Profiling/Vectorization/yappi.out">
+	<node pkg="rospace_propagator" name="propagator_abs" type="PropagationNode.py" output="screen">
 		<param name="oe_ta_rel" type="bool" value="False" />
 		<param name="oe_ch_init" type="yaml" value="{a: 7000, e: 0.0001, i: 68, O: 60, w: 120, v: 0.001}" />
 		<param name="oe_ta_init" type="yaml" value="{a: 7000, e: 0.0001, i: 30, O: 60, w: 120, v: 0.001}" />
@@ -29,5 +29,4 @@
 		<remap from="IspMean_target" to="/$(arg ns_target)/IspMean" />
 	</node>
 
-	<node pkg="rospace_propagator" name="propa_publa" type="test_publisher.py" output="screen" />
 </launch>

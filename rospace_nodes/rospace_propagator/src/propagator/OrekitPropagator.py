@@ -22,6 +22,7 @@ from org.orekit.python import PythonAttitudePropagation as PAP
 from orekit.pyhelpers import setup_orekit_curdir
 from org.orekit.data import DataProvidersManager, ZipJarCrawler
 from org.orekit.frames import TopocentricFrame
+from org.orekit.propagation import SpacecraftState
 
 from org.hipparchus.geometry.euclidean.threed import Vector3D
 
@@ -250,6 +251,19 @@ class OrekitPropagator(object):
         # Place where all the magic happens:
         state = self._propagator_num.propagate(orekit_date)
 
+        if self._hasAttitudeProp:
+            # get attitude of last time step at add it to new state
+            # propagator does update of last step before new orbit propagation step
+            old_state = self._propagator_num.getInitialState()
+            orbit = old_state.getOrbit()
+            date = old_state.getDate()
+            frame = old_state.getFrame()
+
+            att_corr = self._propagator_num.getAttitudeProvider()\
+                           .getAttitude(orbit, date, frame)
+            state = SpacecraftState(orbit, att_corr, old_state.getMass())
+            self._propagator_num.setInitialState(state)
+
         # return and store output of propagation
         dtorque = self._write_d_torques()
         [cart_teme, att, force_sF] = self._write_satellite_state(state)
@@ -258,10 +272,10 @@ class OrekitPropagator(object):
         return [cart_teme, att, force_sF, dtorque, B_field_b]
 
     def _calculate_magnetic_field(self, oDate):
-        spacecraftState = self._propagator_num.getInitialState()
-        satPos = spacecraftState.getPVCoordinates().getPosition()
-        inertial2Sat = spacecraftState.getAttitude().getRotation()
-        frame = spacecraftState.getFrame()
+        space_state = self._propagator_num.getInitialState()
+        satPos = space_state.getPVCoordinates().getPosition()
+        inertial2Sat = space_state.getAttitude().getRotation()
+        frame = space_state.getFrame()
 
         gP = self._earth.transform(satPos, frame, oDate)
 

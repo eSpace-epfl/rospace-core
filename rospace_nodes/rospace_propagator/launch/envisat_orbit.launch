@@ -2,7 +2,7 @@
     <arg name="ns_chaser" />
     <arg name="ns_target" />
 
-	<node pkg="rospace_propagator" name="propagator_abs" type="propagation_node.py" output="screen" cwd="node">
+	<node pkg="rospace_propagator" name="propagator_abs" type="PropagationNode.py" output="screen" cwd="node">
 		<param name="oe_ta_rel" type="bool" value="False" />
 		<param name="oe_ch_init" type="yaml" value="{x: +1120743.995, y: +1098821.761, z: -6978762.588, xDot: +7433.379060, yDot: +0106.713670, zDot: +1210.719708}" />
 		<param name="oe_ta_init" type="yaml" value="{x: -6416585.202, y: -0633589.348, z: +3075123.638, xDot: -3333.516275, yDot: +1376.946250, zDot: -6648.182832}" />
