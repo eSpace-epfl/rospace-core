@@ -5,6 +5,7 @@
 # This file is licensed under the terms of the zlib license.
 # See the LICENSE.md file in the root of this repository
 # for complete details.
+
 import abc
 import numpy as np
 from math import sqrt, degrees
@@ -23,15 +24,6 @@ from org.orekit.frames import TopocentricFrame
 
 from org.hipparchus.geometry.euclidean.threed import Vector3D
 from org.hipparchus.util import Precision
-
-
-# @copyright Copyright (c) 2018, Christian Lanegger (lanegger.christian@gmail.com)
-#
-# @license zlib license
-#
-# This file is licensed under the terms of the zlib license.
-# See the LICENSE.md file in the root of this repository
-# for complete details.
 
 
 class DisturbanceTorqueInterface(object):
