@@ -32,6 +32,12 @@ from std_srvs.srv import Empty
 
 
 class ExitServer(threading.Thread):
+    '''Server which shuts down node correctly when called.
+
+    Rospy currently has a bug which doesn't shutdown the node correctly.
+    This causes a problem when a profiler is used, as the results are not output
+    if shut down is not performed in the right way.
+    '''
     def __init__(self):
         threading.Thread.__init__(self)
         self.exiting = False
@@ -203,6 +209,17 @@ def cart_to_msgs(cart, att, time):
 
 
 def force_torque_to_msgs(force, torque, time):
+    """Packs force and torque vectors in satellite frame to message.
+
+    Args:
+        force: force vector acting on satellite
+        torque: DisturbanceTorqueStorage object holding current torques acting on satellite
+        time: time stamp
+
+    Returns:
+       msg.WrenchStamped: message for total force and torque acting on satellite
+       msg.SatelliteTorque: message for individual disturbance torques
+    """
 
     FT_msg = WrenchStamped()
 
@@ -250,6 +267,15 @@ def force_torque_to_msgs(force, torque, time):
 
 
 def Bfield_to_msgs(bfield, time):
+    """Packs the local magnetic field to message.
+
+    Args:
+        bfield: local magnetic field vector in satellite frame
+        time: time stamp
+
+    Returns:
+       msg.Vector3Stamped: message for the local magnetic field vector
+    """
 
     msg = Vector3Stamped()
 

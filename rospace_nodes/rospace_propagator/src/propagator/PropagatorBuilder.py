@@ -10,10 +10,10 @@ import abc
 import numpy as np
 import math
 
+import FileDataHandler
 from ThrustModel import ThrustModel
 from AttitudePropagation import AttitudePropagation
 from StateObserver import StateObserver
-
 from SatelliteDiscretization import DiscretizationInterface as DiscInterface
 
 from org.orekit.python import PythonEventHandler
@@ -82,7 +82,7 @@ def _build_default_gravity_Field(methodName):
 
 def _build_default_earth():
     '''
-    Build earth object using OneAxisElliposoid and GTOD as body frame.
+    Build earth object using ReferenceElliposoid and GTOD as body frame.
 
     Uses Constants based on WGS84 Standard from Orekit library.
 
@@ -100,26 +100,6 @@ def _build_default_earth():
                               FramesFactory.getGTOD(IERS.IERS_2010, False),
                               Cst.WGS84_EARTH_MU,
                               Cst.WGS84_EARTH_ANGULAR_VELOCITY)
-
-
-def _get_name_of_loaded_files(folder_name):
-    '''
-    Gets names of files in defined folder loaded by the data provider.
-
-    Args:
-        folder_name: string of folder name containing files
-
-    Returns:
-        List<String>: all file names loaded by data provider in folder
-    '''
-    file_names = []
-    manager = DataProvidersManager.getInstance()
-    string_set = manager.getLoadedDataNames()
-    for i in string_set:
-        if folder_name in i:
-            file_names.append(i.rsplit('/', 1)[1])
-
-    return file_names
 
 
 class Builder(object):
@@ -762,7 +742,7 @@ class EigenGravityWGS84(GravityFactory):
 
         propagator.addForceModel(gravModel)
 
-        file_name = _get_name_of_loaded_files('Potential')
+        file_name = FileDataHandler._get_name_of_loaded_files('Potential')
         if len(file_name) > 1:
             file_name = file_name[0]  # Orekit uses first loaded file
         elif len(file_name) == 0:
@@ -819,7 +799,7 @@ class EGM96GravityWGS84(GravityFactory):
 
         propagator.addForceModel(gravModel)
 
-        file_name = _get_name_of_loaded_files('Potential')
+        file_name = FileDataHandler._get_name_of_loaded_files('Potential')
         if len(file_name) > 1:
             file_name = file_name[0]  # orekit uses first loaded file
         elif len(file_name) == 0:
@@ -859,7 +839,7 @@ class AttNadir(AttitudeFactory):
     @staticmethod
     def Setup(builderInstance):
         """
-        Adding Attitude Provider aligning z-axis of the Spacecraft and nadir.
+        Adding Orekit's Attitude Provider aligning the z-axis of the spacecraft with nadir.
 
         Args:
             builderInstance: Instance of propagator builder
@@ -892,16 +872,14 @@ class AttPropagation(AttitudeFactory):
         """
         Implements Attitude propagation and sets it as attitude provider.
 
+        The attitude propagator accounts for disturbance torques defined in settings cfg file.
+
         Args:
             builderInstance: Instance of propagator builder
 
         Returns:
             Propagator: propagator
         """
-        mesg = "\033[91m  [WARN] Attitude Propagation still very buggy and unreliable" + \
-               " Use at own risk!\033[0m"
-        print mesg
-
         propagator = builderInstance.propagator
         setup = builderInstance.attSettings['settings']
         earth = builderInstance.earth
