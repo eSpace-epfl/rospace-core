@@ -501,6 +501,21 @@ class StateFactory(object):
 
 
 def _build_satellite_attitude(setup, orbit_pv, inertialFrame, earth, epoch):
+    '''Creates the initial attitude of the spacecraft based on the provided settings.
+
+    If nadir pointing is defined the method takes the initial position and defines the correct
+    rotation by using OREKIT's NadirPointing attiude provider.
+
+    Args:
+        setup: additional settings defined in dictionary
+        orbit_pv: PVCoordinatesProvider from Orbit object
+        inertialFrame: inertial Frame of propagation
+        earth: Earth body object
+        epoch: initial epoch as AbsoluteDate object
+
+    Returns:
+        Attitude: OREKIT's atttiude object with the correct initial attiude
+    '''
     if setup['rotation'] == 'nadir':
             satRot = NadirPointing(inertialFrame, earth). \
                       getAttitude(orbit_pv, epoch, inertialFrame). \

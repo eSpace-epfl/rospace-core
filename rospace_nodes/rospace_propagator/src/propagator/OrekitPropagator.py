@@ -119,7 +119,7 @@ class OrekitPropagator(object):
         from Java object and put it in a numpy array.
 
         Args:
-            PVCoordinates: satellite state vector
+            SpacecraftState: satellite state vector
 
         Returns:
             numpy.array: cartesian state vector in TEME frame

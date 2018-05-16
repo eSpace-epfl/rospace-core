@@ -1,3 +1,11 @@
+# @copyright Copyright (c) 2018, Christian Lanegger (lanegger.christian@gmail.com)
+#
+# @license zlib license
+#
+# This file is licensed under the terms of the zlib license.
+# See the LICENSE.md file in the root of this repository
+# for complete details.
+
 import itertools
 import numpy as np
 import abc
@@ -59,11 +67,17 @@ class BoxWingModel(DiscretizationInterface):
         s_l_y = float(discSettings['satellite_dim']['l_y'])
         s_l_z = float(discSettings['satellite_dim']['l_z'])
 
+        if s_l_x <= 0. or s_l_y <= 0. or s_l_z <= 0.:
+            raise ValueError("Dimensions of satellite must be bigger than zero!")
+
         # separate cuboid into number of smaller cuboid and store
         # coordinates of center of mass in satellite frame
         numC_x = discSettings['inner_cuboids']['numCub_x']
         numC_y = discSettings['inner_cuboids']['numCub_y']
         numC_z = discSettings['inner_cuboids']['numCub_z']
+
+        if numC_x <= 0 or numC_y <= 0 or numC_z <= 0:
+            raise ValueError("Number of cuboid must be bigger than zero!")
 
         # dimension of inner cuboid:
         c_l_x = s_l_x / numC_x
@@ -78,7 +92,6 @@ class BoxWingModel(DiscretizationInterface):
         CoM = []
         CoM_np = np.empty([0, 3])
         dm_Cub = np.empty([0, 1])
-        dm_boom = np.empty([0, 1])
         massFrac = 1.0 / numC_tot
 
         # compute center of mass for each cuboid starting at
@@ -97,20 +110,24 @@ class BoxWingModel(DiscretizationInterface):
                     dm_Cub = np.append(dm_Cub, [[massFrac]], axis=0)  # uniform distribution for satellite atm
 
         # add booms to list:
-        for boom in discSettings['Booms'].items():
-            boom_dir = np.asarray([float(x) for x in boom[1]['dir'].split(" ")])
-            norm_dir = np.linalg.norm(boom_dir)
-            if norm_dir > 1.:
-                # normalize if necessary
-                boom_dir = boom_dir / norm_dir
+        if 'Booms' in discSettings:
+            dm_boom = np.empty([0, 1])
 
-            CoM_np = np.append(CoM_np, [float(boom[1]['length']) * boom_dir], axis=0)
-            dm_boom = np.append(dm_boom, [[float(boom[1]['mass'])]], axis=0)
+            for boom in discSettings['Booms'].items():
+                boom_dir = np.asarray([float(x) for x in boom[1]['dir'].split(" ")])
+                norm_dir = np.linalg.norm(boom_dir)
+                if norm_dir > 1.:
+                    # normalize if necessary
+                    boom_dir = boom_dir / norm_dir
+
+                CoM_np = np.append(CoM_np, [float(boom[1]['length']) * boom_dir], axis=0)
+                dm_boom = np.append(dm_boom, [[float(boom[1]['mass'])]], axis=0)
+
+            inCub['dm_boom'] = dm_boom
 
         # inCub['CoM'] = CoM
         inCub['CoM_np'] = CoM_np
         inCub['dm'] = dm_Cub
-        inCub['dm_boom'] = dm_boom
 
         return inCub
 
@@ -208,7 +225,7 @@ class BoxWingModel(DiscretizationInterface):
         Coefs = []
         mesh_dA = dict()
 
-        # front/back from left to right, top to bottom:
+        # front/back from left to right, bottom to top:
         for iy in xrange(numSR_y):
             CoM_y = 0.5 * c_l_y - 0.5 * s_l_y + iy * c_l_y
             for iz in xrange(numSR_z):
