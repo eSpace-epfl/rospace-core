@@ -59,6 +59,8 @@ class SimTimeUpdater(object):
         # maximal step size, run at real time if not defined
         if step_size is not None:
             self.step_size = step_size
+        elif self.rate == 0:
+            self.step_size = 0.1  # otherwise step size too small
         else:
             self.step_size = self.rate
 

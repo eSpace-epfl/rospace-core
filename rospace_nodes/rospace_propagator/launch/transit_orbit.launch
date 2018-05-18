@@ -2,18 +2,19 @@
     <arg name="ns_chaser" />
     <arg name="ns_target" />
 
-	<node pkg="rospace_propagator" name="propagator_abs" type="PropagationNode.py" output="screen" cwd="node">
+	<node pkg="rospace_propagator" name="propagator_abs" type="PropagationNode.py" output="screen">
 		<param name="oe_ta_rel" type="bool" value="False" />
-		<param name="oe_ch_init" type="yaml" value="{x: +1120743.995, y: +1098821.761, z: -6978762.588, xDot: +7433.379060, yDot: +0106.713670, zDot: +1210.719708}" />
-		<param name="oe_ta_init" type="yaml" value="{x: -6416585.202, y: -0633589.348, z: +3075123.638, xDot: -3333.516275, yDot: +1376.946250, zDot: -6648.182832}" />
-
-		<param name="oe_epoch" value="20120205T21:55:26"/>
-		<param name="TIME_SHIFT" type="double" value="200.0" />
+		<param name="oe_ch_init" type="yaml" value="{a: 7128, e: 0.0032, i: 90.01, O: 60, w: 120, v: 0.001}" />
+		<param name="oe_ta_init" type="yaml" value="{a: 7000, e: 0.0001, i: 30, O: 60, w: 120, v: 0.001}" />
+	
+		<param name="oe_epoch" value="19631001T12:00:00"/>
+		<param name="TIME_SHIFT" type="double" value="100.0" />
 		<param name="frequency" value="0.0" />
-		<param name="step_size" value="60.0" /> 
+		<param name="step_size" value="1." />
 
 		<param name="ns_chaser" value="$(arg ns_chaser)" />
 		<param name="ns_target" value="$(arg ns_target)" />
+
 		<remap from="oe_chaser" to="/$(arg ns_chaser)/oe" />
 		<remap from="oe_target" to="/$(arg ns_target)/oe" />
 		<remap from="pose_chaser" to="/$(arg ns_chaser)/pose" />

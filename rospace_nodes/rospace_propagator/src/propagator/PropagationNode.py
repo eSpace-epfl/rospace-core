@@ -18,7 +18,6 @@ import threading
 import message_filters
 import rospace_lib
 
-from time import sleep
 from math import radians
 
 from OrekitPropagator import OrekitPropagator
@@ -33,6 +32,12 @@ from std_srvs.srv import Empty
 
 
 class ExitServer(threading.Thread):
+    '''Server which shuts down node correctly when called.
+
+    Rospy currently has a bug which doesn't shutdown the node correctly.
+    This causes a problem when a profiler is used, as the results are not output
+    if shut down is not performed in the right way.
+    '''
     def __init__(self):
         threading.Thread.__init__(self)
         self.exiting = False
@@ -204,6 +209,17 @@ def cart_to_msgs(cart, att, time):
 
 
 def force_torque_to_msgs(force, torque, time):
+    """Packs force and torque vectors in satellite frame to message.
+
+    Args:
+        force: force vector acting on satellite
+        torque: DisturbanceTorqueStorage object holding current torques acting on satellite
+        time: time stamp
+
+    Returns:
+       msg.WrenchStamped: message for total force and torque acting on satellite
+       msg.SatelliteTorque: message for individual disturbance torques
+    """
 
     FT_msg = WrenchStamped()
 
@@ -251,6 +267,15 @@ def force_torque_to_msgs(force, torque, time):
 
 
 def Bfield_to_msgs(bfield, time):
+    """Packs the local magnetic field to message.
+
+    Args:
+        bfield: local magnetic field vector in satellite frame
+        time: time stamp
+
+    Returns:
+       msg.Vector3Stamped: message for the local magnetic field vector
+    """
 
     msg = Vector3Stamped()
 
@@ -271,10 +296,6 @@ if __name__ == '__main__':
     SimTime = rospace_lib.clock.SimTimePublisher()
     SimTime.set_up_simulation_time()
 
-    # Subscribe to propulsion node and attitude control
-    thrust_force = message_filters.Subscriber('force', WrenchStamped)
-    thrust_ispM = message_filters.Subscriber('IspMean', ThrustIsp)
-
     # Init publisher and rate limiter
     pub_ch = rospy.Publisher('oe_chaser', SatelitePose, queue_size=10)
     pub_pose_ch = rospy.Publisher('pose_chaser', PoseVelocityStamped, queue_size=10)
@@ -292,8 +313,8 @@ if __name__ == '__main__':
 
     OrekitPropagator.init_jvm()
 
+    # Initialize Data handlers, loading data in orekit .zip file
     FileDataHandler.load_magnetic_field_models(SimTime.datetime_oe_epoch)
-    FileDataHandler.create_data_validity_checklist()
 
     prop_chaser = OrekitPropagator()
     # get settings from yaml file
@@ -303,10 +324,12 @@ if __name__ == '__main__':
                            init_state_ch,
                            SimTime.datetime_oe_epoch)
 
-    # add callback to thrust function
-    Tsync = message_filters.TimeSynchronizer([thrust_force, thrust_ispM], 10)
-    Tsync.registerCallback(prop_chaser.thrust_torque_callback)
-    # att_sub.registerCallback(prop_chaser.attitude_fixed_rot_callback)
+    # Subscribe to propulsion node and attitude control if one of those is active
+    if prop_chaser._hasThrust or prop_chaser._hasAttitudeProp:
+        external_force_ch = message_filters.Subscriber('force_chaser', WrenchStamped)
+        thrust_ispM_ch = message_filters.Subscriber('IspMean_chaser', ThrustIsp)
+        Tsync = message_filters.TimeSynchronizer([external_force_ch, thrust_ispM_ch], 10)
+        Tsync.registerCallback(prop_chaser.thrust_torque_callback)
 
     prop_target = OrekitPropagator()
     # get settings from yaml file
@@ -315,6 +338,15 @@ if __name__ == '__main__':
     prop_target.initialize(propSettings,
                            init_state_ta,
                            SimTime.datetime_oe_epoch)
+
+    # Subscribe to propulsion node and attitude control if one of those is active
+    if prop_target._hasThrust or prop_target._hasAttitudeProp:
+        external_force_ta = message_filters.Subscriber('force_target', WrenchStamped)
+        thrust_ispM_ta = message_filters.Subscriber('IspMean_target', ThrustIsp)
+        Tsync = message_filters.TimeSynchronizer([external_force_ta, thrust_ispM_ta], 10)
+        Tsync.registerCallback(prop_target.thrust_torque_callback)
+
+    FileDataHandler.create_data_validity_checklist()
 
     rospy.loginfo("Propagators initialized!")
 
