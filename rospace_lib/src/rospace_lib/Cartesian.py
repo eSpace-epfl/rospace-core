@@ -17,8 +17,10 @@ from Constants import *
 class CartesianFrame:
     UNDEF = "UNDEF"
     TEME = "TEME"
+    PERI = "PERI"
     ITRF = "ITRF"
     LVLH = "LVLH"
+    LVC = "LVC"
 
 
 class Cartesian(BaseState):
@@ -38,12 +40,17 @@ class Cartesian(BaseState):
 
         self.frame = CartesianFrame.UNDEF
 
-    def from_lvlh_frame(self, target, lvlh_chaser):
-        """Initialize cartesian frame from LVLH and target cartesian
-  	
+    def from_lvlh_frame(self, target, lvlh_chaser, mu=mu_earth):
+        """
+            Initialize cartesian frame from LVLH and target cartesian
+
+        References:
+            Howard D. Curtis, Orbital Mechanics for Engineering Students, Ch. 1 and 7
+
         Args:
             target (space_tf.Cartesian):  Target Cartesian position
             lvlh_chaser (space_tf.CartesianLVLH):  Chaser LVLH Cartesian position
+            mu (constant): Standard gravitational parameter of the body we are orbiting (default: Earth)
         """
         # Get rotation matrix from target absolute position
         R_TL_T = target.get_lof()
@@ -53,8 +60,12 @@ class Cartesian(BaseState):
         p_TL = lvlh_chaser.R
         v_TL = lvlh_chaser.V
 
+        # Evaluate the actual rotational speed of the LVLH frame
+        H = np.cross(target.R, target.V)
+        O_T = H / np.linalg.norm(target.R)**2
+
         self.R = target.R + R_T_TL.dot(p_TL)
-        self.V = target.V + R_T_TL.dot(v_TL)
+        self.V = target.V + R_T_TL.dot(v_TL) + np.cross(O_T, R_T_TL.dot(p_TL))
 
     def from_keporb(self, keporb):
         """Sets cartesian state from Keplerian Orbital elements.
@@ -80,6 +91,9 @@ class Cartesian(BaseState):
         Base vector i is aligned with the line between spacecraft and center of earth
         Base vector j is the negative crossproduct(i,k)
         Base vector k is aligned with the orbit angular momentum
+
+        Conversion from Earth-Intertial to LVLH frame:
+        p_LVLH = B * p_TEM
 
         Returns:
             numpy.array: 3x3 Matrix containing base vectors i,j,k in current frame
@@ -110,6 +124,38 @@ class CartesianITRF(Cartesian):
     def __init__(self):
         super(CartesianITRF, self).__init__()
         self.frame = CartesianFrame.ITRF
+
+
+class CartesianPERI(Cartesian):
+    """ Class that holds the perifocal coordinates.
+
+    """
+
+    def __init__(self):
+        super(CartesianPERI, self).__init__()
+        self.frame = CartesianFrame.PERI
+
+    def from_keporb(self, keporb):
+        """ Sets perifocal coordinates given keplerian orbital elements.
+
+        Ref: H. D. Curtis, Orbital Mechanics For Engineering Students, p. 76-77
+
+        Args:
+            keporb (KepOrbElem): Spacecraft position in terms of keplerian orbital elements.
+
+        """
+
+        a = keporb.a
+        e = keporb.e
+        v = keporb.v
+
+        p = a * (1.0 - e**2)
+
+        self.R = p / (1.0 + e * np.cos(v)) * np.array([np.cos(v), np.sin(v), 0.0])
+        self.V = np.sqrt(mu_earth / p) * np.array([-np.sin(v), e + np.cos(v), 0.0])
+
+    def from_cartesian(self, cartesian):
+        raise RuntimeError("Method currently not supported")
 
 
 class CartesianLVLH(Cartesian):
@@ -181,10 +227,14 @@ class CartesianLVLH(Cartesian):
         R_TL_T = target.get_lof()
 
         # get vector from target to chaser in TEME in [km]
-        p_T_C = (chaser.R - target.R)
+        p_T_C = chaser.R - target.R
+
+        # Evaluate the actual rotational speed of the LVLH frame
+        H = np.cross(target.R, target.V)
+        O_T = H / np.linalg.norm(target.R)**2
 
         # get the relative velocity of chaser w.r.t target in TEME [km/s]
-        v_T_C = chaser.V - target.V
+        v_T_C = chaser.V - target.V - np.cross(O_T, p_T_C)
 
         # get chaser position and velocity in target LVLH frame
         p_TL_C = R_TL_T.dot(p_T_C)
@@ -206,16 +256,19 @@ class CartesianLVC(Cartesian):
 
     def __init__(self):
         super(CartesianLVC, self).__init__()
-
-        self.dR = 0
-        self.dV = 0
-        self.dH = 0
-
-        self.frame = CartesianFrame.UNDEF
+        self.frame = CartesianFrame.LVC
 
     def from_keporb(self, chaser, target):
         """
             Given chaser and target (mean) orbital elements, evaluate radial distance and true anomaly difference.
+
+            Has been defined manually, following this procedure:
+
+            dR :   Defined as a radial distance between chaser and target.
+            dV :   Defined as the difference between the sum of true anomaly and argument of perigee of chaser
+                   and target. Useful to evaluate in terms of radiants the distance and the position of the
+                   target w.r.t the chaser.
+            dH :   Angular distance between chaser and target in a certain position.
 
         Args:
             chaser (KepOrbElem)
@@ -229,7 +282,16 @@ class CartesianLVC(Cartesian):
         target_cartesian.from_keporb(target)
 
         # Evaluate along-track distance in terms of true anomaly difference
-        dv = chaser.v + chaser.w - target.v - target.w
+        anomaly_c = chaser.v + chaser.w
+        anomaly_t = target.v + target.w
+
+        if chaser.v + chaser.w > np.pi:
+            anomaly_c = anomaly_c - 2.0*np.pi
+
+        if target.v + target.w > np.pi:
+            anomaly_t = anomaly_t - 2.0*np.pi
+
+        dv = (anomaly_c - anomaly_t) % (2.0 * np.pi)
 
         # Evaluate radial distance w.r.t the position of the target
         p_T = target.a * (1.0 - target.e**2)
@@ -245,11 +307,12 @@ class CartesianLVC(Cartesian):
         e_h_T_TEM = h_T_TEM / np.linalg.norm(h_T_TEM)
         dh = np.pi/2.0 - np.arccos(np.dot(e_p_C_TEM, e_h_T_TEM))
 
-        # Assign variables
-        self.dR = dr / r_T
-        self.dV = dv / (2*np.pi)
-        self.dH = dh / (2*np.pi)
+        # Assign variables and normalize
+        dR = dr / r_T
+        dV = dv / (2*np.pi)
+        dH = dh / (2*np.pi)
+
+        self.R = np.array([dR, dV, dH])
 
     def from_qns(self):
-        # TODO
-        pass
+        raise NotImplementedError
