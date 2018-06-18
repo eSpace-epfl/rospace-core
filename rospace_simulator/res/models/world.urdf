@@ -1,6 +1,10 @@
 <?xml version="1.0"?>
 <robot name="cso_visualization">
 
+    <material name="blue">
+        <color rgba="0 0 0.8 1"/>
+    </material>
+
     <link name="J2K">
         <visual>
           <geometry>
@@ -26,9 +30,9 @@
     <link name="target">
         <visual>
             <geometry>
-                <box size="1 1 1"/>
+                <box size="100 100 100"/>
             </geometry>
-            <!-- material name="blue" / -->
+            <material name="blue" />
             <origin rpy="0 1.57075 0" xyz="0 0 0"/>
         </visual>
     </link>
