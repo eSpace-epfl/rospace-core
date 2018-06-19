@@ -46,7 +46,7 @@ def handle_pose(msg):
 
     if position_mode == "zero_pos":
         pos = np.array([0, 0, 0])
-    elif position_mode =="relative":
+    elif position_mode == "relative":
         pos = pos - parent_position
 
     br = tf.TransformBroadcaster()
@@ -67,9 +67,9 @@ def handle_pose(msg):
     for k in sensor_cfg:
         br.sendTransform(np.array([float(x) for x in sensor_cfg[k]["position"].split(" ")]),
                          np.array([float(x) for x in sensor_cfg[k]["pose"].split(" ")]),
-                     rospy.Time.now(),
-                     k,
-                     body_frame)
+                         rospy.Time.now(),
+                         k,
+                         body_frame)
 
     for k in thruster_cfg:
         br.sendTransform(np.array([float(x) for x in sensor_cfg[k]["position"].split(" ")]),
