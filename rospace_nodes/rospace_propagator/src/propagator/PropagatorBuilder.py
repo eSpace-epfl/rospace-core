@@ -38,6 +38,7 @@ from org.orekit.forces import BoxAndSolarArraySpacecraft
 from org.orekit.forces.radiation import SolarRadiationPressure
 from org.orekit.propagation.events import EclipseDetector
 from org.orekit.propagation.events.handlers import EventHandler
+from org.orekit.forces.maneuvers import ConstantThrustManeuver
 from org.orekit.forces.radiation import IsotropicRadiationClassicalConvention
 from org.orekit.forces.drag import DragForce
 from org.orekit.forces.gravity import HolmesFeatherstoneAttractionModel
@@ -1417,6 +1418,47 @@ class ThrustModelVariable(ThrustFactory):
         """
 
         thrustM = ThrustModel()
+        propagator.addForceModel(thrustM)
+
+        return [propagator, thrustM]
+
+
+class ThrustModelConstant(ThrustFactory):
+
+    @staticmethod
+    def isApplicable(name):
+        if name == "ThrustModelConstant":
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def Setup(propagator, thrustSettings):
+        """
+        Creates an ConstantThrustManeuver class.
+
+        Direction of thrust and magnitude is fixed and defined in the settings.
+        The spacecraft thrust from the beginning of the simulation for the duration
+        specified in the settings file.
+
+        Returns:
+            propagator: Propagator
+            thrustM: Thrust model
+        """
+        TS = thrustSettings
+        direction = [float(x) for x in TS['dir'].split(" ")]
+        direction = Vector3D(float(direction[0]),
+                             float(direction[1]),
+                             float(direction[2]))
+
+        date = propagator.getInitialState().getDate()
+
+        thrustM = ConstantThrustManeuver(date,
+                                         float(TS['duration']),
+                                         float(TS['thrust']),
+                                         float(TS['isp']),
+                                         direction)
+
         propagator.addForceModel(thrustM)
 
         return [propagator, thrustM]
