@@ -9,15 +9,15 @@ propagator_settings:
         spin: 10 5 5 # omega in [deg/s]
         acceleration: 0 0 0
     integrator: # Steps have to be floats
-      minStep: 0.001
-      maxStep: 1000.0
+      minStep: 0.01
+      maxStep: 1.0
       initStep: 0.1
-      positionTolerance: 0.1
+      positionTolerance: 0.01
     Gravity:
       type: "EigenGravityWGS84"
       settings: # Spherical Harmonics Field Coeffs
-        degree: 80
-        order: 80
+        degree: 40
+        order: 40
     Thrust:
       type: ThrustModelVariable
       settings: ""
@@ -50,24 +50,24 @@ propagator_settings:
           dragCoeff: 2.0
           liftRatio: 0.0 
     SolarModel:
-        type: "SolarPressureBoxModel"
+        type: "" # "SolarPressureBoxModel"
         settings:
           abs_Estimated: True # false = fixed
           ref_Estimated: True # false = fixed 
     DragModel:
-        type: "DragDTM2000CELESTRACK"
+        type: "" #"DragDTM2000CELESTRACK"
         settings:
           cD_Estimated: True # if false cD fixed
     ThirdBody:
-      Sun: True
-      Moon: True
+      Sun: False
+      Moon: False
     SolidTides: # bodies which generate tides
-      add: True
+      add: False
       settings:
         Sun: True
         Moon: True
     OceanTides:
-      add: True
+      add: False
       settings:
         degree: 5
         order: 5
@@ -76,46 +76,60 @@ propagator_settings:
     type:  'AttPropagation'
     settings:
       Discretization:
-        satellite_dim:  # has to be cuboid!
-          l_x: 0.3
-          l_y: 0.1
-          l_z: 0.1
-        inner_cuboids:  # number by which satellite has to be divided into smaller cuboids
-          numCub_x: 5
-          numCub_y: 5
-          numCub_z: 5
-        surface_rectangles:  # number by which surface of satellite is divided into smaller rectangular sufraces
-          numSR_x: 2
-          numSR_y: 2
-          numSR_z: 2
+        type: 'BoxWingModel'
+        settings:
+          satellite_dim:  # has to be cuboid!
+            l_x: 0.3
+            l_y: 0.1
+            l_z: 0.1
+          inner_cuboids:  # number by which satellite has to be divided into smaller cuboids
+            numCub_x: 4
+            numCub_y: 4
+            numCub_z: 4
+          surface_rectangles:  # number by which surface of satellite is divided into smaller rectangular sufraces
+            numSR_x: 2
+            numSR_y: 2
+            numSR_z: 2
       GravityGradient:
         add: True
-        FC_degree: 60
-        FC_order: 60
+        FC_degree: 40
+        FC_order: 40
       MagneticTorque:
-        add: True
+        add: False
         settings:
           Hysteresis:
             H1:
-              vol: 2.375e-8
+              vol: 7.46128e-8
               dir: 0 1 0
               Bs: 0.027
               Br: 0.004
               Hc: 12.
             H2:
-              vol: 2.375e-8
+              vol: 7.46128e-8
               dir: 0 1 0
               Bs: 0.027
               Br: 0.004
               Hc: 12.
             H3:
-              vol: 2.375e-8
-              dir: 0 0 1
+              vol: 7.46128e-8
+              dir: 0 1 0
               Bs: 0.027
               Br: 0.004
               Hc: 12.
             H4:
-              vol: 2.375e-8
+              vol: 7.46128e-8
+              dir: 0 0 1
+              Bs: 0.027
+              Br: 0.004
+              Hc: 12.
+            H5:
+              vol: 7.46128e-8
+              dir: 0 0 1
+              Bs: 0.027
+              Br: 0.004
+              Hc: 12.
+            H6:
+              vol: 7.46128e-8
               dir: 0 0 1
               Bs: 0.027
               Br: 0.004
@@ -138,9 +152,9 @@ propagator_settings:
         Iy: 0 0.02552 0
         Iz: 0 0 0.02565
       integrator:
-        maxDT: 5
+        maxDT: 2.
         minStep: 0.01
-        maxStep: 1000.0
+        maxStep: 1.
         initStep: 0.1
         absTol: -1.0 # if negative use tolerance from orbit propagation
         relTol: -1.0 # if negative use tolerance from orbit propagation

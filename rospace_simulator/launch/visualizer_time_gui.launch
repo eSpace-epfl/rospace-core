@@ -36,7 +36,7 @@
     </include>
 
     <!-- start rviz -->
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find rospace_simulator)/res/rviz/tf_large.rviz" required="true" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find rospace_simulator)/res/rviz/tf_large.rviz" required="false" />
 
 
      <!-- Launch Visualizer -->

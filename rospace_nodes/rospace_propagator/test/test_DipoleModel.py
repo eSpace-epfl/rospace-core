@@ -10,7 +10,6 @@ import unittest
 import sys
 import os
 import numpy as np
-from datetime import datetime 
 from itertools import izip
 import math
 
@@ -20,22 +19,40 @@ from propagator.OrekitPropagator import *
 from propagator.DipoleModel import *
 from propagator.AttitudePropagation import *
 
-# add test which checks rotation of magnetic field is correct with numpy rot matrix.
-# so far only test needed to validate attitude prop. ---------------------
-
 
 class MagneticTorqueTest(unittest.TestCase):
+    """Unit test class testing the correct implementation of the Dipole model class
+
+    Every test uses the same configuration for the hysteresis rods and bar magnets (see @setUpClass)
+    in the same magnetic field (B_field).
+
+    The computed values are compared against results computed by hand using the implemented equations.
+
+    The configuration is as follows:
+    3 Hysteresis rods with characteristics defined in the variables:
+            - Remanence: Br
+            - Saturation Induction: Bs
+            - Coercive Force: Hc
+            - Direction of long axis: dir_hyst
+            - Volume: volume
+
+    2 Bar magnets with charactersitcs defined in the variables:
+            - Dipole Moment: bar_mag_m
+            - Direction of Dipole Moment: dir_bar
+    """
+
     dipolM = None
+    '''Stores the initialized dipole model to be used by the individual test methods'''
 
     def setUp(self):
-        OrekitPropagator.init_jvm()
+        """Method called to prepare the test fixture.
 
-        # get orekit files for magnetic field
-        # self.epoch = datetime(2011, 02, 11)
-        # OrekitPropagator.load_magnetic_field_models(self.epoch)
+        This is called immediately before calling the test method."""
+        OrekitPropagator.init_jvm()
 
     @classmethod
     def setUpClass(cls):
+        """Class method called before tests in an individual class run."""
         MagneticTorqueTest.dipolM = DipoleModel()
 
         Br = [0.35, 0.005, 0.11]
@@ -54,6 +71,7 @@ class MagneticTorqueTest(unittest.TestCase):
             MagneticTorqueTest.dipolM.addBarMagnet(direc, m)
 
     def test_add_material(self):
+        """Test that all added magnetic elements are present and all arrays are correctly initialzed."""
         self.assertAlmostEquals(MagneticTorqueTest.dipolM._k[0], 0.956774, delta=1e-6)
         self.assertAlmostEquals(MagneticTorqueTest.dipolM._k[1], 0.032492, delta=1e-6)
         self.assertAlmostEquals(MagneticTorqueTest.dipolM._k[2], 0.513289, delta=1e-6)
@@ -65,6 +83,7 @@ class MagneticTorqueTest(unittest.TestCase):
         self.assertEqual(MagneticTorqueTest.dipolM._m_barMag.size, 6)
 
     def test_initialization(self):
+        """Test the correct initialization of the magnetic field """
         B_field = np.array([1.5e-5, -2.2e-4, 0.5e-7])
 
         MagneticTorqueTest.dipolM.initializeHysteresisModel(B_field)
@@ -78,6 +97,10 @@ class MagneticTorqueTest(unittest.TestCase):
         self.assertAlmostEquals(MagneticTorqueTest.dipolM._B_hyst_last[2], -0.417010, delta=1e-6)
 
     def test_dipole_calculation(self):
+        """Test the correct implementation by comparing the computed dipole vectors
+        against the analytic solution.
+
+        The initialization of the values took place in the test @test_initialization."""
         B_field = np.array([1.5e-5, -2.2e-4, 0.5e-7])
 
         dipoleVectors = MagneticTorqueTest.dipolM.getDipoleVectors(B_field)
@@ -103,6 +126,7 @@ class MagneticTorqueTest(unittest.TestCase):
         self.assertAlmostEquals(dipoleVectors[4, 2], 0.43 / math.sqrt(2), delta=1e-6)
 
     def test_nothing_added(self):
+        """Test that dipole equals zero if no magnetic elements added."""
         dipolM_nothing = DipoleModel()
         B_field = np.array([1.5e-5, -2.2e-4, 0.5e-7])
 

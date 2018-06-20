@@ -52,12 +52,18 @@ class ThrustModel(BaseForceModel):
         Isp: mean specific impulse of maneuver
     """
 
+    @property
+    def mDot(self):
+        return self._mDot
+
     def __init__(self, Thrust=None, Isp=None):
         BaseForceModel.__init__(self, "ThrustModel")
 
         # direction has to be normalized!
         self.direction = Vector3D(float(1), float(0), float(0))
         self.firing = False
+
+        self._mDot = tuple([0., 0.])  # tuple for attitude propagation
 
         if Thrust is None:
             thrust = float(0.0)
@@ -166,6 +172,7 @@ class ThrustModel(BaseForceModel):
             if parameter[0] > 0.0 and parameter[1] < 0.0:
                 adder.addNonKeplerianAcceleration(self.acceleration(s, parameter))
                 adder.addMassDerivative(parameter[1])
+                self._mDot = tuple([s.getDate(), parameter[1]])
 
     def getEventsDetectors(self):
         """

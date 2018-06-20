@@ -190,8 +190,10 @@ class FileDataHandler(object):
             end_dates.append(GM_end_date)
 
         if checklist:  # if any data loaded define first and last date
-            first_date = min(start_dates)
-            last_date = min(end_dates)
+            # using as date zero 01.01.1850. Assuming no data before.
+            absolute_zero = AbsoluteDate(1850, 1, 1, TimeScalesFactory.getUTC())
+            first_date = min(start_dates, key=lambda p: p.durationFrom(absolute_zero))
+            last_date = min(end_dates, key=lambda p: p.durationFrom(absolute_zero))
 
             checklist['MinMax_dates'] = [first_date, last_date]
 
