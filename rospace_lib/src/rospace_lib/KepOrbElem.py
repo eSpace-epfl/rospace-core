@@ -23,6 +23,7 @@ from orekit.pyhelpers import setup_orekit_curdir
 import inspect
 import thread
 import os
+import decimal
 from java.io import File
 from threading import Thread
 from org.orekit.propagation.semianalytical.dsst import DSSTPropagator
@@ -58,7 +59,6 @@ from org.hipparchus.ode.nonstiff import DormandPrince853Integrator
 from org.orekit.forces.gravity.potential import GravityFieldFactory
 from org.orekit.forces.gravity import HolmesFeatherstoneAttractionModel
 from org.orekit.utils import IERSConventions
-
 
 from . import *
 from threading import RLock, Lock
@@ -345,6 +345,7 @@ class KepOrbElem(BaseState):
             self.O = 2 * np.pi - self.O
 
         # 10. calculate eccentricity vector  / 11. Calc eccentricity
+
         E = 1 / Constants.mu_earth * ((v ** 2 - Constants.mu_earth / r) * cart.R.flat - r * v_r * cart.V.flat)
         self.e = np.linalg.norm(E, ord=2)
 
@@ -361,7 +362,15 @@ class KepOrbElem(BaseState):
 
         # 12. Calculate the true anomaly
         # p2 = np.log(self.e)+np.log(r)
-        self.v = np.arccos(np.dot(E, cart.R.flat) / (self.e*r))
+        arg = np.dot(E, cart.R.flat) / (self.e*r)
+        if arg <= 1.0 or arg >= -1.0:
+            self.v = np.arccos(arg)
+        elif arg > 1.0 and arg - 1.0 < 1e-10:
+                self.v = np.arccos(1.0)
+        elif -arg > 1.0 and -arg - 1.0 < 1e-10:
+                self.v = np.arccos(-1.0)
+        else:
+            raise ValueError("Could not calculate true anomaly. Argument out-of-bounds: " + str(arg))
         if v_r < 0:
             self.v = 2 * np.pi - self.v
 
