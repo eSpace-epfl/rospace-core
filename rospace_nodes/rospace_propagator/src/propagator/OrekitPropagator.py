@@ -12,8 +12,6 @@ import PropagatorBuilder as PB
 import os
 from math import degrees, sin, cos
 
-import timeit
-
 from FileDataHandler import FileDataHandler, to_orekit_date
 
 import orekit
@@ -24,11 +22,12 @@ from org.orekit.python import PythonAttitudePropagation as PAP
 from orekit.pyhelpers import setup_orekit_curdir
 from org.orekit.data import DataProvidersManager, ZipJarCrawler
 from org.orekit.frames import TopocentricFrame
+from org.orekit.propagation import SpacecraftState
 
 from org.hipparchus.geometry.euclidean.threed import Vector3D
 
 
-class DisturbanceTorques(object):
+class DisturbanceTorqueStorage(object):
     '''Stores disturbance torques in satellite frame and their activation
     status in numpy array.
 
@@ -120,7 +119,7 @@ class OrekitPropagator(object):
         from Java object and put it in a numpy array.
 
         Args:
-            PVCoordinates: satellite state vector
+            SpacecraftState: satellite state vector
 
         Returns:
             numpy.array: cartesian state vector in TEME frame
@@ -148,7 +147,7 @@ class OrekitPropagator(object):
 
     def _write_d_torques(self):
 
-        dtorque = DisturbanceTorques()
+        dtorque = DisturbanceTorqueStorage()
 
         if self._hasAttitudeProp:
             dtorque.add = self.attProv.getAddedDisturbanceTorques()
@@ -164,7 +163,6 @@ class OrekitPropagator(object):
         self._propagator_num = None
         self._hasAttitudeProp = False
         self._hasThrust = False
-        self._GMmodel = None
 
     def initialize(self, propSettings, state, epoch):
         """
@@ -253,6 +251,19 @@ class OrekitPropagator(object):
         # Place where all the magic happens:
         state = self._propagator_num.propagate(orekit_date)
 
+        if self._hasAttitudeProp:
+            # get attitude of last time step at add it to new state
+            # propagator does update of last step before new orbit propagation step
+            old_state = self._propagator_num.getInitialState()
+            orbit = old_state.getOrbit()
+            date = old_state.getDate()
+            frame = old_state.getFrame()
+
+            att_corr = self._propagator_num.getAttitudeProvider()\
+                           .getAttitude(orbit, date, frame)
+            state = SpacecraftState(orbit, att_corr, old_state.getMass())
+            self._propagator_num.setInitialState(state)
+
         # return and store output of propagation
         dtorque = self._write_d_torques()
         [cart_teme, att, force_sF] = self._write_satellite_state(state)
@@ -260,50 +271,11 @@ class OrekitPropagator(object):
 
         return [cart_teme, att, force_sF, dtorque, B_field_b]
 
-    def _calculate_magnetic_field_old(self, oDate):
-        """Calculates magnetic field at position of spacecraft
-
-        Args:
-            oDate: Absolute date object with time of spacecraft state
-
-        Returns:
-            numpy.array: Magnetic field vector in TEME frame
-        """
-        spacecraftState = self._propagator_num.getInitialState()
-        satPos = spacecraftState.getPVCoordinates().getPosition()
-        inertial2Sat = spacecraftState.getAttitude().getRotation()
-        frame = spacecraftState.getFrame()
-
-        gP = self._earth.transform(satPos, frame, oDate)
-        lat = gP.getLatitude()
-        lon = gP.getLongitude()
-        alt = gP.getAltitude() / 1e3  # Mag. Field needs degrees and [km]
-        slo, clo = sin(lon), cos(lon)
-        sla, cla = sin(lat), cos(lat)
-        geo2inertial = np.array([[-slo, -clo*sla, clo*cla],
-                                 [clo, -slo*sla, slo*cla],
-                                 [0., cla, sla]])
-
-        # get B-field in geodetic system (X:East, Y:North, Z:Nadir)
-        B_geo = FileDataHandler.mag_field_model.calculateField(
-                            degrees(lat), degrees(lon), alt).getFieldVector()
-
-        # convert geodetic frame to inertial and from [nT] to [T]
-        B_i = geo2inertial.dot(np.array([B_geo.x,
-                                         B_geo.y,
-                                         B_geo.z])) * 1e-9
-
-        B_b = inertial2Sat.applyTo(Vector3D(float(B_i[0]),
-                                            float(B_i[1]),
-                                            float(B_i[2])))
-
-        return B_b
-
     def _calculate_magnetic_field(self, oDate):
-        spacecraftState = self._propagator_num.getInitialState()
-        satPos = spacecraftState.getPVCoordinates().getPosition()
-        inertial2Sat = spacecraftState.getAttitude().getRotation()
-        frame = spacecraftState.getFrame()
+        space_state = self._propagator_num.getInitialState()
+        satPos = space_state.getPVCoordinates().getPosition()
+        inertial2Sat = space_state.getAttitude().getRotation()
+        frame = space_state.getFrame()
 
         gP = self._earth.transform(satPos, frame, oDate)
 
@@ -375,7 +347,7 @@ class OrekitPropagator(object):
             attProv = PAP.cast_(self._propagator_num.getAttitudeProvider())
             attProv.setExternalTorque(N_T)
 
-    def thrust_torque_callback(self, thrust_force):
+    def thrust_torque_callback(self, force_torque, thrust_ispM):
         """
         Callback function for subscriber to the propulsion node.
 
@@ -396,13 +368,13 @@ class OrekitPropagator(object):
         """
 
         # this currently only called in by chaser object
-        self.F_T = np.array([thrust_force.wrench.force.x,
-                             thrust_force.wrench.force.y,
-                             thrust_force.wrench.force.z])
+        self.F_T = np.array([force_torque.wrench.force.x,
+                             force_torque.wrench.force.y,
+                             force_torque.wrench.force.z])
 
         #self.Isp = thrust_ispM.Isp_val
 
         # Torque:
-        self.torque = np.array([thrust_force.wrench.torque.x,
-                                thrust_force.wrench.torque.y,
-                                thrust_force.wrench.torque.z])
+        self.torque = np.array([force_torque.wrench.torque.x,
+                                force_torque.wrench.torque.y,
+                                force_torque.wrench.torque.z])

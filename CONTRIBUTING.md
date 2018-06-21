@@ -1,6 +1,6 @@
 ## Contributing to Source Code
 
-Thanks for wanting to contribute source code to the RDV Simulator. That's great!
+Thanks for wanting to contribute source code to the ROSpace. That's great!
 
 ### Documentation
 

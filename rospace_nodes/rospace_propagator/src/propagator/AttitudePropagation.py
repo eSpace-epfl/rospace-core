@@ -6,34 +6,16 @@
 # See the LICENSE.md file in the root of this repository
 # for complete details.
 
-# #####################################################################
-# PRELIMINARY CODE: This code is still under construction.
-# Methods used from here could result to unexpected behavior and should
-# therefore be used with care.
-#######################################################################
-
 import orekit
 import numpy as np
-import itertools
-from math import sqrt, sin, cos
-from math import degrees
-import sys  # for errors
 import traceback
 
-from FileDataHandler import FileDataHandler
-from DipoleModel import DipoleModel
 from DisturbanceTorques import DisturbanceTorqueArray as DTarray
 
 from org.orekit.attitudes import Attitude
 from org.orekit.python import PythonAttitudePropagation as PAP
 from org.orekit.python import PythonStateEquation as PSE
-from org.orekit.frames import TopocentricFrame
-from org.orekit.bodies import BodyShape
-from org.orekit.forces import ForceModel
-from org.orekit.forces.drag.atmosphere import Atmosphere
-from org.orekit.utils import PVCoordinatesProvider
 
-from org.hipparchus.util import Precision
 from org.hipparchus.ode import ODEState
 from org.hipparchus.ode import OrdinaryDifferentialEquation, ExpandableODE
 from org.hipparchus.ode.nonstiff import DormandPrince853Integrator
@@ -44,30 +26,32 @@ from org.hipparchus.exception import MathIllegalArgumentException
 from org.hipparchus.exception import MathIllegalStateException
 
 
-def _log_value(name, value, date, f):
-    f.write(name + ": " + str(value) + " " + str(date) + '\n')
-
-
-def _compare_results(y, y_s, f):
-    # y = new.getPrimaryState()
-
-    f.write("#######################\n")
-    f.write("Integration Comparison:\n")
-    # f.write(str(y[0]) + " ?=? " + str(y_s[0]) + " err: " + str(y[0] - y_s[0]) + "\n")
-    # f.write(str(y[1]) + " ?=? " + str(y_s[1]) + " err: " + str(y[1] - y_s[1]) + "\n")
-    # f.write(str(y[2]) + " ?=? " + str(y_s[2]) + " err: " + str(y[2] - y_s[2]) + "\n")
-    # f.write(str(y[3]) + " ?=? " + str(y_s[3]) + " err: " + str(y[3] - y_s[3]) + "\n")
-    # f.write(str(y[4]) + " ?=? " + str(y_s[4]) + " err: " + str(y[4] - y_s[4]) + "\n")
-    # f.write(str(y[5]) + " ?=? " + str(y_s[5]) + " err: " + str(y[5] - y_s[5]) + "\n")
-    # f.write(str(y[6]) + " ?=? " + str(y_s[6]) + " err: " + str(y[6] - y_s[6]) + "\n")
-    f.write(str(y.x) + " ?=? " + str(y_s.x) + " err: " + str(y.x - y_s.x) + "\n")
-    f.write(str(y.y) + " ?=? " + str(y_s.y) + " err: " + str(y.y - y_s.y) + "\n")
-    f.write(str(y.z) + " ?=? " + str(y_s.z) + " err: " + str(y.z - y_s.z) + "\n")
-    f.write("#######################\n")
-
-
 class AttitudePropagation(PAP):
-    """Implements an attitude propagation which is called by Orekit's attitude provider."""
+    """Implements an attitude propagation which is called by Orekit's attitude provider.
+
+    The integration of the attitude is embedded into Orekit's orbit integration
+    and the computation is done before every orbit integration step.
+    For attitude integration two integrators from the Hipparchus library are
+    being initialized for performance reasons (see :class:`AttitudePropagation.Integrators`).
+    For small orbit time steps a single Runge-Kutta integrator is used. For larger orbit
+    integration steps the Dormand Prince integrator solves the equation of motion.
+    The maximal step size for which the single step RK integrator is used can be
+    set in the settings yaml-file.
+
+    The maximal step size should not be set to a larger value since the simulation
+    could fail due to numerical instability.
+
+    Args:
+        attitude: initial attitude object from spacecraft
+        referenceDate: initial epoch as AbsoluteDate object
+        inertiaT: numpy array of diagonal entries of inertia tensor
+        tol: tolerances for Dormand Prince integrator
+        intSettings: dictionary with integrator settings
+        inCub: dictionary with information about satellite's inner body discretization
+        meshDA: dictionary with information about satellite's surface discretization
+        AttitdueFM: dictionary with Force Model objects needed for disturbance torques
+
+    """
 
     def __init__(self,
                  attitude,
@@ -84,12 +68,13 @@ class AttitudePropagation(PAP):
         '''Angular velocity of satellite in direction of principle axes.'''
 
         self.rotation = attitude.getRotation()
+        '''Rotation object of spacecrafts attitude'''
 
         self.integrator = Integrators(intSettings, tol)
-        '''DormandPrince853 & singleStep RK object for attitude propagation.'''
+        '''DormandPrince853 & classical RK object for attitude propagation.'''
 
         self.StateObserver = AttitudeFM['StateObserver']
-        '''Dictionary of force models for gravity torques & inertia tensor.'''
+        '''State observer object added to satellite's orbit propagator as Force Model.'''
 
         self.inertiaT = inertiaT / self.StateObserver.spacecraftState.getMass()
         '''Inertial tensor linearly dependent on mass given for principal axes.'''
@@ -100,119 +85,23 @@ class AttitudePropagation(PAP):
         self.refFrame = attitude.getReferenceFrame()
         '''Reference frame in which attitude is computed'''
 
-        self.inCub = inCub
-        '''Dictionary of inner cuboid obtained from discretization'''
+        self.DT = DTarray(self.refFrame,
+                          self.refDate,
+                          inCub,
+                          meshDA,
+                          AttitudeFM)
+        '''Disturbance torque object'''
 
-        self.meshDA = meshDA
-        '''Dictionary of surfaces obtained from discretization'''
-
-        self.GravityModel = None
-        '''Gravity Model for gravity torque computation.
-        Torque will only be computed if one is provided.'''
-
-        self.dipleM = None
-        '''Dipole model for magnetic torque computation.
-        Torque will only be computed if one is provided.'''
-
-        self.SolarModel = None
-        '''Solar Model for computation of of torque due to solar pressure.
-        Torque will only be computed if one is provided.'''
-
-        self.AtmoModel = None
-        '''Atmospheric Model for computation of torque due to drag.
-        Torque will only be computed if one is provided.'''
-
-        self.sun = None
-        '''PVCoordinatesProvider object of Sun.'''
-
-        self.earth = None
-        '''BodyShape object of the Earth.'''
-
-        self.K_REF = None
-        '''Reference flux normalized for a 1m distance (N). [Taken from Orekit]'''
-
-        if 'GravityModel' in AttitudeFM:
-            self.GravityModel = AttitudeFM['GravityModel']
-            self.muGM = ForceModel.cast_(self.GravityModel).getParameters()[0]
-
-        if 'MagneticModel' in AttitudeFM:
-            # self.MagneticModel = AttitudeFM['MagneticModel']
-            self.earth = BodyShape.cast_(AttitudeFM['Earth'])
-            self._initialize_dipole_model(AttitudeFM['MagneticModel'])
-        else:
-            self.dipoleM = None
-
-        if 'SolarModel' in AttitudeFM:
-            self.SolarModel = AttitudeFM['SolarModel']
-            self.sun = PVCoordinatesProvider.cast_(AttitudeFM['Sun'])
-            # Reference distance for the solar radiation pressure (m).
-            D_REF = float(149597870000.0)
-            # Reference solar radiation pressure at D_REF (N/m^2).
-            P_REF = float(4.56e-6)
-            self.K_REF = float(P_REF * D_REF * D_REF)
-
-        if 'AtmoModel' in AttitudeFM:
-            self.AtmoModel = Atmosphere.cast_(AttitudeFM['AtmoModel'])
-
-        self.V3_cross = Vector3D.crossProduct
-        self.V3_dot = Vector3D.dotProduct
-
-        # update and store computed values  - change this to 'add' in yaml file
-        addG = False if self.GravityModel is None else True
-        addM = False if self.dipoleM is None else True
-        addSP = False if self.SolarModel is None else True
-        addD = False if self.AtmoModel is None else True
-        self.setAddedDisturbanceTorques(addG, addM, addSP, addD)
-
-        self.DT = DTarray(self.StateObserver, self.refFrame, self.refDate, inCub, AttitudeFM, self.earth, self.sun, meshDA)
         self.state = StateEquation(7, self.DT)
         '''StateEquation object. Holds 7 equations to be integrated.'''
-        # self.f = open('/home/christian/Documents/ETH/MasterThesis/Profiling/Vectorization/output.txt', 'a+')
-        # self.f = open('/home/christian/Documents/ETH/MasterThesis/Validation/Attitude/DipolModel/first_run/B_H.out', 'a+')
-
-    def _initialize_dipole_model(self, model):
-        self.dipoleM = DipoleModel()
-
-        for key, hyst in model['Hysteresis'].items():
-            direction = np.array([float(x) for x in hyst['dir'].split(" ")])
-            self.dipoleM.addHysteresis(direction, hyst['vol'], hyst['Hc'], hyst['Bs'], hyst['Br'])
-
-        # initialize values for Hysteresis
-        spacecraftState = self.StateObserver.spacecraftState
-        self.inertial2Sat = spacecraftState.getAttitude().getRotation()
-        self.satPos_i = spacecraftState.getPVCoordinates().getPosition()
-
-        gP = self.earth.transform(self.satPos_i, self.refFrame, self.refDate)
-
-        topoframe = TopocentricFrame(self.earth, gP, 'ENU')
-        topo2inertial = topoframe.getTransformTo(self.refFrame, self.refDate)
-
-        lat = gP.getLatitude()
-        lon = gP.getLongitude()
-        alt = gP.getAltitude() / 1e3  # Mag. Field needs degrees and [km]
-
-        # get B-field in geodetic system (X:East, Y:North, Z:Nadir)
-        B_geo = FileDataHandler.mag_field_model.calculateField(
-                            degrees(lat), degrees(lon), alt).getFieldVector()
-
-        # convert geodetic frame to inertial and from [nT] to [T]
-        B_i = topo2inertial.transformVector(Vector3D(1e-9, B_geo))
-
-        B_b = self.inertial2Sat.applyTo(B_i)
-        B_field = np.array([B_b.x, B_b.y, B_b.z])
-
-        self.dipoleM.initializeHysteresisModel(B_field)
-
-        for key, bar in model['BarMagnet'].items():
-            direction = np.array([float(x) for x in bar['dir'].split(" ")])
-            self.dipoleM.addBarMagnet(direction, bar['m'])
 
     def getAttitude(self, pvProv, date, frame):
-        """Method called by Orekit at every state integration step.
+        """Method called by Orekit at every orbit integration step.
 
-        This Method calculates the disturbance torques if initialized
-        and then integrates the 7 state equations to determine
-        the satellites attitude at the next time step.
+        This Method updates the the satellite state and rotations in the
+        disturbance torque class, calls the integrators with the updated
+        state vector and stores and returns the new Attitude with the new
+        spin vector.
 
         The parameters of the state equation are the angular rate along
         the satellite's principle axes (1:3) and the rotation given in
@@ -220,7 +109,7 @@ class AttitudePropagation(PAP):
 
         The date provided as argument must no necessarily be advancing in
         time. Also earlier time can be given, resulting in a negative time
-        difference
+        difference.
 
         Args:
             pvProv: the satellites orbit given as PVCoordinatesProvider object
@@ -231,10 +120,7 @@ class AttitudePropagation(PAP):
             Attitude: new attitude @ date
 
         Raises:
-            MathIllegalArgumentException: if integration step is too small
-            MathIllegalArgumentException: if the location of an event cannot be bracketed
-            MathIllegalStateException: if the number of functions evaluations is exceeded
-            Exception: if anything else went wrong (should never raise this)
+            Exception: if something went wrong in JAVA classes the traceback is printed
         """
         try:
             if self.refDate.equals(date):
@@ -244,23 +130,10 @@ class AttitudePropagation(PAP):
                 self.state.inertiaT = self.inertiaT * \
                     self.StateObserver.spacecraftState.getMass()
 
+                # set control torque
                 self.state.torque_control = self.getExternalTorque()
-                # self.to_add = self.getAddedDisturbanceTorques()
 
-                # self._initialize_disturbance_calculation()
-                # gTorque = self.getGravTorqueArray()
-                # mTorque = self.getMagTorque()
-                # sTorque = self.getSolarTorqueArray()
-                # aTorque = self.getAeroTorqueArray()
-                # self.setDisturbanceTorques(gTorque, mTorque, sTorque, aTorque)
-
-                # _compare_results(gTorque, gTorqueRef, self.f)
-
-                # self.state.torque_dist = gTorque.add(
-                #     mTorque.add(
-                #         sTorque.add(
-                #             aTorque)))
-
+                # prepare computation of disturbance torques
                 self.DT.to_add = self.getAddedDisturbanceTorques()
                 self.DT.update_satellite_state(self.refDate)
 
@@ -269,7 +142,7 @@ class AttitudePropagation(PAP):
                 y[1] = self.omega.y
                 y[2] = self.omega.z
                 # get rotation in quaternions:
-                # scalar part is Q0 in Orekit, but q4 in integration
+                # scalar part is q0 in Orekit, but q4 in integration
                 y[3] = self.rotation.q1
                 y[4] = self.rotation.q2
                 y[5] = self.rotation.q3
@@ -283,13 +156,16 @@ class AttitudePropagation(PAP):
                                          float(new_state[4]),
                                          float(new_state[5]), True)
                 self.omega = Vector3D([new_state[0], new_state[1], new_state[2]])
+
                 newAttitude = Attitude(date,
                                        self.refFrame,
                                        self.rotation,
                                        self.omega,
                                        Vector3D.ZERO)
 
+                # for publisher
                 self.setDisturbanceTorques(self.DT.gTorque, self.DT.mTorque, self.DT.sTorque, self.DT.aTorque)
+
                 self.refDate = date
                 self.setReferenceAttitude(newAttitude)
 
@@ -299,461 +175,23 @@ class AttitudePropagation(PAP):
             print traceback.print_exc()
             raise
 
-    def _initialize_disturbance_calculation(self):
-        spacecraftState = self.StateObserver.spacecraftState
-        self.inertial2Sat = spacecraftState.getAttitude().getRotation()
-
-        self.satPos_i = spacecraftState.getPVCoordinates().getPosition()
-        self.satVel_i = spacecraftState.getPVCoordinates().getVelocity()
-        self.satPos_s = self.inertial2Sat.applyTo(self.satPos_i)
-        self.satPos_s = np.array([self.satPos_s.x,
-                                  self.satPos_s.y,
-                                  self.satPos_s.z], dtype='float64')
-
-    def getGravTorque(self):
-        """Compute gravity gradient torque if gravity model provided.
-
-        This method is declared in the Orekit wrapper in
-        PythonAttitudePropagation.java and overridden here, so that
-        an OrekitException is thrown if something goes wrong.
-
-        It computes the Newtonian attraction and the perturbing part
-        of the gravity gradient for every cuboid defined in dictionary
-        inCub at time refDate (= time of current satellite position).
-        The gravity torque is computed in the inertial frame in which the
-        spacecraft is defined. The perturbing part is calculated using Orekit's
-        methods defined in the GravityModel object.
-
-        The current position, rotation and mass of the satellite is obtained
-        from the StateObserver object.
-
-        Returns:
-            Vector3D: gravity gradient torque at refDate in satellite frame
-        """
-
-        if self.to_add[0]:
-            body2inertial = self.earth.getBodyFrame().getTransformTo(self.refFrame, self.refDate)
-            body2sat = self.inertial2Sat.applyTo(body2inertial.getRotation())
-            sat2body = body2sat.revert()
-
-            satM = self.StateObserver.spacecraftState.getMass()
-            mCub = self.inCub['mass_frac'] * satM
-
-            gTorque = Vector3D.ZERO
-
-            for CoM in self.inCub['CoM']:
-
-                S_dmPos = self.satPos_s.add(CoM)
-
-                r2 = S_dmPos.getNormSq()
-                gNewton = Vector3D(-self.muGM / (sqrt(r2) * r2), S_dmPos)
-
-                B_dmPos = sat2body.applyTo(S_dmPos)
-
-                gDist = Vector3D(self.GravityModel.gradient(self.refDate,
-                                                            B_dmPos,
-                                                            self.muGM))
-
-                g_Dist_s = body2sat.applyTo(gDist)
-
-                dmForce = Vector3D(mCub, gNewton.add(g_Dist_s))
-                gTorque = gTorque.add(self.V3_cross(CoM, dmForce))
-
-            return gTorque
-        else:
-            return Vector3D.ZERO
-
-    def getGravTorqueArray(self):
-        """Compute gravity gradient torque if gravity model provided.
-
-        This method is declared in the Orekit wrapper in
-        PythonAttitudePropagation.java and overridden here, so that
-        an OrekitException is thrown if something goes wrong.
-
-        It computes the Newtonian attraction and the perturbing part
-        of the gravity gradient for every cuboid defined in dictionary
-        inCub at time refDate (= time of current satellite position).
-        The gravity torque is computed in the inertial frame in which the
-        spacecraft is defined. The perturbing part is calculated using Orekit's
-        methods defined in the GravityModel object.
-
-        The current position, rotation and mass of the satellite is obtained
-        from the StateObserver object.
-
-        Returns:
-            Vector3D: gravity gradient torque at refDate in satellite frame
-        """
-
-        if self.to_add[0]:
-            # return gravity gradient torque in satellite frame
-            body2inertial = self.earth.getBodyFrame().getTransformTo(self.refFrame, self.refDate)
-            body2sat = self.inertial2Sat.applyTo(body2inertial.getRotation())
-            body2satRot = PyRotation(body2sat.q0,
-                                     body2sat.q1,
-                                     body2sat.q2,
-                                     body2sat.q3)
-            sat2bodyRot = body2satRot.revert()
-            body2sat = body2satRot.getMatrix()
-            sat2body = sat2bodyRot.getMatrix()
-
-            satM = self.StateObserver.spacecraftState.getMass()
-            mCub = self.inCub['mass_frac'] * satM
-            CoM = self.inCub['CoM_np']
-
-            dmPos_s = CoM + self.satPos_s
-
-            gNewton = (-self.muGM / np.linalg.norm(dmPos_s,
-                                                   axis=1,
-                                                   keepdims=True)**3) * dmPos_s
-
-            # rotate vectors:
-            dmPos_b = np.einsum('ij,kj->ki', sat2body, dmPos_s)
-
-            gDist = np.empty(dmPos_b.shape)
-            for i in xrange(0, dmPos_b.shape[0]):
-                gDist[i, :] = np.asarray(
-                    self.GravityModel.gradient(self.refDate,
-                                               Vector3D(float(dmPos_b[i, 0]),
-                                                        float(dmPos_b[i, 1]),
-                                                        float(dmPos_b[i, 2])),
-                                               self.muGM))
-
-            gDist_s = np.einsum('ij,kj->ki', body2sat, gDist)
-
-            gTorque = np.sum(np.cross(CoM, mCub*(gNewton + gDist_s)), axis=0)
-
-            return Vector3D(float(gTorque[0]), float(gTorque[1]), float(gTorque[2]))
-
-        else:
-            return Vector3D.ZERO
-
-    def getMagTorque(self):
-        """Compute magnetic torque if magnetic model provided.
-
-        This method is declared in the Orekit wrapper in
-        PythonAttitudePropagation.java and overridden here, so that
-        an OrekitException is thrown if something goes wrong.
-
-        It gets the satellites dipole vector which is stored in the base class,
-        converts the satellite's position into Longitude, Latitude, Altitude
-        representation to determine the geo. magnetic field at that position
-        and then computes base on those values the magnetic torque.
-
-        Returns:
-            Vector3D: magnetic torque at satellite position in satellite frame
-        """
-        if self.to_add[1]:
-            gP = self.earth.transform(self.satPos_i, self.refFrame, self.refDate)
-
-            topoframe = TopocentricFrame(self.earth, gP, 'ENU')
-            topo2inertial = topoframe.getTransformTo(self.refFrame, self.refDate)
-
-            lat = gP.getLatitude()
-            lon = gP.getLongitude()
-            alt = gP.getAltitude() / 1e3  # Mag. Field needs degrees and [km]
-
-            # get B-field in geodetic system (X:East, Y:North, Z:Nadir)
-            B_geo = FileDataHandler.mag_field_model.calculateField(
-                                degrees(lat), degrees(lon), alt).getFieldVector()
-
-            # convert geodetic frame to inertial and from [nT] to [T]
-            B_i = topo2inertial.transformVector(Vector3D(1e-9, B_geo))
-
-            B_b = self.inertial2Sat.applyTo(B_i)
-            B_b = np.array([B_b.x, B_b.y, B_b.z])
-
-            dipoleVector = self.dipoleM.getDipoleVectors(B_b)
-
-            torque = np.sum(np.cross(dipoleVector, B_b), axis=0)
-
-            return Vector3D(float(torque[0]), float(torque[1]), float(torque[2]))
-        else:
-            return Vector3D.ZERO
-
-    def getSolarTorqueArray(self):
-        """Compute torque acting on satellite due to solar radiation pressure.
-
-        This method is declared in the Orekit wrapper in
-        PythonAttitudePropagation.java and overridden here, so that
-        an OrekitException is thrown if something goes wrong.
-
-        This method uses the getLightingRatio method defined in Orekit and
-        copies parts of the acceleration() method of the SolarRadiationPressure
-        and radiationPressureAcceleration() of the BoxAndSolarArraySpacecraft
-        class to to calculate the solar radiation pressure on the discretized
-        surface of the satellite. This is done, since the necessary Orekit
-        methods cannot be accessed directly without creating an Spacecraft
-        object.
-
-        Returns:
-            Vector3D: solar radiation pressure torque in satellite frame along principle axes
-
-        Raises:
-            AssertionError: if (Absorption Coeff + Specular Reflection Coeff) > 1
-        """
-        if self.to_add[2]:
-            ratio = self.SolarModel.getLightingRatio(self.satPos_i,
-                                                     self.refFrame,
-                                                     self.refDate)
-
-            sunPos = self.inertial2Sat.applyTo(
-                    self.sun.getPVCoordinates(self.refDate,
-                                              self.refFrame).getPosition())
-            sunPos = np.array([sunPos.x, sunPos.y, sunPos.z], dtype='float64')
-
-            CoM = self.meshDA['CoM_np']
-            normal = self.meshDA['Normal_np']
-            area = self.meshDA['Area_np']
-            coefs = self.meshDA['Coefs_np']
-
-            sunSatVector = self.satPos_s + CoM - sunPos
-            r = np.linalg.norm(sunSatVector, axis=1)
-            rawP = ratio * self.K_REF / (r**2)
-            flux = (rawP / r)[:, None] * sunSatVector
-            # eliminate arrays where zero flux
-            fluxNorm = np.linalg.norm(flux, axis=1)
-            Condflux = fluxNorm**2 > Precision.SAFE_MIN
-            flux = flux[Condflux]
-            normal = normal[Condflux]
-
-            # dot product for multidimensional arrays:
-            dot = np.einsum('ij,ij->i', flux, normal)
-            dot[dot > 0] = dot[dot > 0] * (-1.0)
-            if dot.size > 0:
-                normal[dot > 0] = normal[dot > 0] * (-1.0)
-
-                cN = 2 * area * dot * (coefs[:, 2] / 3 - coefs[:, 1] * dot / fluxNorm)
-                cS = (area * dot / fluxNorm) * (coefs[:, 1] - 1)
-                force = cN[:, None] * normal + cS[:, None] * flux
-
-                spTorque = np.sum(np.cross(CoM, force), axis=0)
-            else:
-                spTorque = np.zeros(3)
-
-            spTorque = Vector3D(float(spTorque[0]), float(spTorque[1]), float(spTorque[2]))
-
-            return spTorque
-
-        else:
-            return Vector3D.ZERO
-
-    def getSolarTorque(self):
-        """Compute torque acting on satellite due to solar radiation pressure.
-
-        This method is declared in the Orekit wrapper in
-        PythonAttitudePropagation.java and overridden here, so that
-        an OrekitException is thrown if something goes wrong.
-
-        This method uses the getLightingRatio method defined in Orekit and
-        copies parts of the acceleration() method of the SolarRadiationPressure
-        and radiationPressureAcceleration() of the BoxAndSolarArraySpacecraft
-        class to to calculate the solar radiation pressure on the discretized
-        surface of the satellite. This is done, since the necessary Orekit
-        methods cannot be accessed directly without creating an Spacecraft
-        object.
-
-        Returns:
-            Vector3D: solar radiation pressure torque in satellite frame along principle axes
-
-        Raises:
-            AssertionError: if (Absorption Coeff + Specular Reflection Coeff) > 1
-        """
-        if self.to_add[2]:
-            spacecraftState = self.StateObserver.spacecraftState
-            inertial2Sat = spacecraftState.getAttitude().getRotation()
-
-            ratio = self.SolarModel.getLightingRatio(self.satPos_i,
-                                                     self.refFrame,
-                                                     self.refDate)
-
-            sunPos = inertial2Sat.applyTo(
-                    self.sun.getPVCoordinates(self.refDate,
-                                              self.refFrame).getPosition())
-            spTorque = Vector3D.ZERO
-
-            iterator = itertools.izip(self.meshDA['CoM'],
-                                      self.meshDA['Normal'],
-                                      self.meshDA['Area'],
-                                      self.meshDA['Coefs'])
-
-            for CoM, normal, area, coefs in iterator:
-                position = self.satPos_s.add(CoM)
-
-                # compute flux in inertial frame
-                sunSatVector = \
-                    position.subtract(sunPos)
-                r2 = sunSatVector.getNormSq()
-
-                rawP = ratio * self.K_REF / r2
-                flux = Vector3D(rawP / sqrt(r2), sunSatVector)
-
-                # compute Radiation Pressure Force:
-                if flux.getNormSq() > Precision.SAFE_MIN:
-                    # illumination (we are not in umbra)
-                    # rotate flux to spacecraft frame:
-                    dot = self.V3_dot(normal, flux)
-
-                    if dot > 0:
-                        # the solar array is illuminated backward,
-                        # fix signs to compute contribution correctly
-                        dot = -dot
-                        normal = normal.negate()
-                    absorbCoeff = coefs[0]
-                    specularReflCoeff = coefs[1]
-                    diffuseReflCoeff = 1 - (absorbCoeff + specularReflCoeff)
-                    try:
-                        assert(diffuseReflCoeff >= 0)
-                    except AssertionError:
-                        raise AssertionError(
-                            "Negative diffuse reflection coefficient not possible!")
-                    psr = flux.getNorm()
-                    # Vallado's equation uses different parameters which are
-                    # related to our parameters as:
-                    # cos (phi) = - dot / (psr*area)
-                    # n         = N                     (n...unit vector)
-                    # s         = -fluxSat / psr        (s...unit vector)
-                    cN = 2 * area * dot * (diffuseReflCoeff / 3 -
-                                           specularReflCoeff * dot / psr)
-                    cS = (area * dot / psr) * (specularReflCoeff - 1)
-                    Force = Vector3D(float(cN), normal, float(cS), flux)
-                    # Force already in spacecraft frame. No need to convert
-                    spTorque = spTorque.add(self.V3_cross(CoM, Force))
-
-            return spTorque
-
-        else:
-            return Vector3D.ZERO
-
-    def getAeroTorque(self):
-        """Compute torque acting on satellite due to drag.
-
-        This method is declared in the Orekit wrapper in
-        PythonAttitudePropagation.java and overridden here, so that
-        an OrekitException is thrown if something goes wrong.
-
-        This method copies parts of the acceleration() method of the
-        DragForce and dragAcceleration() of the BoxAndSolarArraySpacecraft
-        class to to calculate the pressure on the discretized surface of the
-        satellite. This is done, since the necessary Orekit methods cannot be
-        accessed directly without creating an Spacecraft object.
-
-        Returns:
-            Vector3D: torque due to drag along principle axes in satellite frame
-        """
-
-        if self.to_add[3]:
-            # assuming constant atmosphere condition over spacecraft
-            # error is of order of 10^-17
-            rho = self.AtmoModel.getDensity(self.refDate, self.satPos_i, self.refFrame)
-            vAtm_i = self.AtmoModel.getVelocity(self.refDate, self.satPos_i, self.refFrame)
-
-            satVel = self.inertial2Sat.applyTo(self.satVel_i)
-            vAtm = self.inertial2Sat.applyTo(vAtm_i)
-
-            aTorque = Vector3D.ZERO
-
-            dragCoeff = self.meshDA['Cd']
-            liftRatio = 0.0  # no lift considered
-
-            iterator = itertools.izip(self.meshDA['CoM'],
-                                      self.meshDA['Normal'],
-                                      self.meshDA['Area'])
-
-            for CoM, Normal, Area in iterator:
-                CoMVelocity = satVel.add(self.V3_cross(self.omega, CoM))
-                relativeVelocity = vAtm.subtract(CoMVelocity)
-
-                vNorm2 = relativeVelocity.getNormSq()
-                vNorm = sqrt(vNorm2)
-                vDir = relativeVelocity.scalarMultiply(1.0 / vNorm)
-
-                dot = self.V3_dot(Normal, vDir)
-                if (dot < 0):
-                    coeff = 0.5 * rho * dragCoeff * vNorm2
-                    oMr = 1.0 - liftRatio
-                    # dA intercepts the incoming flux
-                    f = coeff * Area * dot
-                    force = Vector3D(float(oMr * abs(f)), vDir,
-                                     float(liftRatio * f * 2), Normal)
-                    aTorque = aTorque.add(self.V3_cross(CoM, force))
-
-            return aTorque
-
-        else:
-            return Vector3D.ZERO
-
-    def getAeroTorqueArray(self):
-        """Compute torque acting on satellite due to drag.
-
-        This method is declared in the Orekit wrapper in
-        PythonAttitudePropagation.java and overridden here, so that
-        an OrekitException is thrown if something goes wrong.
-
-        This method copies parts of the acceleration() method of the
-        DragForce and dragAcceleration() of the BoxAndSolarArraySpacecraft
-        class to to calculate the pressure on the discretized surface of the
-        satellite. This is done, since the necessary Orekit methods cannot be
-        accessed directly without creating an Spacecraft object.
-
-        Returns:
-            Vector3D: torque due to drag along principle axes in satellite frame
-        """
-
-        if self.to_add[3]:
-            # assuming constant atmosphere condition over spacecraft
-            # error is of order of 10^-17
-            rho = self.AtmoModel.getDensity(self.refDate, self.satPos_i, self.refFrame)
-            vAtm_i = self.AtmoModel.getVelocity(self.refDate, self.satPos_i, self.refFrame)
-
-            satVel = self.inertial2Sat.applyTo(self.satVel_i)
-            vAtm = self.inertial2Sat.applyTo(vAtm_i)
-
-            dragCoeff = self.meshDA['Cd']
-            liftRatio = 0.0  # no lift considered
-
-            CoM = self.meshDA['CoM_np']
-            normal = self.meshDA['Normal_np']
-            area = np.asarray(self.meshDA['Area'])
-            omega = np.array([self.omega.x, self.omega.y, self.omega.z])
-            satVel = np.array([satVel.x, satVel.y, satVel.z])
-            vAtm = np.array([vAtm.x, vAtm.y, vAtm.z])
-
-            relativeVelocity = vAtm - (satVel + (np.cross(omega, CoM)))
-            vNorm = np.linalg.norm(relativeVelocity, axis=1)
-            vDir = np.reciprocal(vNorm[:, None]) * relativeVelocity
-
-            dot = np.einsum('ij,ij->i', normal, vDir)
-
-            dotCondition = dot < 0
-            dot = dot[dotCondition]
-            if dot.size > 0:
-                vDir = vDir[dotCondition]
-                vNorm = vNorm[dotCondition]
-                normal = normal[dotCondition]
-                area = area[dotCondition]
-                CoM = CoM[dotCondition]
-
-                coeff = 0.5 * rho * dragCoeff * (vNorm**2)
-                oMr = 1.0 - liftRatio
-                f = (coeff * area * dot)[:, None]
-
-                torque = np.sum(np.cross(CoM, oMr * np.absolute(f) * vDir + 2 * liftRatio * f * normal), axis=0)
-            else:
-                torque = np.zeros(3)
-
-            aTorque = Vector3D(float(torque[0]), float(torque[1]), float(torque[2]))
-
-            return aTorque
-
-        else:
-            return Vector3D.ZERO
-
 
 class StateEquation(PSE):
     """Class in format to be used with Hipparchus library for integration.
 
     Integrates satellite's state equations and returns its new attitude
-    in quaternions and it's angular rate along the principal axes
+    in quaternions and it's angular rate along the principal axes.
+
+    The computeDerivatives method overridden in this class, computes the
+    EoM of satellite's attitude based on equations (17-1a), (17-1b), (17-2),
+    (17-3) from the book:
+    'SPACECRAFT ATTITUDE DETERMINATION AND CONTROL' by James R. Wertz
+
+    The inertial tensor provided has to be a diagonal matrix.
+
+    Constructor Args:
+        Dimension: dimension of state vector
+        DT_instance: disturbance torque object
     """
 
     def __init__(self, Dimension, DT_instance):
@@ -765,25 +203,30 @@ class StateEquation(PSE):
         self.inertiaT = None
         '''Inertia Tensor given for principal axes. Constant through integration'''
 
-        self.in2Sat_rotation = None
-
-        self.omega = None
-
         self.DistTorque = DT_instance
+        '''Disturbance torque object'''
 
     def init(self, t0, y0, finalTime):
         """No initialization needed"""
 
     def computeDerivatives(self, t, y):
+        '''Get the current time derivative of the state vector.
+
+        Args:
+            t: current value of the independent time variable
+            y: array containing the current value of the state vector
+        Returns:
+            JArray: time derivative of the state vector
+        '''
         try:
             # update rotation and compute torque at new attitude
-            self.in2Sat_rotation = Rotation(float(y[6]),
-                                            float(y[3]),
-                                            float(y[4]),
-                                            float(y[5]), True)
+            in2Sat_rotation = Rotation(float(y[6]),
+                                       float(y[3]),
+                                       float(y[4]),
+                                       float(y[5]), True)
 
-            self.omega = np.array([y[0], y[1], y[2]])
-            DT = self.DistTorque.compute_torques(self.in2Sat_rotation, self.omega)
+            omega = np.array([y[0], y[1], y[2]])
+            DT = self.DistTorque.compute_torques(in2Sat_rotation, omega, t)
 
             yDot = orekit.JArray('double')(self.getDimension())
 
@@ -809,6 +252,8 @@ class StateEquation(PSE):
             yDot[5] = 0.5 * (y[1] * y[3] - y[0] * y[4] + y[2] * y[6])
             yDot[6] = 0.5 * (-y[0] * y[3] - y[1] * y[4] - y[2] * y[5])
 
+            self.t_last = t
+
             return yDot
 
         except Exception as err:
@@ -817,16 +262,31 @@ class StateEquation(PSE):
 
 
 class Integrators(object):
-    '''Class performs RK-single step.'''
+    """Class holding a classical Runge Kutta and a DormandPrinve853 integrator.
+
+    This class is integrating the state equations either using a single step
+    integration with a Runge Kutta integrator or using multiple variable steps
+    with a DormandPrince853 integrator from the Hipparchus library.
+
+    For small orbit integration steps a single step Runge-Kutta integrator is
+    used. For larger steps the DormandPrince.
+    For time steps smaller than variable maxDT a single step integration is performed,
+    for time steps larger than maxDT a multiple variable steps integration is used.
+
+    Constructor Args:
+        intSettings: dictionary holding DormandPrince853 integrator settings
+        tol: tolerances for DormandPrince853 integrator
+    """
 
     def __init__(self, intSettings, tol):
         self.maxDT = intSettings['maxDT']
+        '''Value representing maximal step size for which a single step integrator is used.'''
 
         self.integrator_RK = ClassicalRungeKuttaIntegrator(float(1.0))  # 1.0 chosen arbitrarily
+        '''Classical Runge Kutta integrator object'''
 
-        minStep = intSettings['minStep']
-        maxStep = intSettings['maxStep']
-        initStep = intSettings['initStep']
+        self.integrator_DP853 = None
+        '''DormandPrince853 integrator object'''
 
         minStep = intSettings['minStep']
         maxStep = intSettings['maxStep']
@@ -845,6 +305,25 @@ class Integrators(object):
         self.integrator_DP853.setInitialStepSize(initStep)
 
     def integrate(self, state, y0, dt):
+        """Intermediate method switching between integrator object depending on
+        orbit time step and calling their integrate methods.
+
+        For small orbit integration steps a single step Runge-Kutta integrator is
+        used. For larger steps the DormandPrince integrator used be used otherwise
+        simulation could become numerically instable.
+
+        Args:
+            state: state object holding differential equations to be integrated
+            y0: JArray with initial values of state vector
+            dt: time to which should be integrated
+
+        Returns:
+            JArray object: integrated state vector
+
+        Raises:
+            MathIllegalArgumentException: if integration step too small
+            MathIllegalStateException: if the number of functions evaluations is exceeded
+        """
 
         if abs(dt) <= self.maxDT:
             equations = OrdinaryDifferentialEquation.cast_(state)
@@ -861,63 +340,6 @@ class Integrators(object):
                 raise illArg
             except MathIllegalStateException as illStat:
                 raise illStat
-
             result = new_state.getPrimaryState()  # primary state from ODEState
 
         return result
-
-
-class PyRotation(object):
-    def __init__(self, q0, q1, q2, q3):
-        self.q0 = q0
-        self.q1 = q1
-        self.q2 = q2
-        self.q3 = q3
-
-    def getMatrix(self):
-        # products
-        q0q0 = self.q0 * self.q0
-        q0q1 = self.q0 * self.q1
-        q0q2 = self.q0 * self.q2
-        q0q3 = self.q0 * self.q3
-        q1q1 = self.q1 * self.q1
-        q1q2 = self.q1 * self.q2
-        q1q3 = self.q1 * self.q3
-        q2q2 = self.q2 * self.q2
-        q2q3 = self.q2 * self.q3
-        q3q3 = self.q3 * self.q3
-
-        # create the matrix
-        m = np.empty([3, 3], dtype='float64')
-
-        m[0, 0] = 2.0 * (q0q0 + q1q1) - 1.0
-        m[1, 0] = 2.0 * (q1q2 - q0q3)
-        m[2, 0] = 2.0 * (q1q3 + q0q2)
-
-        m[0, 1] = 2.0 * (q1q2 + q0q3)
-        m[1, 1] = 2.0 * (q0q0 + q2q2) - 1.0
-        m[2, 1] = 2.0 * (q2q3 - q0q1)
-
-        m[0, 2] = 2.0 * (q1q3 - q0q2)
-        m[1, 2] = 2.0 * (q2q3 + q0q1)
-        m[2, 2] = 2.0 * (q0q0 + q3q3) - 1.0
-
-        return m
-
-    def revert(self):
-        return PyRotation(-self.q0, self.q1, self.q2, self.q3)
-
-    def applyTo(self, v):
-        s = self.q1 * v[0] + self.q2 * v[1] + self.q3 * v[2]
-
-        return np.array([2 * (self.q0 * (v[0] * self.q0 - (self.q2 * v[2] - self.q3 * v[1])) + s * self.q1) - v[0],
-                         2 * (self.q0 * (v[1] * self.q0 - (self.q3 * v[0] - self.q1 * v[2])) + s * self.q2) - v[1],
-                         2 * (self.q0 * (v[2] * self.q0 - (self.q1 * v[1] - self.q2 * v[0])) + s * self.q3) - v[2]])
-
-    def applyInverseTo(self, v):
-        s = self.q1 * v[0] + self.q2 * v[1] + self.q3 * v[2]
-        m0 = -self.q0
-
-        return np.array([2 * (m0 * (v[0] * m0 - (self.q2 * v[2] - self.q3 * v[1])) + s * self.q1) - v[0],
-                         2 * (m0 * (v[1] * m0 - (self.q3 * v[0] - self.q1 * v[2])) + s * self.q2) - v[1],
-                         2 * (m0 * (v[2] * m0 - (self.q1 * v[1] - self.q2 * v[0])) + s * self.q3) - v[2]])

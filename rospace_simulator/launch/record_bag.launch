@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <launch>
 
-	<arg name="full_directory" value="/home/christian/Documents/ETH/MasterThesis/Validation/Orbit/EnviSat/WholeMonth/0205" />
-	<arg name="bag_name" value="run_celestrack" />
-	<arg name="end_time" value="96000" /> 
+	<arg name="full_directory" value="/home/lanegger/bags/step_max_0_1" />
+	<arg name="bag_name" value="run_pmac" />
+	<arg name="end_time" value="605200" /> 
 
 	<node pkg="rosbag" type="record" name="$(arg bag_name)" output="screen" args="-O $(arg full_directory)/$(arg bag_name) --duration=$(arg end_time) -a" required="True"/>
 

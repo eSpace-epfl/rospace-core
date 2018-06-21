@@ -23,6 +23,7 @@ from orekit.pyhelpers import setup_orekit_curdir
 import inspect
 import thread
 import os
+import decimal
 from java.io import File
 from threading import Thread
 from org.orekit.propagation.semianalytical.dsst import DSSTPropagator
@@ -58,7 +59,6 @@ from org.hipparchus.ode.nonstiff import DormandPrince853Integrator
 from org.orekit.forces.gravity.potential import GravityFieldFactory
 from org.orekit.forces.gravity import HolmesFeatherstoneAttractionModel
 from org.orekit.utils import IERSConventions
-
 
 from . import *
 from threading import RLock, Lock
@@ -102,6 +102,19 @@ class KepOrbElem(BaseState):
         self._E = None  # eccentric anomaly
         self._m = None  # mean anomaly
         self._v = None  # true anomaly
+
+    def __getstate__(self):
+        """Return state values to be pickled."""
+        result = self.__dict__.copy()
+        del result['_lock']
+        del result['_orekit_lock']
+        return result
+
+    def __setstate__(self, state):
+        """Restore state from unpickled state values."""
+        self.__dict__ = state
+        self._lock = RLock()
+        self._orekit_lock = Lock()
 
     @property
     def E(self):
@@ -332,6 +345,7 @@ class KepOrbElem(BaseState):
             self.O = 2 * np.pi - self.O
 
         # 10. calculate eccentricity vector  / 11. Calc eccentricity
+
         E = 1 / Constants.mu_earth * ((v ** 2 - Constants.mu_earth / r) * cart.R.flat - r * v_r * cart.V.flat)
         self.e = np.linalg.norm(E, ord=2)
 
@@ -348,7 +362,15 @@ class KepOrbElem(BaseState):
 
         # 12. Calculate the true anomaly
         # p2 = np.log(self.e)+np.log(r)
-        self.v = np.arccos(np.dot(E, cart.R.flat) / (self.e*r))
+        arg = np.dot(E, cart.R.flat) / (self.e*r)
+        if arg <= 1.0 or arg >= -1.0:
+            self.v = np.arccos(arg)
+        elif arg > 1.0 and arg - 1.0 < 1e-10:
+                self.v = np.arccos(1.0)
+        elif -arg > 1.0 and -arg - 1.0 < 1e-10:
+                self.v = np.arccos(-1.0)
+        else:
+            raise ValueError("Could not calculate true anomaly. Argument out-of-bounds: " + str(arg))
         if v_r < 0:
             self.v = 2 * np.pi - self.v
 
@@ -661,6 +683,46 @@ class KepOrbElem(BaseState):
             self.w = self.w - 2*np.pi
 
         self.m = m  # assign m latest, as other properties might be used for ocnversion!
+
+    def get_pof(self):
+        """
+            Get the transformation matrix from Earth-Inertial to Perifocal frame of reference.
+
+            Source:
+                Chapter 4.5 in [1]
+
+            Returns:
+                B (np.array): Transformation matrix such that p_PERI = B * p_TEME
+        """
+
+        c_O = np.cos(self.O)
+        s_O = np.sin(self.O)
+        c_w = np.cos(self.w)
+        s_w = np.sin(self.w)
+        c_i = np.cos(self.i)
+        s_i = np.sin(self.i)
+
+        p_i = c_O * c_w - s_O * c_i * s_w
+        p_j = s_O * c_w + c_O * c_i * s_w
+        p_k = s_i * s_w
+        p = np.array([p_i, p_j, p_k])
+
+        q_i = -c_O * s_w - s_O * c_i * c_w
+        q_j = -s_O * s_w + c_O * c_i * c_w
+        q_k = s_i * c_w
+        q = np.array([q_i, q_j, q_k])
+
+        w_i = s_i * s_O
+        w_j = -s_i * c_O
+        w_k = c_i
+        w = np.array([w_i, w_j, w_k])
+
+        B = np.identity(3)
+        B[0, 0:3] = p
+        B[1, 0:3] = q
+        B[2, 0:3] = w
+
+        return B
 
 
 class OscKepOrbElem(KepOrbElem):
