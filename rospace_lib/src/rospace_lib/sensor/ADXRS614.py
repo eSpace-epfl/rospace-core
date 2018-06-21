@@ -61,12 +61,12 @@ class ADXRS614(object):
     def get_value(self):
         # Please refer to [1] for an explanation of this model.
         # first, update random walk noise
-        sigma_bgd = self.random_walk * 1.0 / np.sqrt(1.0 / self.update_rate)
-        self._bd = self._bd + np.random.normal(0.0, sigma_bgd)
+        sigma_bgd = self.random_walk * np.sqrt(1.0 / self.update_rate)
+        self._bd = self._bd + np.random.normal(0.0, sigma_bgd**2)
 
         # sample higher freq gaussian white noise
         sigma_gd = self.white_noise_density * 1.0 / np.sqrt(1.0 / self.update_rate)
-        nd = np.random.normal(0.0, sigma_gd)
+        nd = np.random.normal(0.0, sigma_gd**2)
 
         # truncate by min/max values
         truncated_true_rotation = min(self.max_rotation, self._current_true_rotation_rate)
@@ -74,4 +74,3 @@ class ADXRS614(object):
 
         # return true value disturbed by white noise (nd) and random walk (bd)
         return truncated_true_rotation + nd + self._bd
-
