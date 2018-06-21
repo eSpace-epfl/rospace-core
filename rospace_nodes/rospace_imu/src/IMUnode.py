@@ -7,6 +7,7 @@
 # See the LICENSE.md file in the root of this repository
 # for complete details.
 import rospy
+import numpy as np
 from rospace_msgs.msg import PoseVelocityStamped
 from sensor_msgs.msg import Imu
 
@@ -23,12 +24,11 @@ def callback_pose(data):
 
     rate_gyro.set_true_value(rotation_rate, 0)
 
-def publishIMUMessage():
+
+def publish_IMU_message():
     pub = rospy.Publisher('imu', Imu, queue_size=10)
 
-    rate = rospy.Rate(10) # 10hz
-
-
+    rate = rospy.Rate(10)  # 10hz
 
     while not rospy.is_shutdown():
         rate_gyro_reading = rate_gyro.get_value()
@@ -43,13 +43,14 @@ def publishIMUMessage():
 
         rate.sleep()
 
+
 if __name__ == '__main__':
     try:
         rate_gyro = ThreeAxisADXRS614()
         rospy.init_node('imu_node', anonymous=True)
 
-        last_callback_time = rospy.Time(0,0)
+        last_callback_time = rospy.Time(0, 0)
         subs = rospy.Subscriber("pose", PoseVelocityStamped, callback_pose)
-        publishIMUMessage()
+        publish_IMU_message()
     except rospy.ROSInterruptException:
         pass
