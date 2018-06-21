@@ -13,27 +13,33 @@ import sys
 import os
 from copy import deepcopy
 import numpy as np
-
+import pkg_resources
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + "/../src/")  # hack...
+
 from rospace_lib.sensor import *
 
-class DTUMOEMSSTest(unittest.TestCase):
 
+class DTUMOEMSSTest(unittest.TestCase):
 
     def test_transfer_func(self):
         sensor = DTUMOEMSS()
 
+        # find relative path
+        # pkg_resource returns path to rospace_lib package not the folder therefore return 2 levels up
+        sunsensor_path = pkg_resources.resource_filename('rospace_lib', '../../doc/sunsensor/sunsensor.csv')
+        sunsensor_sdev_path = pkg_resources.resource_filename('rospace_lib', '../../doc/sunsensor/sunsensor_sdev.csv')
+
         # read csv
-        data = np.genfromtxt("/home/pantic/rospace_ws/src/rdv-cap-sim/rospace_lib/doc/sunsensor.csv",
+        data = np.genfromtxt(sunsensor_path,
                              delimiter=",",
                              skip_header=1)
 
         sensor.set_transfer_func(np.deg2rad(data[:,0]), data[:,1])
 
-        data_sdev = np.genfromtxt("/home/pantic/rospace_ws/src/rdv-cap-sim/rospace_lib/doc/sunsensor_sdev.csv",
-                             delimiter=",",
-                             skip_header=1)
+        data_sdev = np.genfromtxt(sunsensor_sdev_path,
+                                  delimiter=",",
+                                  skip_header=1)
 
         sensor.set_noise_func(np.deg2rad(data_sdev[:,0]), data_sdev[:,1])
 
@@ -44,9 +50,5 @@ class DTUMOEMSSTest(unittest.TestCase):
         print sensor.get_value()
 
 
-
-
-
 if __name__ == '__main__':
     unittest.main()
-
