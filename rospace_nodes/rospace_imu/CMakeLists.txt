@@ -3,7 +3,11 @@ project(rospace_imu)
 
 find_package(catkin_simple REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
-
+if(CATKIN_ENABLE_TESTING)
+	find_package(rostest REQUIRED)
+	add_rostest(test/launch_IMUnode.test)
+	add_rostest(test/rostest_IMUnode.py)
+endif()
 cs_install()
 
 cs_export()

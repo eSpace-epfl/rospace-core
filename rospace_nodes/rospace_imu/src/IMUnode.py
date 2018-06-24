@@ -15,6 +15,12 @@ from rospace_lib.sensor.ADXRS614 import *
 
 
 def callback_pose(data):
+    """Feeds "PoseVelocityStamped" message to rate gyroscope model.
+
+    Args:
+        data (msg.PoseVelocityStamped): pose stamped message containing the
+            spin of the spacecraft
+    """
     rotation_rate = np.zeros(3)
     rotation_rate[0] = data.spin.x
     rotation_rate[1] = data.spin.y
@@ -26,6 +32,8 @@ def callback_pose(data):
 
 
 def publish_IMU_message():
+    """Publish the IMU sensor readings at a rate of 10[Hz].
+    """
     pub = rospy.Publisher('imu', Imu, queue_size=10)
 
     rate = rospy.Rate(10)  # 10hz
@@ -46,7 +54,7 @@ def publish_IMU_message():
 
 if __name__ == '__main__':
     try:
-        rate_gyro = ThreeAxisADXRS614()
+        rate_gyro = ThreeAxisADXRS614()  # globally scoped variable
         rospy.init_node('imu_node', anonymous=True)
 
         last_callback_time = rospy.Time(0, 0)
