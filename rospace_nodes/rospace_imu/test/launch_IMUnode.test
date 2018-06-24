@@ -1,0 +1,25 @@
+<launch>
+
+	<!-- Launch IMU node -->
+    <include file="$(find rospace_imu)/launch/imu.launch">
+        <arg name="spacecraft" value="testcraft" />
+    </include>
+
+    <!-- Hztest of IMU node -->
+    <test test-name="hztest_IMUnode" pkg="rostest" type="hztest" name="imuHz" >
+	    <param name="topic" value="/testcraft/imu" />  
+	    <param name="hz" value="10" />
+	    <param name="hzerror" value="1" />
+	    <param name="test_duration" value="3.0" />
+	</test>
+
+	<test test-name="publishtest_IMUnode" pkg="rostest" type="publishtest" name="imuPublish">
+    <rosparam>
+      topics:
+        - name: testcraft/imu
+          timeout: 10
+          negative: False
+    </rosparam>
+  </test>
+
+</launch>

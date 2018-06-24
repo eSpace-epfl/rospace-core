@@ -7,11 +7,14 @@
   </description>
 
   <maintainer email="michael.pantic@gmail.com">Michael Pantic</maintainer>
+  <maintainer email="lanegger.christian@gmail.com">Christian Lanegger</maintainer>
 
   <license>BSD</license>
 
   <buildtool_depend>catkin</buildtool_depend>
   <buildtool_depend>catkin_simple</buildtool_depend>
+
+  <build_depend>rostest</build_depend>
 
   <depend>rospy</depend>
 

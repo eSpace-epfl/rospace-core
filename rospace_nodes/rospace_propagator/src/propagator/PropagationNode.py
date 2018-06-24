@@ -150,9 +150,9 @@ def cart_to_msgs(cart, att, time):
     Packs cartesian orbit elements to message.
 
     Args:
-        cart: orbit state vector
-        att: satellite attitude in quaternions
-        time: time stamp
+        cart (:obj:`rospace_lib.Cartesian`): orbit state vector
+        att (Orekit.Attitude): satellite attitude in quaternions
+        time (:obj:`rospy.Time`): time stamp
 
     Returns:
        msg.SatelitePose: message containing orbital elements and orientation
