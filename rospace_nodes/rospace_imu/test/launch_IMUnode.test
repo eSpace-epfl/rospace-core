@@ -13,6 +13,7 @@
 	    <param name="test_duration" value="3.0" />
 	</test>
 
+	<!-- Publishtest of IMU node -->
 	<test test-name="publishtest_IMUnode" pkg="rostest" type="publishtest" name="imuPublish">
     <rosparam>
       topics:
