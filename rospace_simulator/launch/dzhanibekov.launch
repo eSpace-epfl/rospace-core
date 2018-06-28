@@ -52,9 +52,6 @@
         <!-- Load Configuration File for sensors etc -->
         <rosparam command="load" file="$(find rospace_simulator)/cfg/$(arg ns_target).yaml" />
    
-	<node pkg="rospace_imu" name="rospace_imu" type="imu_node.py" output="screen">
-	</node>
-
         <!-- Launch TF publisher for visualizations -->
         <node pkg="rospace_simulator" name="tf_pub" type="satelite_tf_publisher.py" output="screen">
             <remap from="pose" to="pose" />

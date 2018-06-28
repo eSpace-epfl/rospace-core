@@ -1,4 +1,5 @@
 # @copyright Copyright (c) 2018, Michael Pantic (michael.pantic@gmail.com)
+# @copyright Copyright (c) 2018, Christian Lanegger (lanegger.christian@gmail.com)
 #
 # @license zlib license
 #
