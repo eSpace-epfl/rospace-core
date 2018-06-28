@@ -58,12 +58,14 @@ class IMUnodeTest(unittest.TestCase):
         for multiple messages."""
         old_msg_nr = self.msg_nr
 
-        container_input = np.zeros(3*20)
-        container_input = container_input.reshape(20, 3)
-        container_output = np.zeros(3*20)
-        container_output = container_output.reshape(20, 3)
+        tot_msg_nr = 30
 
-        for i in range(0, 30):
+        container_input = np.zeros(3*tot_msg_nr)
+        container_input = container_input.reshape(tot_msg_nr, 3)
+        container_output = np.zeros(3*tot_msg_nr)
+        container_output = container_output.reshape(tot_msg_nr, 3)
+
+        for i in range(0, tot_msg_nr):
             while old_msg_nr == self.msg_nr:
                 # wait for new message
                 rospy.sleep(0.0001)

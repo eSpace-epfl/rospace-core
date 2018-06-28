@@ -1,7 +1,7 @@
 <launch>
 
     <!-- ROS Integration Test -->
-    <test test-name="test_IMUnode" pkg="rospace_imu" type="rostest_IMUnode.py" time-limit="20.0">
+    <test test-name="test_IMUnode" pkg="rospace_imu" type="rostest_IMUnode.py" time-limit="30.0">
     	<param name="spacecraft" value="testcraft" />
     </test>
 
