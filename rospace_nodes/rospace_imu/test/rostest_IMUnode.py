@@ -6,6 +6,7 @@
 # This file is licensed under the terms of the zlib license.
 # See the LICENSE.md file in the root of this repository
 # for complete details.
+
 import unittest
 import sys
 import os
@@ -58,14 +59,14 @@ class IMUnodeTest(unittest.TestCase):
         for multiple messages."""
         old_msg_nr = self.msg_nr
 
-        tot_msg_nr = 30
+        check_nr_msgs = 30
 
-        container_input = np.zeros(3*tot_msg_nr)
-        container_input = container_input.reshape(tot_msg_nr, 3)
-        container_output = np.zeros(3*tot_msg_nr)
-        container_output = container_output.reshape(tot_msg_nr, 3)
+        container_input = np.zeros(3*check_nr_msgs)
+        container_input = container_input.reshape(check_nr_msgs, 3)
+        container_output = np.zeros(3*check_nr_msgs)
+        container_output = container_output.reshape(check_nr_msgs, 3)
 
-        for i in range(0, tot_msg_nr):
+        for i in range(0, check_nr_msgs):
             while old_msg_nr == self.msg_nr:
                 # wait for new message
                 rospy.sleep(0.0001)

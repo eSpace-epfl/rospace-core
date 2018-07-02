@@ -15,7 +15,7 @@
 
     <!-- Launch propagator -->
  
-   <node pkg="rospace_propagator" name="propagator_abs" type="propagation_node.py" output="screen">
+   <node pkg="rospace_propagator" name="propagator_abs" type="PropagationNode.py" output="screen">
 	<param name="oe_ta_rel" type="bool" value="False" />
 	<param name="oe_ch_init" type="yaml" value="{a: 7000, e: 0.0001, i: 68, O: 60, w: 120, v: 0.001}" />
 	<param name="oe_ta_init" type="yaml" value="{a: 7000, e: 0.0001, i: 30, O: 60, w: 120, v: 0.001}" />
@@ -23,6 +23,7 @@
 	<param name="oe_epoch" value="20141001T12:00:00"/>
 	<param name="TIME_SHIFT" type="double" value="0.0" />
 
+    <param name="ns_chaser" value="testcraft" />
 	<param name="ns_target" value="$(arg ns_cubesat)" />
 
 
@@ -32,26 +33,40 @@
 	<remap from="forcetorque_target" to="/$(arg ns_cubesat)/force_torque" />
 	<remap from="B_field_target" to="/$(arg ns_cubesat)/B_field" />
 
+    <remap from="actuator_torque_target" to="/$(arg ns_cubesat)/actuator_torque" />
+
     </node>
 
+    <!-- ///////////////////////////////////////////////////////////////////////// -->
+    <!-- Just for now -->
+    <group ns="testcraft" >
+        <rosparam command="load" file="$(find rospace_simulator)/cfg/testcraft.yaml" />
+    </group>
+    <!-- ///////////////////////////////////////////////////////////////////////// -->
 
     <!-- Include configuration -->
     <group ns="$(arg ns_cubesat)">
         <!-- Load Configuration File for sensors etc -->
         <rosparam command="load" file="$(find rospace_simulator)/cfg/$(arg ns_cubesat).yaml" />
 
-	    <node pkg="rospace_imu" name="rospace_imu" type="imu_node.py" output="screen">
+        <group ns="sensors">
+    	    <include file="$(find rospace_imu)/launch/imu.launch">
+                <arg name="spacecraft" value="$(arg ns_cubesat)" />
+            </include>
+        </group>
 
-        </node>
+        <group ns="actuators">
+            <node pkg="rospace_magneto" name="rospace_magneto" type="magneto_node.py" output="screen">
+                <remap from="force" to="/$(arg ns_cubesat)/actuator_torque" />
+                <remap from="B_field" to="/$(arg ns_cubesat)/B_field" />
+                <remap from="I_magneto" to="/$(arg ns_cubesat)/I_magneto" /> 
+            </node>
+        </group>
 
-
-        <node pkg="rospace_magneto" name="rospace_magneto" type="magneto_node.py" output="screen">
-            <remap from="force" to="/force" />
-        </node>
         <node pkg="rospace_flightsoftware" name="rospace_flightsoftware" type="flightsoftware_node.py" output="screen" >
-            <remap from="torque_current" to="I_magneto" />
+            <remap from="B_field" to="/$(arg ns_cubesat)/B_field" />
+            <remap from="torque_current" to="/$(arg ns_cubesat)/I_magneto" />
         </node>
-
 
         <!-- Launch TF publisher for visualizations -->
         <node pkg="rospace_simulator" name="tf_pub" type="satelite_tf_publisher.py" output="screen">

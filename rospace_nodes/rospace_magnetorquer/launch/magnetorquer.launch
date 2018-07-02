@@ -1,0 +1,8 @@
+<launch>
+    <arg name="spacecraft" />
+    <node pkg="rospace_magnetorquer" name="rospace_magneto" type="MagnetorquerNode.py" output="screen">
+        <remap from="torque" to="/$(arg spacecraft)/actuator_torque" />
+        <remap from="B_field" to="/$(arg spacecraft)/B_field" />
+        <remap from="I_magneto" to="/$(arg spacecraft)/I_magneto" />
+    </node>
+</launch>

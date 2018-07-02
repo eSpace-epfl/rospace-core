@@ -1,18 +1,19 @@
 <launch>
-    <arg name="ns_chaser" />
-    <arg name="ns_target" />
+	<arg name="ns_chaser" />
+	<arg name="ns_target" />
 
 	<node pkg="rospace_propagator" name="propagator_abs" type="PropagationNode.py" output="screen">
 		<param name="oe_ta_rel" type="bool" value="False" />
 		<param name="oe_ch_init" type="yaml" value="{a: 7000, e: 0.0001, i: 68, O: 60, w: 120, v: 0.001}" />
 		<param name="oe_ta_init" type="yaml" value="{a: 7000, e: 0.0001, i: 30, O: 60, w: 120, v: 0.001}" />
-	
+
 		<param name="oe_epoch" value="20141001T12:00:00"/>
 		<param name="TIME_SHIFT" type="double" value="0.0" />
 
 		<param name="ns_chaser" value="$(arg ns_chaser)" />
 		<param name="ns_target" value="$(arg ns_target)" />
 
+		<!-- Remap publishers -->
 		<remap from="oe_chaser" to="/$(arg ns_chaser)/oe" />
 		<remap from="oe_target" to="/$(arg ns_target)/oe" />
 		<remap from="pose_chaser" to="/$(arg ns_chaser)/pose" />
@@ -23,10 +24,14 @@
 		<remap from="forcetorque_target" to="/$(arg ns_target)/force_torque" />
 		<remap from="B_field_chaser" to="/$(arg ns_chaser)/B_field" />
 		<remap from="B_field_target" to="/$(arg ns_target)/B_field" />
-		<remap from="force_chaser" to="/$(arg ns_chaser)/force" />
+
+		<!-- Remap subscribers -->
+		<remap from="thrust_force_chaser" to="/$(arg ns_chaser)/thrust_force" />
 		<remap from="IspMean_chaser" to="/$(arg ns_chaser)/IspMean" />
-		<remap from="force_target" to="/$(arg ns_target)/force" />
+		<remap from="thrust_force_target" to="/$(arg ns_target)/thrust_force" />
 		<remap from="IspMean_target" to="/$(arg ns_target)/IspMean" />
+		<remap from="actuator_torque_chaser" to="/$(arg ns_chaser)/actuator_torque" />
+		<remap from="actuator_torque_target" to="/$(arg ns_target)/actuator_torque" />
 	</node>
 
 </launch>

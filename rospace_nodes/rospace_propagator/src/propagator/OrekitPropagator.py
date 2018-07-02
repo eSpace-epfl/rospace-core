@@ -311,8 +311,7 @@ class OrekitPropagator(object):
         # set them to None in this case
         F_T = getattr(self, 'F_T', None)
         Isp = getattr(self, 'Isp', None)
-        # F_T = [10,0,0]
-        # Isp = 1000
+
         if F_T is not None and Isp is not None:
             F_T_norm = np.linalg.norm(F_T, 2)
 
@@ -338,7 +337,17 @@ class OrekitPropagator(object):
         node (stored in self.torque), and then feeds them to the provider.
         """
 
-        N_T = getattr(self, 'torque', None)
+        N_T_thrust = getattr(self, 'thrust_torque', None)
+        N_T_actuator = getattr(self, 'actuator_torque', None)
+
+        if N_T_thrust is not None and N_T_actuator is not None:
+            N_T = N_T_thrust + N_T_actuator
+        elif N_T_thrust is not None:
+            N_T = N_T_thrust
+        elif N_T_actuator is not None:
+            N_T = N_T_actuator
+        else:
+            N_T = None
 
         if N_T is not None:
             N_T = Vector3D(float(N_T[0]),
@@ -347,24 +356,24 @@ class OrekitPropagator(object):
             attProv = PAP.cast_(self._propagator_num.getAttitudeProvider())
             attProv.setExternalTorque(N_T)
 
-    def thrust_torque_callback(self, force_torque, thrust_ispM):
+    def thrust_callback(self, force_torque, thrust_ispM):
         """
         Callback function for subscriber to the propulsion node.
 
-        Propulsion has to set torque and force back to Zero if no
-        forces/torques present.
+        The propulsion node has to set torque and force back to zero if no
+        force/torque is present.
 
-        Function saves the vlaue for the mean specific impulse and
-        the force, torque vector to class objects.
+        Function saves the value for the mean specific impulse and
+        the force- & torque-vector to class objects.
 
-        If calback used it is necessary that the propulsion node publishes
-        the  current thrust force at every timestep (even if it is zero)!
+        If the callback is used it is necessary that the propulsion node publishes
+        the current thrust force at every timestep (even if it is zero)!
 
         Messages for thrust/torque and specific impulse are synchronized.
 
         Args:
-            thrust_force: WrenchStamped message cotaining torque and force
-            thrust_ispM: ThrustIsp message with specific impulse of maneuver
+            thrust_force (geometry_msgs.msg.WrenchStamped): WrenchStamped message containing torque and force
+            thrust_ispM (rospace_msgs.msg.ThrustIsp): ThrustIsp message with specific impulse of maneuver
         """
 
         # this currently only called in by chaser object
@@ -372,9 +381,21 @@ class OrekitPropagator(object):
                              force_torque.wrench.force.y,
                              force_torque.wrench.force.z])
 
-        #self.Isp = thrust_ispM.Isp_val
+        self.Isp = thrust_ispM.Isp_val
 
         # Torque:
-        self.torque = np.array([force_torque.wrench.torque.x,
-                                force_torque.wrench.torque.y,
-                                force_torque.wrench.torque.z])
+        self.thrust_torque = np.array([force_torque.wrench.torque.x,
+                                       force_torque.wrench.torque.y,
+                                       force_torque.wrench.torque.z])
+
+    def magnetotorque_callback(self, torque_msg):
+        """Callback function for subscriber to the magnetotorquer node.
+
+        The magnetotorquer has to set the torque back to zero if no torque present.
+
+        Args:
+            torque_msg (geometry_msgs.msg.WrenchStamped): message containing torque in spacecraft body frame
+        """
+        self.actuator_torque = np.array([torque_msg.wrench.torque.x,
+                                         torque_msg.wrench.torque.y,
+                                         torque_msg.wrench.torque.z])

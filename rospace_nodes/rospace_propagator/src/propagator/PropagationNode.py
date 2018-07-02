@@ -8,9 +8,6 @@
 # See the LICENSE.md file in the root of this repository
 # for complete details.
 
-#   Orbit propagation node that publishes coordinates
-#   in keplerian (oe) and cartesian (state) coordinates.
-
 import numpy as np
 import rospy
 import time
@@ -88,12 +85,12 @@ def get_init_state_from_param():
         if rospy.get_param("~oe_ta_rel"):  # relative target state
             qns_init_ta = rospace_lib.QNSRelOrbElements()
             # a = 0.001
-            qns_init_ta.dA = float(rospy.get_param("~oe_ta_init/ada")) #/ (a*1000.0)
-            qns_init_ta.dL = float(rospy.get_param("~oe_ta_init/adL")) #/ (a*1000.0)
-            qns_init_ta.dEx = float(rospy.get_param("~oe_ta_init/adEx")) #/ (a*1000.0)
-            qns_init_ta.dEy = float(rospy.get_param("~oe_ta_init/adEy")) #/ (a*1000.0)
-            qns_init_ta.dIx = float(rospy.get_param("~oe_ta_init/adIx")) #/ (a*1000.0)
-            qns_init_ta.dIy = float(rospy.get_param("~oe_ta_init/adIy")) #/ (a*1000.0)
+            qns_init_ta.dA = float(rospy.get_param("~oe_ta_init/ada"))  # / (a*1000.0)
+            qns_init_ta.dL = float(rospy.get_param("~oe_ta_init/adL"))  # / (a*1000.0)
+            qns_init_ta.dEx = float(rospy.get_param("~oe_ta_init/adEx"))  # / (a*1000.0)
+            qns_init_ta.dEy = float(rospy.get_param("~oe_ta_init/adEy"))  # / (a*1000.0)
+            qns_init_ta.dIx = float(rospy.get_param("~oe_ta_init/adIx"))  # / (a*1000.0)
+            qns_init_ta.dIy = float(rospy.get_param("~oe_ta_init/adIy"))  # / (a*1000.0)
 
             init_state_ta = rospace_lib.KepOrbElem()
             init_state_ta.from_qns_relative(qns_init_ta, init_state_ch)
@@ -325,11 +322,13 @@ if __name__ == '__main__':
                            SimTime.datetime_oe_epoch)
 
     # Subscribe to propulsion node and attitude control if one of those is active
-    if prop_chaser._hasThrust or prop_chaser._hasAttitudeProp:
-        external_force_ch = message_filters.Subscriber('force_chaser', WrenchStamped)
+    if prop_chaser._hasThrust:
+        external_force_ch = message_filters.Subscriber('thrust_force_chaser', WrenchStamped)
         thrust_ispM_ch = message_filters.Subscriber('IspMean_chaser', ThrustIsp)
         Tsync = message_filters.TimeSynchronizer([external_force_ch, thrust_ispM_ch], 10)
-        Tsync.registerCallback(prop_chaser.thrust_torque_callback)
+        Tsync.registerCallback(prop_chaser.thrust_callback)
+    if prop_chaser._hasAttitudeProp:
+        external_torque = rospy.Subscriber('actuator_torque_chaser', WrenchStamped, prop_chaser.magnetotorque_callback)
 
     prop_target = OrekitPropagator()
     # get settings from yaml file
@@ -343,11 +342,13 @@ if __name__ == '__main__':
     # sub_target_force = rospy.Subscriber('force', WrenchStamped, prop_target.thrust_torque_callback)
 
     # Subscribe to propulsion node and attitude control if one of those is active
-    if prop_target._hasThrust or prop_target._hasAttitudeProp:
-        external_force_ta = message_filters.Subscriber('force_target', WrenchStamped)
+    if prop_target._hasThrust:
+        external_force_ta = message_filters.Subscriber('thrust_force_target', WrenchStamped)
         thrust_ispM_ta = message_filters.Subscriber('IspMean_target', ThrustIsp)
         Tsync = message_filters.TimeSynchronizer([external_force_ta, thrust_ispM_ta], 10)
-        Tsync.registerCallback(prop_target.thrust_torque_callback)
+        Tsync.registerCallback(prop_target.thrust_callback)
+    if prop_target._hasAttitudeProp:
+        external_torque = rospy.Subscriber('actuator_torque_target', WrenchStamped, prop_target.magnetotorque_callback)
 
     FileDataHandler.create_data_validity_checklist()
 

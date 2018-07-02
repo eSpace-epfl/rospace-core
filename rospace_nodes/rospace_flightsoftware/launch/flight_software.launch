@@ -1,0 +1,7 @@
+<launch>
+    <arg name="spacecraft" />
+    <node pkg="rospace_flightsoftware" name="rospace_flightsoftware" type="flightsoftware_node.py" output="screen" >
+        <remap from="B_field" to="/$(arg spacecraft)/B_field" />
+        <remap from="torque_current" to="/$(arg spacecraft)/I_magneto" />
+    </node>
+</launch>

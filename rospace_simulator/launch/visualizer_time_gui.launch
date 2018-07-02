@@ -27,13 +27,21 @@
     <group ns="$(arg ns_chaser)">
         <!-- Load Configuration File for sensors etc -->
         <rosparam command="load" file="$(find rospace_simulator)/cfg/$(arg ns_chaser).yaml" />
-        
-        <group ns="Sensors">
+
+        <group ns="sensors">
             <!-- Launch IMU -->
             <include file="$(find rospace_imu)/launch/imu.launch">
                 <arg name="spacecraft" value="$(arg ns_chaser)" />
             </include>
         </group>
+
+        <group ns="actuators">
+            <!-- Launch Magnetorquer -->
+            <include file="$(find rospace_magnetorquer">
+                <arg name="spacecraft" value="$(arg ns_chaser)"/>
+            </include>
+        </group>
+        
     </group>
 
     <group ns="$(arg ns_target)">

@@ -1,10 +1,9 @@
 <launch>
     <arg name="spacecraft" />
-    
+
     <node pkg="rospace_imu" name="IMUnode" type="IMUnode.py" output="screen">
-     <remap from="imu" to="/$(arg spacecraft)/imu" />
-     <remap from="pose" to="/$(arg spacecraft)/pose" />
+        <remap from="imu" to="/$(arg spacecraft)/imu" />
+        <remap from="pose" to="/$(arg spacecraft)/pose" />
     </node>
 
 </launch>
-

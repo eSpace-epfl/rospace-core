@@ -1,8 +1,16 @@
 <launch>
 
+    <!-- Test specific arguments -->
+    <arg name="simulation_frequency" value="5" />
+    <arg name="simulation_timestep" value="0.1" />
+
+    <param name="/propagator_abs/frequency" value="$(arg simulation_frequency)" />
+    <param name="/propagator_abs/step_size" value="$(arg simulation_timestep)" />
+
     <!-- ROS Integration Test -->
-    <test test-name="test_IMUnode" pkg="rospace_imu" type="rostest_IMUnode.py" time-limit="30.0">
+    <test test-name="test_MagnetorquerNode" pkg="rospace_magnetorquer" type="rostest_MagnetorquerNode.py" time-limit="30.0">
         <param name="spacecraft" value="testcraft" />
+        <param name="timestep" value="$(arg simulation_timestep)" />
     </test>
 
     <!-- Start simulation automatically -->
@@ -17,20 +25,25 @@
     </include>
 
     <!-- Override frequency and step size -->
-    <param name="/propagator_abs/frequency" value="10" />
-    <param name="/propagator_abs/step_size" value="0.1" />
 
     <!-- Place Testcraft into simulation environment -->
     <group ns="testcraft">
         <!-- Load Configuration File for sensors etc -->
         <rosparam command="load" file="$(find rospace_simulator)/cfg/testcraft.yaml" />
 
-        <group ns="sensors">
-            <!-- Launch IMU -->
-            <include file="$(find rospace_imu)/launch/imu.launch">
+        <group ns="actuators">
+            <!-- Launch Magnetorquer -->
+            <include file="$(find rospace_magnetorquer)/launch/magnetorquer.launch">
+                <!-- <include file="/home/christian/rospace_ws/src/rdv-cap-sim/rospace_nodes/rospace_magnetorquer/launch/magnetorquer.launch"> -->
                 <arg name="spacecraft" value="testcraft" />
             </include>
         </group>
+
+        <!-- Launch Flight Software -->
+        <include file="$(find rospace_flightsoftware)/launch/flight_software.launch">
+            <arg name="spacecraft" value="testcraft" />
+        </include>
+
     </group>
 
     <!-- ////////////////////////////////////////////////////////////////// -->
@@ -40,5 +53,6 @@
         <rosparam command="load" file="$(find rospace_simulator)/cfg/target.yaml" />
     </group>
     <!-- ////////////////////////////////////////////////////////////////// -->
+
 
 </launch>
