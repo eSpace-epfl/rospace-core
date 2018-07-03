@@ -22,6 +22,7 @@ class SimTimeUpdater(object):
         frequency: publish frequency of ROS nodes [1/s]
         step_size: simulation step size [s]
     """
+
     def __init__(self,
                  oe_epoch=None,
                  frequency=None,
@@ -49,7 +50,7 @@ class SimTimeUpdater(object):
         if frequency is not None:
             self.frequency = frequency
         else:
-            self.frequency = 10
+            self.frequency = 0
 
         if frequency > 0:
             self.rate = float(1) / float(self.frequency)
@@ -82,7 +83,7 @@ class SimTimeUpdater(object):
             rosgraph_msgs.msg.Clock : clock message
         """
         if (self.currentTime < self.time_shift and
-           self.currentTime + self.step_size > self.time_shift):
+                self.currentTime + self.step_size > self.time_shift):
             # timestep needs to be adjusted to start at correct epoch
             shift = int(self.currentTime + self.step_size - self.time_shift)
             self.currentTime = self.time_shift
