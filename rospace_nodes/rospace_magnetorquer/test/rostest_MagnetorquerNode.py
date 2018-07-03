@@ -43,8 +43,8 @@ class MagnetorquerNodeTest(unittest.TestCase):
         timestep (float): simulation time-step size
         a_sub (rospy.Subscriber): subscriber to the "actuator_torque" topic.
         b_sub (rospy.Subscriber): subscriber to the "B_field" topic.
-        a_sub (rospy.Subscriber): subscriber to the "I_magneto" topic.
-        a_sub (rospy.Subscriber): subscriber to the "dist_torque" topic.
+        c_sub (rospy.Subscriber): subscriber to the "I_magneto" topic.
+        d_sub (rospy.Subscriber): subscriber to the "dist_torque" topic.
         spin_pub (rospy.Publisher): fake IMU publisher
 
     """
@@ -174,6 +174,7 @@ class MagnetorquerNodeTest(unittest.TestCase):
 
         return topic_time.to_sec()
 
+    # Unit-tests ###################################################################
     def test_0_no_spin_msg(self):
         """Test that no current is being published if no spin from IMU provided.
 

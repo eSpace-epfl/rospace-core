@@ -12,25 +12,25 @@ import numpy as np
 
 
 class BDotController(object):
-    """ Simple implementation of BDOT controller.
+    """Simple implementation of BDOT controller.
 
-        The implementation is specified in the Swisscube Document:
-            [1] S3-B-C-ADCS-1-2_BDot_Controller_Code.pdf
-        and is available at:
-        http://escgesrv1.epfl.ch/06%20-%20Attitude%20control/S3-B-C-ADCS-1-2-Bdot_Controller_Code.pdf
+    The implementation is specified in the Swisscube Document:
+        [1] S3-B-C-ADCS-1-2_BDot_Controller_Code.pdf
+    and is available at:
+    http://escgesrv1.epfl.ch/06%20-%20Attitude%20control/S3-B-C-ADCS-1-2-Bdot_Controller_Code.pdf
 
-        Attributes:
-            lmbda (float): Derivative stage parameter [-]
-            A (float): Area surrounded by magnetotorquer coils [m^2]
-            K_Bdot (float): Controller gain [Nms]
-            n (int): Number of windings per magnetotorquer [-]
-            maxCurrent (float): Maximum current allowed through the coils [m^2]
-            threshold (float): Desired value of minimum rotational speed [rad/s]
-            Bdot_old (numpy.array): Magnetic field derivative from previous time step [T/s]
-            B_old (numpy.array): Magnetic field from previous time step [T]
-            t_old (float): simulation time of last time step [s]
+    Attributes:
+        lmbda (float): Derivative stage parameter [-]
+        A (float): Area surrounded by magnetotorquer coils [m^2]
+        K_Bdot (float): Controller gain [Nms]
+        n (int): Number of windings per magnetotorquer [-]
+        maxCurrent (float): Maximum current allowed through the coils [m^2]
+        threshold (float): Desired value of minimum rotational speed [rad/s]
+        Bdot_old (numpy.array): Magnetic field derivative from previous time step [T/s]
+        B_old (numpy.array): Magnetic field from previous time step [T]
+        t_old (float): simulation time of last time step [s]
 
-     """
+    """
 
     def __init__(self):
         self.lmbda = 0.7  # (spelled wrong on purpose)
@@ -46,7 +46,7 @@ class BDotController(object):
         self.t_old = 0.0
 
     def run_controller(self, B_field, w_vec, time):
-        """Starts the controller.
+        """Start the controller.
 
         The equations for the control algorithm can be found at [1]
 
@@ -57,8 +57,8 @@ class BDotController(object):
 
         Returns:
             numpy.array: Current current provided for magnetotorques [A]
-        """
 
+        """
         # set start values
         if self.t_old == 0.0:
             self.t_old = time
@@ -81,21 +81,18 @@ class BDotController(object):
             K_s = 1
 
         K_B = 1 / np.sum(B_field**2)
-        I = K_B * Bdot * K_s * self.K_Bdot * (1 / (self.A * self.n))
+        current = K_B * Bdot * K_s * self.K_Bdot * (1 / (self.A * self.n))
 
-        I_max = max(abs(I))
+        I_max = max(abs(current))
 
         if I_max > self.maxCurrent:
 
             # limit current
             K_i = self.maxCurrent / I_max
-            I = I*K_i
+            current = current*K_i
 
         self.B_old = B_field
         self.Bdot_old = Bdot
 
         # return currents for torquers
-        return I
-
-    def turn_off_controller(self):
-        pass
+        return current
