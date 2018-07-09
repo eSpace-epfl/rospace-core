@@ -52,6 +52,7 @@ class Spacecraft(object):
 
         self.namespace = namespace
         self._propagator = None
+        self._last_state = None
 
         self._parsed_settings = {}
         self._parsed_settings["init_coords"] = {}
@@ -83,15 +84,17 @@ class Spacecraft(object):
                                     self._parsed_settings["init_coords"],
                                     init_epoch)
 
-    def propagate_and_publish(self, epoch_now):
+    def propagate(self, epoch_now):
+        """ last_state: [cart, att, force, d_torque, B_field]"""
+        self._last_state = self._propagator.propagate(epoch_now)
 
-        [cart, att, force, d_torque, B_field] = self._propagator.propagate(epoch_now)
+    def publish(self):
 
         rospy_now = rospy.Time.now()
-        [msg_oe, msg_pose] = cart_to_msgs(cart, att, rospy_now)
-        msg_B_field = Bfield_to_msgs(B_field, rospy_now)
-        [msg_ft, msg_d_torque] = force_torque_to_msgs(force,
-                                                      d_torque,
+        [msg_oe, msg_pose] = cart_to_msgs(self._last_state[0], self._last_state[1], rospy_now)
+        msg_B_field = Bfield_to_msgs(self._last_state[4], rospy_now)
+        [msg_ft, msg_d_torque] = force_torque_to_msgs(self._last_state[2],
+                                                      self._last_state[3],
                                                       rospy_now)
 
         self._pub_oe.publish(msg_oe)
@@ -272,8 +275,6 @@ if __name__ == '__main__':
     ExitServer = ExitServer()
     SimTime = rospace_lib.clock.SimTimePublisher()
     SimTime.set_up_simulation_time()
-    print "##############################################################################"
-    print SimTime.datetime_oe_epoch
 
     # # Init publisher and rate limiter
     # pub_ch = rospy.Publisher('oe_chaser', SatelitePose, queue_size=10)
@@ -353,12 +354,20 @@ if __name__ == '__main__':
         epoch_now = SimTime.update_simulation_time()
         if SimTime.time_shift_passed:
             # check if data still loaded
-            print epoch_now
             FileDataHandler.check_data_availability(epoch_now)
             # propagate to epoch_now
 
             for spc in spacecrafts:
-                spc.propagate_and_publish(epoch_now)
+                try:
+                    spc.propagate(epoch_now)
+                except Exception as e:
+                    print "ERROR in propagation of: [", spc.namespace, "]"
+                    print e.message, e.args
+                    print "Shutting down Propagator!"
+                    ExitServer.exiting = True
+
+            for spc in spacecrafts:
+                spc.publish()
 
             # [cart_ch, att_ch, force_ch, d_torque_ch, B_field_ch] = prop_chaser.propagate(epoch_now)
             # [cart_ta, att_ta, force_ta, d_torque_ta, B_field_ta] = prop_target.propagate(epoch_now)

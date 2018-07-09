@@ -220,16 +220,14 @@ class FileDataHandler(object):
             ValueError: if no data loaded for current epoch
         """
         min_max = FileDataHandler._data_checklist['MinMax_dates']
-        print epoch
         oDate = to_orekit_date(epoch)
-        print epoch
         if oDate.compareTo(min_max[0]) < 0:
             err_msg = "No file loaded with valid data for current epoch " + \
-                      str(oDate) + "! Earliest possible epoch: " + str(min_max[0])
+                      str(oDate) + "! Earliest possible epoch: " + min_max[0]
             raise ValueError(err_msg)
         if oDate.compareTo(min_max[1]) > 0:
             err_msg = "No file loaded with valid data for current epoch " + \
-                      str(oDate) + "! Latest possible epoch: " + str(min_max[1])
+                      str(oDate) + "! Latest possible epoch: " + min_max[1]
             raise ValueError(err_msg)
 
         d_year = GeoMagneticField.getDecimalYear(epoch.day,

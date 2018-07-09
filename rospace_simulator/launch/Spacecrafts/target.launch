@@ -23,7 +23,15 @@
         </group>
 
         <!-- Launch TF Publisher for Visualizations -->
-        <node pkg="rospace_simulator" name="tf_pub" type="satelite_tf_publisher.py" output="screen" />
+        <node pkg="rospace_simulator" name="tf_pub" type="satelite_tf_publisher.py" output="screen">
+            <remap from="pose" to="pose" />
+            <remap from="~sensors" to="sensors" />
+            <remap from="target_oe" to="oe" />
+            <remap from="~frames" to="frames" />
+            <remap from="relative_parent" to="pose" />
+            <param name="body_frame" value="target" />
+            <param name="mode" value="absolute" />
+        </node>
 
     </group>
     <!-- ///////////////////////////////////////////////////////////////////////////////////  -->

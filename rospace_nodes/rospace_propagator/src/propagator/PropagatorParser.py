@@ -93,8 +93,6 @@ class SpacecraftCommunicator(object):
 def parse_configuration_files(spc_obj, ns_spacecraft, init_coords):
 
     ns_spacecraft = spc_obj.namespace
-    print "Trying to get:"
-    print "/" + ns_spacecraft + "/propagator_settings"
     spc_obj.propagator_settings = rospy.get_param("/" + ns_spacecraft + "/propagator_settings", 0)
     try:
         assert (spc_obj.propagator_settings != 0)

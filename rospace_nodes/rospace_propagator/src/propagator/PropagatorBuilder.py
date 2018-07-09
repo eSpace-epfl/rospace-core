@@ -187,7 +187,6 @@ class PropagatorBuilder(Builder):
         # needs to be the same, because it is assumed in attitude prop
         self.inertialFrame = None
         self.refDate = epoch
-        print str(self.refDate)
 
     def _build_state(self):
         """
@@ -674,13 +673,14 @@ class CartesianEME2000(StateFactory):
         """
         satMass = setup['mass']
         pos = init_coord['position']
-        p = Vector3D(float(pos.R[0]),
-                     float(pos.R[1]),
-                     float(pos.R[2]))
-        v = Vector3D(float(pos.V[0]),
-                     float(pos.V[1]),
-                     float(pos.V[2]))
-        print epoch.toString()
+        p = Vector3D(float(1e3),  # convert to[m]
+                     Vector3D(float(pos.R[0]),
+                              float(pos.R[1]),
+                              float(pos.R[2])))
+        v = Vector3D(float(1e3),  # convert to [m/s]
+                     Vector3D(float(pos.V[0]),
+                              float(pos.V[1]),
+                              float(pos.V[2])))
         # Inertial frame where the satellite is defined (and earth)
         inertialFrame = FramesFactory.getEME2000()
 
