@@ -1,0 +1,64 @@
+# parsed by Clock Interface:
+# (This information does not need to be specified)
+simulation_time:
+  # Time Epoch in Format: YYYYMMDDTHH:MM:SS  ; if not provided simulation starting time used
+  oe_epoch: 20141001T12:00:00
+  # Negative Time Shift from oe_epoch (Useful for Initializing ROS-Bags)
+  time_shift: 0.0
+  frequency: 0.0
+  step_size: 0.1
+##########################################################################################
+
+# Parsed by Propagator API & satellite_tf_publisher:
+init_coords:
+  chaser_1:
+    type: absolute
+    coord_type: keplerian
+    coord_frame: J2000
+    coord_frame_attitude: J2000
+    init_coord:
+      a: 7000
+      e: 0.0001
+      i: 68
+      O: 60
+      w: 120
+      v: 0.001
+    init_attitude:
+      q0: 0
+      q1: 0
+      q2: 0
+      q3: 1
+    init_spin:  # in body frame [deg/s]
+      w_x: 0
+      w_y: 0
+      w_z: 0
+    init_rot_acceleration:
+      w_dot_x: 0
+      w_dot_y: 0
+      w_dot_z: 0
+
+  target_1:
+    type: absolute
+    coord_type: cartesian
+    coord_frame: J2000
+    coord_frame_attitude: J2000
+    init_coord:
+      x: 1120.74
+      y: 1098.82
+      z: -6978.76
+      v_x: 7.433
+      v_y: 0.106
+      v_z: 1.210
+    init_attitude:
+      q0: 0
+      q1: 0
+      q2: 0
+      q3: 1
+    init_spin:  # in body frame [deg/s]
+      w_x: 0
+      w_y: 0
+      w_z: 0
+    init_rot_acceleration:
+      w_dot_x: 0
+      w_dot_y: 0
+      w_dot_z: 0

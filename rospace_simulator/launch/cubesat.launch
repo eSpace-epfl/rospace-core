@@ -75,6 +75,9 @@
         </node>
     </group>
 
+    <!-- Load Scenario with initial values -->
+    <rosparam param="scenario" command="load" file="$(find rospace_simulator)/cfg/Scenarios/CSO_mission.yaml" />
+
     <!-- start rviz -->
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find rospace_simulator)/res/rviz/swisscube.rviz" required="true" />
 

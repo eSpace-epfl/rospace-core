@@ -83,7 +83,7 @@ class FileDataHandler(object):
             loaded = manager.feed('(?:WMM|wmm)\\p{Digit}\\p{Digit}\\.(?:cof|COF)', gmLoader)
             if loaded:
                 mesg = "\033[93m  [WARN] [load_magnetic_field_models] Could " \
-                   + "not load IGRF model. Using WMM instead.\033[0m"
+                    + "not load IGRF model. Using WMM instead.\033[0m"
                 print mesg
             else:
                 raise ValueError("No magnetic field model found!")
@@ -98,7 +98,7 @@ class FileDataHandler(object):
 
         if valid_mod is None:
             mesg = "No magnetic field model found by data provider for year " \
-                    + str(curr_year) + "."
+                + str(curr_year) + "."
             raise ValueError(mesg)
 
         FileDataHandler._mag_field_coll = GMM_coll
@@ -153,10 +153,10 @@ class FileDataHandler(object):
         if MSAFE_file:
             msafe = \
                 MarshallSolarActivityFutureEstimation(
-                 "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)" +
-                 "\\p{Digit}\\p{Digit}\\p{Digit}\\p{Digit}F10\\" +
-                 ".(?:txt|TXT)",
-                 MarshallSolarActivityFutureEstimation.StrengthLevel.AVERAGE)
+                    "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)" +
+                    "\\p{Digit}\\p{Digit}\\p{Digit}\\p{Digit}F10\\" +
+                    ".(?:txt|TXT)",
+                    MarshallSolarActivityFutureEstimation.StrengthLevel.AVERAGE)
             MS_start_date = msafe.getMinDate()
             MS_end_date = msafe.getMaxDate()
             checklist['MSAFE_dates'] = [MS_start_date, MS_end_date]
@@ -178,12 +178,12 @@ class FileDataHandler(object):
             dec_year = GM_start_date
             base = datetime(int(dec_year), 1, 1)
             dec = timedelta(seconds=(base.replace(year=base.year + 1) -
-                            base).total_seconds() * (dec_year-int(dec_year)))
+                                     base).total_seconds() * (dec_year-int(dec_year)))
             GM_start_date = to_orekit_date(base + dec)
             dec_year = GM_end_date
             base = datetime(int(dec_year), 1, 1)
             dec = timedelta(seconds=(base.replace(year=base.year + 1) -
-                            base).total_seconds() * (dec_year-int(dec_year)))
+                                     base).total_seconds() * (dec_year-int(dec_year)))
             GM_end_date = to_orekit_date(base + dec)
             checklist['MagField_dates'] = [GM_start_date, GM_end_date]
             start_dates.append(GM_start_date)
@@ -220,14 +220,16 @@ class FileDataHandler(object):
             ValueError: if no data loaded for current epoch
         """
         min_max = FileDataHandler._data_checklist['MinMax_dates']
+        print epoch
         oDate = to_orekit_date(epoch)
+        print epoch
         if oDate.compareTo(min_max[0]) < 0:
             err_msg = "No file loaded with valid data for current epoch " + \
-                      str(oDate) + "! Earliest possible epoch: " + min_max[0]
+                      str(oDate) + "! Earliest possible epoch: " + str(min_max[0])
             raise ValueError(err_msg)
         if oDate.compareTo(min_max[1]) > 0:
             err_msg = "No file loaded with valid data for current epoch " + \
-                      str(oDate) + "! Latest possible epoch: " + min_max[1]
+                      str(oDate) + "! Latest possible epoch: " + str(min_max[1])
             raise ValueError(err_msg)
 
         d_year = GeoMagneticField.getDecimalYear(epoch.day,

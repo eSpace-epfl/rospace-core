@@ -18,10 +18,12 @@ class SimTimeUpdater(object):
     messages with the updated simulation time
 
     Args:
-        oe_epoch: epoch of initial orbital elements
-        frequency: publish frequency of ROS nodes [1/s]
-        step_size: simulation step size [s]
+        oe_epoch (datetime.datetime): epoch of initial orbital elements
+        frequency (float): publish frequency of ROS nodes [1/s]
+        step_size (float): simulation step size [s]
+
     """
+
     def __init__(self,
                  oe_epoch=None,
                  frequency=None,
@@ -82,7 +84,7 @@ class SimTimeUpdater(object):
             rosgraph_msgs.msg.Clock : clock message
         """
         if (self.currentTime < self.time_shift and
-           self.currentTime + self.step_size > self.time_shift):
+                self.currentTime + self.step_size > self.time_shift):
             # timestep needs to be adjusted to start at correct epoch
             shift = int(self.currentTime + self.step_size - self.time_shift)
             self.currentTime = self.time_shift

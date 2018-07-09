@@ -96,17 +96,8 @@ class SimTimePublisher(object):
             rospy.loginfo("Time is being driven by the node %s.",
                           str(self._time_driving_node))
 
-            # get defined simulation parameters from rosparam
-            sim_parameter = dict()
-            if rospy.has_param("~TIME_SHIFT"):
-                # get simulation time shift before t=0:
-                sim_parameter['time_shift'] = float(rospy.get_param("~TIME_SHIFT"))
-            if rospy.has_param("~frequency"):
-                sim_parameter['frequency'] = int(rospy.get_param("~frequency"))
-            if rospy.has_param("~oe_epoch"):
-                sim_parameter['oe_epoch'] = str(rospy.get_param("~oe_epoch"))
-            if rospy.has_param("~step_size"):
-                sim_parameter['step_size'] = float(rospy.get_param("~step_size"))
+            # get defined simulation parameters from yaml as dictionary
+            sim_parameter = rospy.get_param("scenario/simulation_time")
 
             self._SimTime = SimTimeUpdater(**sim_parameter)
 
@@ -184,9 +175,9 @@ class SimTimePublisher(object):
                 self.ClockService.step_size !=  # frequency = 0 - RT doesn't change
                     self._SimTime.step_size):
                 self._SimTime.updateTimeFactors(
-                                        self.ClockService.realtime_factor,
-                                        self.ClockService.frequency,
-                                        self.ClockService.step_size)
+                    self.ClockService.realtime_factor,
+                    self.ClockService.frequency,
+                    self.ClockService.step_size)
                 self.epoch.changeFrequency(self.ClockService.frequency)
                 self.epoch.changeStep(self.ClockService.step_size)
 
