@@ -20,7 +20,7 @@ from rosgraph_msgs.msg import Clock
 
 class SimTimePublisher(object):
     """
-    Class handeling the simulation time.
+    Class handling the simulation time.
 
     The node driving the simulation time should call
     this class and use its methods to set up and update
@@ -47,7 +47,7 @@ class SimTimePublisher(object):
 
     @property
     def datetime_oe_epoch(self):
-        """Initial epoch of orbital elements [datetime object]"""
+        """Initial epoch of orbital elements [datetime]."""
         if self._SimTime is not None:
             return self._SimTime.datetime_oe_epoch
         else:
@@ -55,21 +55,20 @@ class SimTimePublisher(object):
 
     @property
     def time_shift_passed(self):
-        """Bool if simulation time shift passed (desired initial time started)"""
+        """Bool if simulation time shift passed (desired initial time started)."""
         if self._SimTime is not None:
             return self._SimTime.time_shift_passed
         else:
             return None
 
     def _publish_sim_time(self):
-        """Updates and publishes simulation time. Epoch_now is changed here."""
-
+        """Update and publish simulation time. Epoch_now is changed here."""
         msg_cl = Clock()
         [msg_cl, self._epoch_now] = self._SimTime.updateClock(msg_cl)
         self.pub_clock.publish(msg_cl)
 
     def set_up_simulation_time(self):
-        """Sets up simulation time. Has to be called by driving node before start.
+        """Set up simulation time. Has to be called by driving node before start.
 
         This method locks the use of all other methods of this class to the
         first node requesting to drive the simulation time. Once requested,
@@ -84,8 +83,8 @@ class SimTimePublisher(object):
 
         Raises:
             RuntimeError: if method called more than once per simulation
-        """
 
+        """
         self._lock.acquire()
 
         if not SimTimePublisher._sim_time_setup_requested:
@@ -138,7 +137,7 @@ class SimTimePublisher(object):
         self._lock.release()
 
     def update_simulation_time(self):
-        """Updates simulation time.
+        """Update simulation time.
 
         Driving node has to call this method at the very beginning of every
         iteration step.
@@ -156,8 +155,8 @@ class SimTimePublisher(object):
 
         Raises:
             RuntimeError: If used without the sleep_to_keep_frequency method
-        """
 
+        """
         self._lock.acquire()
 
         if self._comp_time is not None:
@@ -199,20 +198,19 @@ class SimTimePublisher(object):
         return self._queue.get()
 
     def sleep_to_keep_frequency(self):
-        """Sleeps if simulation is quicker than requested. Warns if slower.
+        """Sleep if simulation is quicker than requested. Warn if slower.
 
         Has to be called by driving node at the end of every iteration step!
         """
-
         self._lock.acquire()
         if self._SimTime.frequency > 0:
             # calculate reminding sleeping time
-            sleep_time = self._SimTime.rate - (time.clock() - self._comp_time)
+            sleep_time = 1 / self._SimTime.frequency - (time.clock() - self._comp_time)
 
             if sleep_time > 0:
                 sleep(sleep_time)
             elif self.ClockService.syncSubscribers == 0:
-                rospy.logwarn("Driving node too slow for publishing rate.")
+                rospy.logwarn("Driving node too slow for publishing frequency.")
 
             self._comp_time = None
         else:

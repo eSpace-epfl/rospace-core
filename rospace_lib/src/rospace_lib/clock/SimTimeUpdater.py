@@ -7,15 +7,15 @@
 # for complete details.
 
 from datetime import datetime, timedelta
-from time import sleep
 
 
 class SimTimeUpdater(object):
-    """
-    Class handeling simulation time in ROS.
+    """Class handling simulation time in ROS.
 
     Stores starting/ending epoch, updates time factors and creates clock
-    messages with the updated simulation time
+    messages with the updated simulation time.
+
+    If no initial frequency has been set, the simulation will run as quickly as possible.
 
     Args:
         oe_epoch (datetime.datetime): epoch of initial orbital elements
@@ -26,7 +26,7 @@ class SimTimeUpdater(object):
 
     def __init__(self,
                  oe_epoch=None,
-                 frequency=None,
+                 frequency=0.0,
                  step_size=None,
                  time_shift=0.0):
 
@@ -48,23 +48,15 @@ class SimTimeUpdater(object):
         self.time_shift_passed = time_shift == 0.0
 
         # real time update rate -- attempted updates per second
-        if frequency is not None:
-            self.frequency = frequency
-        else:
-            self.frequency = 10
-
-        if frequency > 0:
-            self.rate = float(1) / float(self.frequency)
-        else:
-            self.rate = 0
+        self.frequency = frequency
 
         # maximal step size, run at real time if not defined
         if step_size is not None:
             self.step_size = step_size
-        elif self.rate == 0:
+        elif self.frequency == 0:
             self.step_size = 0.1  # otherwise step size too small
         else:
-            self.step_size = self.rate
+            self.step_size = 1 / self.frequency
 
         self.step_size = self.step_size*1e9  # step size in [ns]
         self.step_size = int(self.step_size)
@@ -74,14 +66,14 @@ class SimTimeUpdater(object):
         self.stopTime = 0.0
 
     def updateClock(self, msg_cl):
-        """
-        Update current simulation time and create the published message
+        """Update current simulation time and create the published message.
 
         Args:
             msg_cl: ROS message for clock. Time is put in here
 
         Returns:
             rosgraph_msgs.msg.Clock : clock message
+
         """
         if (self.currentTime < self.time_shift and
                 self.currentTime + self.step_size > self.time_shift):
@@ -110,20 +102,15 @@ class SimTimeUpdater(object):
         return [msg_cl, self.datetime_oe_epoch_shifted + time_delta]
 
     def updateTimeFactors(self, new_rtf, new_freq, new_dt):
-        """
-        Update Realtime Factor, Frequency, step-size and publishing rate
-        based on provided frequency
+        """Update Real-time Factor, Frequency, step-size and publishing rate based on provided frequency.
 
         Args:
-            new_rtf: new realtime factor
-            new_freq: new frequency
-            new_dt: new time step size
-        """
+            new_rtf (float): new real-time factor
+            new_rate (float): new rate/frequency
+            new_dt (float): new time step size
 
+        """
         self.realtime_factor = new_rtf
         self.frequency = new_freq
-        if new_freq > 0:
-            self.rate = float(1) / float(self.frequency)
-        else:  # frequency = None : run as quickly as possible
-            self.rate = 0
+
         self.step_size = new_dt
