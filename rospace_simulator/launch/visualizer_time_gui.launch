@@ -37,7 +37,7 @@
 
         <group ns="actuators">
             <!-- Launch Magnetorquer -->
-            <include file="$(find rospace_magnetorquer">
+            <include file="$(find rospace_magnetorquer)/launch/magnetorquer.launch">
                 <arg name="spacecraft" value="$(arg ns_chaser)"/>
             </include>
         </group>
