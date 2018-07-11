@@ -486,8 +486,7 @@ class PropagatorBuilder(Builder):
 
 #####################################################################
 class StateFactory(object):
-    """
-    Base Class for different builds of initial states
+    """Base Class for different builds of states in which object is propagated.
     """
 
     __metaclass__ = abc.ABCMeta
@@ -534,115 +533,6 @@ def _build_satellite_attitude(setup, orbit_pv, inertialFrame, earth, epoch):
     return Attitude(epoch, inertialFrame, satRot, spin, acc)
 
 
-class KeplerianEME2000(StateFactory):
-
-    @staticmethod
-    def isApplicable(name):
-
-        if name == "KeplerianEME2000":
-            return True
-        else:
-            return False
-
-    @staticmethod
-    def Setup(epoch, earth, state, setup):
-        """
-        Create initial spacecraft state and orbit based on Keplerian elements.
-
-        Args:
-            epoch: initial epoch or orbital elements
-            state: initial state of satellite
-            setup: additional settings defined in dictionary
-
-        Returns:
-            inertialFrame: EME2000 as inertial Frame of Orbit
-            initialOrbit: Keplerian orbit
-            initialState: Spacecraft state
-        """
-
-        satMass = setup['mass']
-
-        a = float(state.a)
-        e = float(state.e)
-        i = float(state.i)
-        w = float(state.w)
-        O = float(state.O)
-        v = float(state.v)
-
-        # Inertial frame where the satellite is defined (and earth)
-        inertialFrame = FramesFactory.getEME2000()
-
-        initialOrbit = KeplerianOrbit(a*1000, e, i, w, O, v,
-                                      PositionAngle.TRUE,
-                                      inertialFrame,
-                                      epoch,
-                                      Cst.WGS84_EARTH_MU)
-
-        orbit_pv = PVCoordinatesProvider.cast_(initialOrbit)
-        satAtt = _build_satellite_attitude(setup, orbit_pv, inertialFrame,
-                                           earth, epoch)
-
-        initialState = SpacecraftState(initialOrbit, satAtt, satMass)
-
-        return [inertialFrame, initialOrbit, initialState]
-
-
-class CartesianITRF(StateFactory):
-
-    @staticmethod
-    def isApplicable(name):
-
-        if name == "CartesianITRF":
-            return True
-        else:
-            return False
-
-    @staticmethod
-    def Setup(epoch, earth, state, setup):
-        """
-        Create initial spacecraft state and orbit using PV-Coordinates in ITRF2008 Frame.
-
-        Args:
-            epoch: initial epoch or orbital elements
-            state: initial state of satellite [Position, Velocity]
-            setup: additional settings defined in dictionary
-
-        Returns:
-            inertialFrame: EME2000 as inertial Frame of Orbit
-            initialOrbit: Cartesian orbit
-            initialState: Spacecraft state
-        """
-
-        satMass = setup['mass']
-
-        p = Vector3D(float(state.R[0]),
-                     float(state.R[1]),
-                     float(state.R[2]))
-        v = Vector3D(float(state.V[0]),
-                     float(state.V[1]),
-                     float(state.V[2]))
-
-        # Inertial frame where the satellite is defined (and earth)
-        inertialFrame = FramesFactory.getEME2000()
-        # False bool -> don't ignore tidal effects
-        orbitFrame = FramesFactory.getITRF(IERS.IERS_2010, False)
-        ITRF2EME = orbitFrame.getTransformTo(inertialFrame, epoch)
-        pv_EME = ITRF2EME.transformPVCoordinates(PVCoordinates(p, v))
-
-        initialOrbit = CartesianOrbit(pv_EME,
-                                      inertialFrame,
-                                      epoch,
-                                      Cst.WGS84_EARTH_MU)
-
-        orbit_pv = PVCoordinatesProvider.cast_(initialOrbit)
-        satAtt = _build_satellite_attitude(setup, orbit_pv, inertialFrame,
-                                           earth, epoch)
-
-        initialState = SpacecraftState(initialOrbit, satAtt, satMass)
-
-        return [inertialFrame, initialOrbit, initialState]
-
-
 class CartesianEME2000(StateFactory):
 
     @staticmethod
@@ -655,13 +545,14 @@ class CartesianEME2000(StateFactory):
 
     @staticmethod
     def Setup(epoch, earth, init_coord, setup):
-        """Create initial spacecraft state from settings parsed by :func:`propagator.PropagatorParser.parse_configuration_files`.
+        """Create state from settings parsed by :func:`propagator.PropagatorParser.parse_configuration_files`.
 
-        The state of the spacecraft will be build in such a manner that it will be propagated in Cartesian coordinates with the
-        J2000 frame as inertial frame.
+        The state of the spacecraft will be build in such a manner that it will be propagated in Cartesian coordinates
+        with the J2000 frame as inertial frame.
 
         Args:
             epoch (orekit.AbsoluteDate): initial epoch or orbital elements
+            earth (orekit.models.earth.ReferenceEllipsoid): Earth object
             init_coord (rospace_lib.Cartesian.Cartesian): initial coordinates of satellite as
             setup (dictionary): additional settings defined in dictionary
 

@@ -7,20 +7,20 @@
 
     <link name="J2K">
         <visual>
-          <geometry>
-           <mesh filename="package://rospace_simulator/res/meshes/earth.DAE" scale="637100 637100 637100">
-            </mesh>
-          </geometry>
+            <geometry>
+                <mesh filename="package://rospace_simulator/res/meshes/earth.DAE" scale="637100 637100 637100">
+                </mesh>
+            </geometry>
         </visual>
     </link>
 
     <link name="chaser">
         <visual>
-          <geometry>
-            <mesh filename="package://rospace_simulator/res/meshes/cso-mesh.stl" scale="1 1 1">
-            </mesh>
-          </geometry>
-          <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="package://rospace_simulator/res/meshes/cso-mesh.stl" scale="1 1 1">
+                </mesh>
+            </geometry>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
         </visual>
     </link>
 
@@ -37,7 +37,7 @@
     <joint name="target2J2K" type="fixed">
         <parent link="J2K"/>
         <child link="target"/>
-        <origin xyz="7000000 0 0 "/>
+        <origin xyz="0 0 0 "/>
     </joint>
 
     <joint name="chaser2J2K" type="fixed">
@@ -45,5 +45,4 @@
         <child link="chaser"/>
         <origin xyz="0 0 0 "/>
     </joint>
- </robot>
-
+</robot>

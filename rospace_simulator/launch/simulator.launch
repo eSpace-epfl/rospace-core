@@ -23,12 +23,8 @@
     <include file="$(find rospace_propagator)/launch/propagator.launch" />
     <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
 
-    <!-- Load Simulation World -->
-    <param name="robot_description" textfile="$(find rospace_simulator)/res/models/world.urdf" />
-    <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
-
     <!-- Start RVIZ Visualization. -->
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find rospace_simulator)/res/rviz/tf_large.rviz" required="true" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find rospace_simulator)/res/rviz/$(arg scenario).rviz" required="true" />
     <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
 
     <!-- Launch Simulation-Time Plugin -->

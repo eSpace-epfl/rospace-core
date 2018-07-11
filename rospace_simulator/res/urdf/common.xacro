@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:macro name="loop" params="links_qty">
+        <!-- call some macros or do other things -->
+        <xacro:if value="${links_qty}">
+            <xacro:planet inertial_frame="${inertial_frame}">
+                <xacro:Earth_geometry scale="637100 637100 637100"/>
+            </xacro:planet>
+            <xacro:loop links_qty="${links_qty-1}" />
+        </xacro:if>
+    </xacro:macro>
+
+
+</robot>

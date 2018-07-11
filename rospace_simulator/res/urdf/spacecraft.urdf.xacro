@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:include filename="$(find rospace_simulator)/res/urdf/materials.urdf.xacro" />
+    <xacro:property name="meshes_location" value="package://rospace_simulator/res/meshes"/>
+
+    <!-- Search for finding correct spacecraft template -->
+    <xacro:macro name="load_spacecraft" params="namespace joint_parent">
+        <xacro:if value="${'chaser' in namespace}">
+            <xacro:chaser_spacecraft namespace="${namespace}" joint_parent="${joint_parent}"/>
+        </xacro:if>
+        <xacro:if value="${'target' in namespace}">
+            <xacro:target_spacecraft namespace="${namespace}" joint_parent="${joint_parent}"/>
+        </xacro:if>
+    </xacro:macro>
+
+
+    <!-- Spacecraft Templates -->
+    <xacro:macro name="chaser_spacecraft" params="namespace joint_parent">
+        <link name="${namespace}">
+            <visual>
+                <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+                <geometry>
+                    <mesh filename="${meshes_location}/cso/cso-mesh.stl" scale="1 1 1">
+                    </mesh>
+                </geometry>
+                <material name="Red" />
+            </visual>
+        </link>
+
+        <joint name="${namespace}2${joint_parent}" type="fixed">
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+            <parent link="${joint_parent}"/>
+            <child link="${namespace}"/>
+        </joint>
+    </xacro:macro>
+
+    <xacro:macro name="target_spacecraft" params="namespace joint_parent">
+        <link name="${namespace}">
+            <visual>
+                <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+                <geometry>
+                    <box size="100 100 100"/>
+                </geometry>
+                <material name="Grey" />
+            </visual>
+        </link>
+
+        <joint name="${namespace}2${joint_parent}" type="fixed">
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 1.57075 0.0" />
+            <parent link="${joint_parent}"/>
+            <child link="${namespace}"/>
+        </joint>>
+    </xacro:macro>
+
+</robot>

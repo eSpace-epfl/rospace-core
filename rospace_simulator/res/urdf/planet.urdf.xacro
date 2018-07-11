@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:property name="meshes_location" value="package://rospace_simulator/res/meshes"/>
+
+    <!-- Search for finding correct planet template -->
+    <xacro:macro name="load_planet" params="namespace inertial_frame">
+        <xacro:if value="${'Earth' in namespace}">
+            <xacro:planet_Earth inertial_frame="${inertial_frame}"/>
+        </xacro:if>
+    </xacro:macro>
+
+
+    <!-- Planet Templates -->
+    <xacro:macro name="planet_Earth" params="inertial_frame">
+        <link name="${inertial_frame}">
+            <visual>
+                <geometry>
+                    <mesh filename="${meshes_location}/Earth/earth.DAE" scale="637100 637100 637100">
+                    </mesh>
+                </geometry>
+            </visual>
+        </link>
+    </xacro:macro>
+
+</robot>

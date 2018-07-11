@@ -12,7 +12,6 @@ import rospy
 import tf
 import numpy as np
 import message_filters
-import rospace_msgs
 import rospace_lib
 from rospace_msgs.msg import SatelitePose
 from rospace_msgs.msg import PoseVelocityStamped
@@ -29,8 +28,10 @@ parent_orientation = np.array([0, 0, 0, 1])
 def handle_sync(pose_msg, parent_msg):
     global parent_orientation
     global parent_position
-    parent_orientation = np.array([parent_msg.pose.orientation.x, parent_msg.pose.orientation.y, parent_msg.pose.orientation.z, parent_msg.pose.orientation.w])
-    parent_position = np.array([parent_msg.pose.position.x*1000, parent_msg.pose.position.y*1000, parent_msg.pose.position.z*1000])
+    parent_orientation = np.array([parent_msg.pose.orientation.x, parent_msg.pose.orientation.y,
+                                   parent_msg.pose.orientation.z, parent_msg.pose.orientation.w])
+    parent_position = np.array([parent_msg.pose.position.x*1000,
+                                parent_msg.pose.position.y*1000, parent_msg.pose.position.z*1000])
 
     handle_pose(pose_msg)
 
@@ -114,11 +115,14 @@ def handle_target_oe(msg):
 
 if __name__ == '__main__':
 
-    rospy.init_node('satelite_tf_publisher')
+    rospy.init_node('satellite_tf_publisher')
+    # get name of spacecraft
+    body_frame = rospy.get_namespace().split("/")[1]
+
     sensor_cfg = rospy.get_param("~sensors", "")
     frame_cfg = rospy.get_param("~frames", "")
     thruster_cfg = rospy.get_param("~thrusters", "")
-    body_frame = rospy.get_param("~body_frame", "chaser")
+    # body_frame = rospy.get_param("~body_frame", body_frame)
     position_mode = rospy.get_param("~mode", "absolute")
 
     # position mode zero_pos = no position is broadcasted for body frame (for debugging)

@@ -15,45 +15,6 @@ import sys
 import numpy as np
 from math import radians
 
-from OrekitPropagator import OrekitPropagator
-from FileDataHandler import FileDataHandler
-from rospace_msgs.msg import PoseVelocityStamped
-from geometry_msgs.msg import WrenchStamped
-from geometry_msgs.msg import Vector3Stamped
-from rospace_msgs.msg import ThrustIsp
-from rospace_msgs.msg import SatelitePose
-from rospace_msgs.msg import SatelliteTorque
-
-
-class SpacecraftCommunicator(object):
-
-    @property
-    def prop_settings(self):
-        return self._parsed_settings
-
-    def __init__(self, namespace):
-
-        self.ns_spacecraft = namespace
-
-        self._set_up_publishers()
-
-        self._parsed_settings = None
-
-    def _set_up_publishers(self):
-
-        self._pub_oe(rospy.Publisher("/" + self.ns_spacecraft + "/oe", SatelitePose, queue_size=10))
-        self._pub_pose(rospy.Publisher("/" + self.ns_spacecraft + "/pose", PoseVelocityStamped, queue_size=10))
-        self._pub_dtorq(rospy.Publisher("/" + self.ns_spacecraft + "/dist_torque", SatelliteTorque, queue_size=10))
-        self._pub_ft(rospy.Publisher("/" + self.ns_spacecraft + "/force_torque", WrenchStamped, queue_size=10))
-        self._pub_bfield(rospy.Publisher("/" + self.ns_spacecraft + "/B_field", Vector3Stamped, queue_size=10))
-
-    def publish_messages(self, oe_msg, pose_msg, dtorque_msg, ft_msg, bfield_msg):
-        pass
-
-    def load_prop_settings(self):
-        pass
-
-
 # class PropagatorParser(object):
 
 #     def __init__(self):
@@ -273,3 +234,111 @@ def _attitude_J2000(init_coords):
 #         init_state_ta.V = np.array([xDot, yDot, zDot])
 
 #     return [init_state_ch, init_state_ta]
+
+# class KeplerianEME2000(StateFactory):
+
+#     @staticmethod
+#     def isApplicable(name):
+
+#         if name == "KeplerianEME2000":
+#             return True
+#         else:
+#             return False
+
+#     @staticmethod
+#     def Setup(epoch, earth, state, setup):
+#         """
+#         Create initial spacecraft state and orbit based on Keplerian elements.
+
+#         Args:
+#             epoch: initial epoch or orbital elements
+#             state: initial state of satellite
+#             setup: additional settings defined in dictionary
+
+#         Returns:
+#             inertialFrame: EME2000 as inertial Frame of Orbit
+#             initialOrbit: Keplerian orbit
+#             initialState: Spacecraft state
+#         """
+
+#         satMass = setup['mass']
+
+#         a = float(state.a)
+#         e = float(state.e)
+#         i = float(state.i)
+#         w = float(state.w)
+#         O = float(state.O)
+#         v = float(state.v)
+
+#         # Inertial frame where the satellite is defined (and earth)
+#         inertialFrame = FramesFactory.getEME2000()
+
+#         initialOrbit = KeplerianOrbit(a*1000, e, i, w, O, v,
+#                                       PositionAngle.TRUE,
+#                                       inertialFrame,
+#                                       epoch,
+#                                       Cst.WGS84_EARTH_MU)
+
+#         orbit_pv = PVCoordinatesProvider.cast_(initialOrbit)
+#         satAtt = _build_satellite_attitude(setup, orbit_pv, inertialFrame,
+#                                            earth, epoch)
+
+#         initialState = SpacecraftState(initialOrbit, satAtt, satMass)
+
+#         return [inertialFrame, initialOrbit, initialState]
+
+
+# class CartesianITRF(StateFactory):
+
+#     @staticmethod
+#     def isApplicable(name):
+
+#         if name == "CartesianITRF":
+#             return True
+#         else:
+#             return False
+
+#     @staticmethod
+#     def Setup(epoch, earth, state, setup):
+#         """
+#         Create initial spacecraft state and orbit using PV-Coordinates in ITRF2008 Frame.
+
+#         Args:
+#             epoch: initial epoch or orbital elements
+#             state: initial state of satellite [Position, Velocity]
+#             setup: additional settings defined in dictionary
+
+#         Returns:
+#             inertialFrame: EME2000 as inertial Frame of Orbit
+#             initialOrbit: Cartesian orbit
+#             initialState: Spacecraft state
+#         """
+
+#         satMass = setup['mass']
+
+#         p = Vector3D(float(state.R[0]),
+#                      float(state.R[1]),
+#                      float(state.R[2]))
+#         v = Vector3D(float(state.V[0]),
+#                      float(state.V[1]),
+#                      float(state.V[2]))
+
+#         # Inertial frame where the satellite is defined (and earth)
+#         inertialFrame = FramesFactory.getEME2000()
+#         # False bool -> don't ignore tidal effects
+#         orbitFrame = FramesFactory.getITRF(IERS.IERS_2010, False)
+#         ITRF2EME = orbitFrame.getTransformTo(inertialFrame, epoch)
+#         pv_EME = ITRF2EME.transformPVCoordinates(PVCoordinates(p, v))
+
+#         initialOrbit = CartesianOrbit(pv_EME,
+#                                       inertialFrame,
+#                                       epoch,
+#                                       Cst.WGS84_EARTH_MU)
+
+#         orbit_pv = PVCoordinatesProvider.cast_(initialOrbit)
+#         satAtt = _build_satellite_attitude(setup, orbit_pv, inertialFrame,
+#                                            earth, epoch)
+
+#         initialState = SpacecraftState(initialOrbit, satAtt, satMass)
+
+#         return [inertialFrame, initialOrbit, initialState]

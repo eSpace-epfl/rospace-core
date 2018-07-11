@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<launch>
+
+    <arg name="spacecraft" />
+
+    <!-- Launch TF publisher for visualizations -->
+    <node pkg="rospace_simulator" name="tf_pub_$(arg spacecraft)" type="satellite_tf_publisher.py" output="screen">
+        <remap from="pose" to="pose" />
+        <remap from="~sensors" to="sensors" />
+        <remap from="~frames" to="frames" />
+        <param name="mode" value="absolute" />
+    </node>
+
+</launch>
