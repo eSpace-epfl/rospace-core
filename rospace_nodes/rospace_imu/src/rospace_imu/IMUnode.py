@@ -12,7 +12,7 @@ import numpy as np
 from rospace_msgs.msg import PoseVelocityStamped
 from sensor_msgs.msg import Imu
 
-from rospace_lib.sensor.ADXRS614 import *
+import importlib
 
 
 def callback_IMU_pose(data):
@@ -52,11 +52,19 @@ def publish_IMU_message():
 
         rate.sleep()
 
-
 if __name__ == '__main__':
     try:
-        rate_gyro = ThreeAxisADXRS614()  # globally scoped variable
         rospy.init_node('imu_node', anonymous=True)
+
+        # retrieves module corresponding to sensor module and class in rosparam
+        spacecraft_namespace = rospy.get_namespace()
+        sensor_module_name = str(rospy.get_param("/"+spacecraft_namespace+"imu/module"))
+        sensor_class_name = str(rospy.get_param("/" + spacecraft_namespace + "imu/class"))
+        sensor_module = importlib.import_module('rospace_lib.sensor.'+sensor_module_name)
+        sensor_class = getattr(sensor_module, sensor_class_name)
+        rate_gyro = sensor_class()
+
+        import_sensor_lib = importlib.import_module("matplotlib.text")
 
         last_callback_time = rospy.Time(0, 0)
         subs = rospy.Subscriber("pose", PoseVelocityStamped, callback_IMU_pose)
