@@ -3,16 +3,19 @@
 
     <!-- Simulation Arguments -->
     <arg name="scenario" />
-    <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
-
-    <!-- Use Own Simulation Time -->
-    <param name="/use_sim_time" value="True" />
+    <arg name="rostest_running" default="False"/>
+    <arg name="start_running" default="False" />
+    <arg name="record_bag" default="False" />
     <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
 
     <!-- Option To Record ROS-Bag during Simulation. Simulator starts automatically. -->
-    <arg name="record_bag" default="False" />
     <rosparam if="$(arg record_bag)" param="start_running"> True </rosparam>
     <include if="$(arg record_bag)" file="$(find rospace_simulator)/launch/record_bag.launch" />
+    <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
+
+    <!-- Use Own Simulation Time and start simulation if requested -->
+    <param name="/use_sim_time" value="True" />
+    <param name="/start_running" type="Bool" value="$(arg start_running)" />
     <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
 
     <!-- Initialize the Specified Scenario -->
@@ -23,12 +26,12 @@
     <include file="$(find rospace_propagator)/launch/propagator.launch" />
     <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
 
-    <!-- Start RVIZ Visualization. -->
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find rospace_simulator)/res/rviz/$(arg scenario).rviz" required="true" />
+    <!-- Start RVIZ Visualization (skipped if a Rostest launched this file) -->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find rospace_simulator)/res/rviz/$(arg scenario).rviz" required="true" unless="$(arg rostest_running)" />
     <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
 
-    <!-- Launch Simulation-Time Plugin -->
-    <node name="rqt_sc" pkg="rqt_simtime_plugin" type="rqt_simtime_plugin" />
+    <!-- Launch Simulation-Time Plugin (skipped if a Rostest launched this file) -->
+    <node name="rqt_sc" pkg="rqt_simtime_plugin" type="rqt_simtime_plugin" unless="$(arg rostest_running)" />
     <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
 
 </launch>

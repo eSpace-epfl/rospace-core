@@ -119,7 +119,7 @@ class SimTimePublisher(object):
                     SimTimeService(self._SimTime.realtime_factor,
                                    self._SimTime.frequency,
                                    self._SimTime.step_size,
-                                   rospy.has_param("/start_running"))
+                                   rospy.get_param("/start_running"))
             else:
                 self.ClockService = \
                     SimTimeService(self._SimTime.realtime_factor,

@@ -1,17 +1,13 @@
-# Spacecraft used for node integration test. 
+# Spacecraft used for node integration test.
 # All perturbations are turned off except for Gravity gradient perturbation.
 # Atittude propagation is used, however no disturbances are active.
 # External Torques are being accounted for.
 propagator_settings:
-  name: "TESTCRAFT"
-  orbitProp:
+  orbit_propagation:
     State:
-      type: 'KeplerianEME2000'
+      type: 'CartesianEME2000'
       settings:
         mass: 30.0 # kg
-        rotation: 1 0 0 0 # quaternions
-        spin: 5 10 80 # omega in [deg/s]
-        acceleration: 0 0 0
     integrator: # Steps have to be floats
       minStep: 0.01
       maxStep: 1.0

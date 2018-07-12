@@ -59,7 +59,7 @@ class MagnetorquerNodeTest(unittest.TestCase):
         rospy.init_node("test_Magnetorquer")
 
         spacecraft = rospy.get_param("~spacecraft")
-        self.timestep = rospy.get_param("~timestep")
+        # self.timestep = rospy.get_param("~timestep")
 
         self.a_sub = rospy.Subscriber("/" + spacecraft + "/actuator_torque", WrenchStamped, self.actuator_callback)
         self.b_sub = rospy.Subscriber("/" + spacecraft + "/B_field", Vector3Stamped, self.b_field_callback)
@@ -229,6 +229,7 @@ class MagnetorquerNodeTest(unittest.TestCase):
         published external torques. The external torques are published after the integration of the attitude
         dynamics, hence one time-step after the input torques are published.
 
+        This test currently does not work on slower machines as some messages are missed and therefore do not
         """
         global RUN_FAKE_IMU
         RUN_FAKE_IMU = True
@@ -241,8 +242,7 @@ class MagnetorquerNodeTest(unittest.TestCase):
             # wait for new message with external torques acting on spacecraft from propagator
             _ = self.wait_for_new_msg("ext_time", old_msg_time)
 
-            # TODO: check if this works.. theoretically much quicker than frequency of nodes, but still....
-            # yup it does
+            # TODO: check if this works.. it does if machine quick enough.. otherwise messages missed..
 
             self.assertEqual(send_torque[0], self.ext_torque[0])
             self.assertEqual(send_torque[1], self.ext_torque[1])

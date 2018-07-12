@@ -1,20 +1,28 @@
+<!--IMU Node Test
+Simple ROS-test for the IMU node testing that node is publishing to correct topic(s)
+at a correct frequency.
+The node is being launched with a dummy spacecraft argument called "testcraft". The
+expected topics to which the node should publish are:
+  - /testcraft/imu
+-->
+
 <launch>
 
-	<!-- Launch IMU node -->
-    <include file="$(find rospace_imu)/launch/imu.launch">
-        <arg name="spacecraft" value="testcraft" />
-    </include>
+  <!-- Launch IMU node -->
+  <include file="$(find rospace_imu)/launch/imu.launch">
+    <arg name="spacecraft" value="testcraft" />
+  </include>
 
-    <!-- Hztest of IMU node -->
-    <test test-name="hztest_IMUnode" pkg="rostest" type="hztest" name="imuHz" >
-	    <param name="topic" value="/testcraft/imu" />  
-	    <param name="hz" value="10" />
-	    <param name="hzerror" value="1" />
-	    <param name="test_duration" value="3.0" />
-	</test>
+  <!-- Hztest of IMU node -->
+  <test test-name="hztest_IMUnode" pkg="rostest" type="hztest" name="imuHz">
+    <param name="topic" value="/testcraft/imu" />
+    <param name="hz" value="10" />
+    <param name="hzerror" value="1" />
+    <param name="test_duration" value="3.0" />
+  </test>
 
-	<!-- Publishtest of IMU node -->
-	<test test-name="publishtest_IMUnode" pkg="rostest" type="publishtest" name="imuPublish">
+  <!-- Publishtest of IMU node -->
+  <test test-name="publishtest_IMUnode" pkg="rostest" type="publishtest" name="imuPublish">
     <rosparam>
       topics:
         - name: testcraft/imu
