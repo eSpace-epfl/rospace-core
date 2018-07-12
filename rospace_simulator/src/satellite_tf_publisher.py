@@ -37,6 +37,7 @@ def handle_sync(pose_msg, parent_msg):
 
 
 def handle_pose(msg):
+    """Broadcast spacecraft body frame"""
     global sensor_cfg
     global no_position
     global body_frame
@@ -81,6 +82,7 @@ def handle_pose(msg):
 
 
 def handle_target_oe(msg):
+    "Broadcast LVLH frame of spacecraft"
     global body_frame
     # convert to R/V
     target_oe = rospace_lib.KepOrbElem()

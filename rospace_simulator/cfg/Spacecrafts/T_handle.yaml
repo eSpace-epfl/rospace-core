@@ -16,19 +16,12 @@
 # deviation of the rotation axis from the second principal axis results into flipping of the rotating object. The misalignment
 # of the rotation axis can be caused by small disturbances (e.g. gravity gradient disturbance torque).
 
-name: "dzhanibekov"
-
-
 propagator_settings:
-  name: "dzhanibekov"
-  orbitProp:
+  orbit_propagation:
     State:
-      type: 'KeplerianEME2000'
+      type: CartesianEME2000
       settings:
         mass: 100.0 # kg
-        rotation: 1 0 0 0 # quaternions
-        spin: 0.00 150 0 # omega in [deg/s]
-        acceleration: 0 0 0
     integrator: # Steps have to be floats
       minStep: 0.01
       maxStep: 1000.0
@@ -93,6 +86,7 @@ propagator_settings:
         degree: 5
         order: 5
     addRelativity: False
+
   attitudeProvider:
     type:  'AttPropagation'
     settings:

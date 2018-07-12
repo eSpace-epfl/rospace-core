@@ -9,8 +9,13 @@
         <xacro:if value="${'chaser' in namespace}">
             <xacro:chaser_spacecraft namespace="${namespace}" joint_parent="${joint_parent}"/>
         </xacro:if>
+
         <xacro:if value="${'target' in namespace}">
             <xacro:target_spacecraft namespace="${namespace}" joint_parent="${joint_parent}"/>
+        </xacro:if>
+
+        <xacro:if value="${'t_handle' in namespace.lower()}">
+            <xacro:T_handle_spacecraft namespace="${namespace}" joint_parent="${joint_parent}"/>
         </xacro:if>
     </xacro:macro>
 
@@ -50,7 +55,26 @@
             <origin xyz="0.0 0.0 0.0" rpy="0.0 1.57075 0.0" />
             <parent link="${joint_parent}"/>
             <child link="${namespace}"/>
-        </joint>>
+        </joint>
+    </xacro:macro>
+
+    <xacro:macro name="T_handle_spacecraft" params="namespace joint_parent">
+        <link name="${namespace}">
+            <visual>
+                <geometry>
+                    <mesh filename="${meshes_location}/T_handle/T_handle.stl" scale="1 1 1">
+                    </mesh>
+                </geometry>
+                <material name="LightGrey" />
+                <origin rpy="0 0 0" xyz="0 -0.057977 0"/>
+            </visual>
+        </link>
+
+        <joint name="${namespace}2${joint_parent}" type="fixed">
+            <parent link="${joint_parent}"/>
+            <child link="${namespace}"/>
+            <origin xyz="7000000 0 0 "/>
+        </joint>
     </xacro:macro>
 
 </robot>

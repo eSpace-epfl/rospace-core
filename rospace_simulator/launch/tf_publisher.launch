@@ -8,6 +8,7 @@
         <remap from="pose" to="pose" />
         <remap from="~sensors" to="sensors" />
         <remap from="~frames" to="frames" />
+        <remap from="target_oe" to="oe" />
         <param name="mode" value="absolute" />
     </node>
 
