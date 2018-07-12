@@ -1,6 +1,8 @@
 <launch>
 
-	<!-- Launch IMU node -->
+	<!-- Launch IMU node with appropriate sensor -->
+	<param name="/imu/module" value="TestSensor" />
+	<param name="/imu/class" value="ThreeAxisTestSensor" />
     <include file="$(find rospace_imu)/launch/imu.launch">
         <arg name="spacecraft" value="testcraft" />
     </include>
