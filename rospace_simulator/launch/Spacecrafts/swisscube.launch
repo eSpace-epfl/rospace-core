@@ -3,10 +3,10 @@
     <!-- ///////////////// Spacecraft Arguments /////////////////////// -->
     <!-- "ns_spacecraft" needs to be equal to spacecraft name defined in <scenario>.yaml -->
     <arg name="ns_spacecraft" />
-    <arg name="spacecraft_type" value="target" />
+    <arg name="spacecraft_type" value="swisscube" />
     <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
 
-    <!-- ///////////////// Build Spacecraft /////////////////////// -->
+    <!-- ///////////////// Build Spacecraft ///////////////// -->
     <group ns="$(arg ns_spacecraft)">
 
         <!-- Load .yaml Configuration File into Name-space -->
@@ -15,15 +15,26 @@
 
         <!-- Add Sensors to Spacecraft -->
         <group ns="sensors">
-            <!-- Launch Sensors ATM -->
+            <!-- Launch IMU -->
+            <include file="$(find rospace_imu)/launch/imu.launch">
+                <arg name="spacecraft" value="$(arg ns_spacecraft)" />
+            </include>
         </group>
 
         <!-- Add Actuators to Spacecraft -->
         <group ns="actuators">
-            <!-- No Actuators ATM -->
+            <!-- Launch Magnetorquers -->
+            <include file="$(find rospace_magnetorquer)/launch/magnetorquer.launch">
+                <arg name="spacecraft" value="$(arg ns_spacecraft)" />
+            </include>
         </group>
 
-        <!-- Launch TF Publisher for Visualizations -->
+        <!-- Include Flight Software with Controller -->
+        <include file="$(find rospace_flightsoftware)/launch/flight_software.launch">
+            <arg name="spacecraft" value="$(arg ns_spacecraft)" />
+        </include>
+
+        <!-- Launch TF Publisher for Visualizations in Spacecraft Name-space -->
         <include file="$(find rospace_simulator)/launch/tf_publisher.launch">
             <arg name="spacecraft" value="$(arg ns_spacecraft)" />
         </include>

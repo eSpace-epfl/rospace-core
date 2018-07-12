@@ -6,7 +6,7 @@
 # See the LICENSE.md file in the root of this repository
 # for complete details.
 
-# Parsed by Clock Interface:
+# parsed by Clock Interface:
 ##########################################################################################
 # (This information does not need to be specified)
 simulation_time:
@@ -19,7 +19,7 @@ simulation_time:
 # Parsed by Propagator API & satellite_tf_publisher:
 ##########################################################################################
 init_coords:
-  t_handle:
+  swisscube:
     type: absolute
     coord_type: keplerian
     coord_frame: J2000
@@ -38,7 +38,7 @@ init_coords:
       q3: 1
     init_spin:  # in body frame [deg/s]
       w_x: 0
-      w_y: 150
+      w_y: 00
       w_z: 0
     init_rot_acceleration:
       w_dot_x: 0

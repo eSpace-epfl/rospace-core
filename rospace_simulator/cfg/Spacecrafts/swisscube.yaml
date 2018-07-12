@@ -1,16 +1,9 @@
-name: "swisscube"
-
-
 propagator_settings:
-  name: "swisscube"
-  orbitProp:
+  orbit_propagation:
     State:
-      type: 'KeplerianEME2000'
+      type: CartesianEME2000
       settings:
         mass: 1.0 # kg
-        rotation: 1 0 0 0 # quaternions
-        spin: 4 8 10 # omega in [deg/s]
-        acceleration: 0 0 0
     integrator: # Steps have to be floats
       minStep: 0.01
       maxStep: 1000.0
@@ -30,11 +23,11 @@ propagator_settings:
           Facets: ## area in [m2]
             front:
               area: 0.01
-              nVector: 1 0 0  
-            back: 
+              nVector: 1 0 0
+            back:
               area: 0.01
               nVector: -1 0 0
-            left: 
+            left:
               area: 0.01
               nVector: 0 0 1
             right:
@@ -43,7 +36,7 @@ propagator_settings:
             top:
               area: 0.01
               nVector: 0 -1 0
-            bottom: 
+            bottom:
               area: 0.01
               nVector: 0 1 0
           SolarArea: 0.01 # 313x960 * 2
@@ -51,12 +44,12 @@ propagator_settings:
           absCoeff: 0.34
           refCoeff: 0.66
           dragCoeff: 2.0
-          liftRatio: 0.0 
+          liftRatio: 0.0
     SolarModel:
         type: "" #"SolarPressureBoxModel"
         settings:
           abs_Estimated: True # false = fixed
-          ref_Estimated: True # false = fixed 
+          ref_Estimated: True # false = fixed
     DragModel:
         type: "DragDTM2000CELESTRACK"
         settings:
@@ -75,6 +68,7 @@ propagator_settings:
         degree: 5
         order: 5
     addRelativity: False
+
   attitudeProvider:
     type:  'AttPropagation'
     settings:
@@ -101,7 +95,7 @@ propagator_settings:
               dCenter: 0 0 0.5
               normalV: 0 0 1
             SA2:
-              dCenter: 0 0 -0.5 
+              dCenter: 0 0 -0.5
               normalV: 0 0 1
       GravityGradient:
         add: False

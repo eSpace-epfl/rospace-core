@@ -1,4 +1,13 @@
-# parsed by Clock Interface:
+# @copyright Copyright (c) 2018, Christian Lanegger (lanegger.christian@gmail.com)
+#
+# @license zlib license
+#
+# This file is licensed under the terms of the zlib license.
+# See the LICENSE.md file in the root of this repository
+# for complete details.
+
+# Parsed by Clock Interface:
+##########################################################################################
 # (This information does not need to be specified)
 simulation_time:
   oe_epoch: 20141001T12:00:00  # Time Epoch in Format: YYYYMMDDTHH:MM:SS  ; if not provided real world time used
@@ -8,6 +17,7 @@ simulation_time:
 ##########################################################################################
 
 # Parsed by Propagator API & satellite_tf_publisher:
+##########################################################################################
 init_coords:
   chaser_1:
     type: absolute
@@ -60,3 +70,4 @@ init_coords:
       w_dot_x: 0
       w_dot_y: 0
       w_dot_z: 0
+##########################################################################################

@@ -4,18 +4,22 @@
     <xacro:include filename="$(find rospace_simulator)/res/urdf/materials.urdf.xacro" />
     <xacro:property name="meshes_location" value="package://rospace_simulator/res/meshes"/>
 
-    <!-- Search for finding correct spacecraft template -->
+    <!-- Search for finding correct spacecraft template. Search is case insensitive. -->
     <xacro:macro name="load_spacecraft" params="namespace joint_parent">
-        <xacro:if value="${'chaser' in namespace}">
+        <xacro:if value="${'chaser' in namespace.lower()}">
             <xacro:chaser_spacecraft namespace="${namespace}" joint_parent="${joint_parent}"/>
         </xacro:if>
 
-        <xacro:if value="${'target' in namespace}">
+        <xacro:if value="${'target' in namespace.lower()}">
             <xacro:target_spacecraft namespace="${namespace}" joint_parent="${joint_parent}"/>
         </xacro:if>
 
         <xacro:if value="${'t_handle' in namespace.lower()}">
             <xacro:T_handle_spacecraft namespace="${namespace}" joint_parent="${joint_parent}"/>
+        </xacro:if>
+
+        <xacro:if value="${'swisscube' in namespace.lower()}">
+            <xacro:swisscube_spacecraft namespace="${namespace}" joint_parent="${joint_parent}" />
         </xacro:if>
     </xacro:macro>
 
@@ -74,6 +78,25 @@
             <parent link="${joint_parent}"/>
             <child link="${namespace}"/>
             <origin xyz="7000000 0 0 "/>
+        </joint>
+    </xacro:macro>
+
+    <xacro:macro name="swisscube_spacecraft" params="namespace joint_parent">
+        <link name="${namespace}">
+            <visual>
+                <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+                <geometry>
+                    <box size="0.1 0.1 0.1"/>
+                </geometry>
+                <material name="Grey" />
+                <origin rpy="0 0 0" xyz="0 0 0"/>
+            </visual>
+        </link>
+
+        <joint name="${namespace}2${joint_parent}" type="fixed">
+            <parent link="${joint_parent}"/>
+            <child link="${namespace}"/>
+            <origin xyz="7000000 0 0" rpy="0.0 0.0 0.0"/>
         </joint>
     </xacro:macro>
 

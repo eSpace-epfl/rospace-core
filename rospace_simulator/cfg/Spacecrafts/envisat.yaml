@@ -2,7 +2,7 @@ propagator_settings:
   name: "ENVISAT"
   orbitProp:
     State:
-      type: 'CartesianITRF'
+      type: 'CartesianEME2000'
       settings:
         mass: 7990.0 # kg
         rotation: 'nadir' # quaternions or nadir
@@ -27,11 +27,11 @@ propagator_settings:
           Facets: ## area in [m2]
             front:
               area: 26.25
-              nVector: 1 0 0  
-            back: 
+              nVector: 1 0 0
+            back:
               area: 26.25
               nVector: -1 0 0
-            left: 
+            left:
               area: 6.25
               nVector: 0 0 1
             right:
@@ -40,7 +40,7 @@ propagator_settings:
             top:
               area: 26.25
               nVector: 0 -1 0
-            bottom: 
+            bottom:
               area: 26.25
               nVector: 0 1 0
           SolarArea: 37.5 # 313x960 * 2
@@ -48,17 +48,17 @@ propagator_settings:
           absCoeff: 0.34
           refCoeff: 0.66
           dragCoeff: 2.0
-          liftRatio: 0.0 
+          liftRatio: 0.0
     SolarModel: # Solar pressure force model
         type: "SolarPressureBoxModel"
         settings:
           abs_Estimated: False # false = fixed
-          ref_Estimated: False # false = fixed 
+          ref_Estimated: False # false = fixed
     DragModel: # Drag force model
         type: "DragDTM2000CELESTRACK"
         settings:
           cD_Estimated: False # if false cD fixed
-    ThirdBody: 
+    ThirdBody:
       Sun: True
       Moon: True
     SolidTides: # bodies which generate tides
