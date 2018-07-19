@@ -3,7 +3,7 @@
     <!-- ///////////////// Spacecraft Arguments /////////////////////// -->
     <!-- "ns_spacecraft" needs to be equal to spacecraft name defined in <scenario>.yaml -->
     <arg name="ns_spacecraft" />
-    <arg name="spacecraft_type" value="T_handle" />
+    <arg name="spacecraft_type" value="testcraft" />
     <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
 
     <!-- ///////////////// Build Spacecraft ///////////////// -->

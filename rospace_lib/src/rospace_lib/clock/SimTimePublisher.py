@@ -128,6 +128,7 @@ class SimTimePublisher(object):
 
             self.epoch = Epoch()
             self._epoch_now = self.epoch.now()
+            rospy.loginfo("################################### " + str(Epoch.time_step_size))
 
         else:
             raise RuntimeError("Time is already being driven by " +
@@ -177,8 +178,8 @@ class SimTimePublisher(object):
                     self.ClockService.realtime_factor,
                     self.ClockService.frequency,
                     self.ClockService.step_size)
-                self.epoch.changeFrequency(self.ClockService.frequency)
-                self.epoch.changeStep(self.ClockService.step_size)
+                self.epoch._changeFrequency(self.ClockService.frequency)
+                self.epoch._changeStep(self.ClockService.step_size)
 
             if self.ClockService.SimRunning:
                 # Wait for other nodes which subscribed to service (if any)

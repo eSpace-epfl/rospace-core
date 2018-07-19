@@ -12,6 +12,7 @@ import sys
 import os
 import rospy
 import numpy as np
+from rospace_lib.clock import epoch
 
 from geometry_msgs.msg import WrenchStamped, Vector3Stamped
 from rospace_msgs.msg import SatelliteTorque
@@ -41,10 +42,11 @@ class MagnetorquerNodeTest(unittest.TestCase):
 
     Attributes:
         timestep (float): simulation time-step size
-        a_sub (rospy.Subscriber): subscriber to the "actuator_torque" topic.
+        act_msg (list): stores topic at [0] and message type at [1] of "Actuator" topic
+        bfield_msg (list): stores topic at [0] and message type at [1] of "B_field" topic
+        ctr_msg (list): stores topic at [0] and message type at [1] of "Control" topic
+        dtorq_msg (list): stores topic at [0] and message type at [1] of "Disturbance Torque" topic
         b_sub (rospy.Subscriber): subscriber to the "B_field" topic.
-        c_sub (rospy.Subscriber): subscriber to the "I_magneto" topic.
-        d_sub (rospy.Subscriber): subscriber to the "dist_torque" topic.
         spin_pub (rospy.Publisher): fake IMU publisher
 
     """
@@ -59,26 +61,24 @@ class MagnetorquerNodeTest(unittest.TestCase):
         rospy.init_node("test_Magnetorquer")
 
         spacecraft = rospy.get_param("~spacecraft")
-        # self.timestep = rospy.get_param("~timestep")
 
-        self.a_sub = rospy.Subscriber("/" + spacecraft + "/actuator_torque", WrenchStamped, self.actuator_callback)
+        self.act_msg = ["/" + spacecraft + "/actuator_torque", WrenchStamped]
+        self.bfield_msg = ["/" + spacecraft + "/B_field", Vector3Stamped]
+        self.ctr_msg = ["/" + spacecraft + "/I_magneto", Vector3Stamped]
+        self.dtorq_msg = ["/" + spacecraft + "/dist_torque", SatelliteTorque]
+
         self.b_sub = rospy.Subscriber("/" + spacecraft + "/B_field", Vector3Stamped, self.b_field_callback)
-        self.c_sub = rospy.Subscriber("/" + spacecraft + "/I_magneto", Vector3Stamped, self.controller_callback)
-        self.d_sub = rospy.Subscriber("/" + spacecraft + "/dist_torque", SatelliteTorque, self.dist_torque_callback)
 
         self.spin_pub = rospy.Publisher("/" + spacecraft + "/imu", Imu, queue_size=10)
 
-        # Wait until PropagatorNode finishes initialization
-        while not hasattr(self, "b_field_time"):
-            rospy.sleep(0.001)
-
-        rospy.sleep(0.2)  # sleep so all messages really updated!
+        _ = rospy.wait_for_message(self.bfield_msg[0], self.bfield_msg[1], timeout=20)
 
     def b_field_callback(self, b_field_msg):
         """B-field subscriber callback storing last published message.
 
         In case the global variable "RUN_FAKE_IMU" is set to True, this method
-        also publishes a messages to the imu topic with random spin.
+        also publishes a messages to the imu topic with random spin as the IMU
+        only publishes if messages for the B-field are received.
 
         Args:
             b_field_msg (geometry_msgs.msg.Vector3Stamped): published b-field message
@@ -100,80 +100,6 @@ class MagnetorquerNodeTest(unittest.TestCase):
 
             self.spin_pub.publish(imu_msg)
 
-    def actuator_callback(self, act_msg):
-        """Actuator subscriber callback storing last published message.
-
-        Args:
-            act_msg (geometry_msgs.msg.WrenchStamped): published actuator message
-
-        """
-        self.act_time = act_msg.header.stamp
-
-        self.act_torque = np.zeros(3)
-        self.act_torque[0] = act_msg.wrench.torque.x
-        self.act_torque[1] = act_msg.wrench.torque.y
-        self.act_torque[2] = act_msg.wrench.torque.z
-
-    def dist_torque_callback(self, dist_msg):
-        """Induced disturbance torques subscriber callback storing last published message.
-
-        Args:
-            dist_msg (rospace_msgs.msg.SatelliteTorque): published message holding induced disturbance torques
-
-        """
-        self.ext_time = dist_msg.header.stamp
-
-        self.ext_torque = np.zeros(3)
-        self.ext_torque[0] = dist_msg.external.torque.x
-        self.ext_torque[1] = dist_msg.external.torque.y
-        self.ext_torque[2] = dist_msg.external.torque.z
-
-    def controller_callback(self, ctr_msg):
-        """Controller subscriber callback storing last published message.
-
-        Args:
-            ctr_msg (geometry_msgs.msg.Vector3Stamped): published controller message
-
-        """
-        self.ctr_time = ctr_msg.header.stamp
-
-        self.ctr_current = np.zeros(3)
-        self.ctr_current[0] = ctr_msg.vector.x
-        self.ctr_current[1] = ctr_msg.vector.y
-        self.ctr_current[2] = ctr_msg.vector.z
-
-    def wait_for_new_msg(self, topic_time_attribute, old_msg_time):
-        """Wait until new message has been published to topic.
-
-        Args:
-            topic_time_attribute (string): name of topic_time attribute (e.g.: ctr_time for controller callback)
-            old_msg_time (float): time stamp of old message in [s]
-
-        Returns:
-            float: time stamp of last received message in [s]
-
-        Raises:
-            RuntimeError: if topic_time attribute not initialized yet or no new messages received after 5 seconds.
-
-        """
-        if hasattr(self, topic_time_attribute):
-            topic_time = getattr(self, topic_time_attribute)
-        else:
-            raise RuntimeError("No message received to topic: 'self." + topic_time_attribute + "' not initialized!")
-
-        void_time = 0
-        while not old_msg_time < topic_time.to_sec():
-            # wait for new message at new time-step
-            rospy.sleep(0.0001)
-            void_time += 0.0001
-            if void_time >= 5:
-                # 5secs no messages is long enough. Fail the test
-                raise RuntimeError("No new messages received by on topic. Attribute " +
-                                   topic_time_attribute + " is not updated!")
-            topic_time = getattr(self, topic_time_attribute)
-
-        return topic_time.to_sec()
-
     # Unit-tests ###################################################################
     def test_0_no_spin_msg(self):
         """Test that no current is being published if no spin from IMU provided.
@@ -181,10 +107,15 @@ class MagnetorquerNodeTest(unittest.TestCase):
         This test has to be run before publishing any message to the imu topic!
 
         """
+        no_msg = None
         for _ in range(0, CHECK_MSGS):
-            if hasattr(self, "ctr_time"):  # some message was received..
-                raise RuntimeError("Control attributes are published, even when no information about spin provided!")
-            rospy.sleep(0.05)
+            try:
+                no_msg = rospy.wait_for_message(self.ctr_msg[0], self.ctr_msg[1], timeout=0.1)
+                if no_msg is not None:
+                    raise RuntimeError(
+                        "Control attributes are published, even when no information about spin provided!")
+            except Exception:
+                pass
 
     def test_0_no_current_no_torque(self):
         """Test that torque equals zero if no current published.
@@ -192,22 +123,19 @@ class MagnetorquerNodeTest(unittest.TestCase):
         This test has to be run before publishing any message to the imu topic!
 
         """
-        old_msg_time = 0
 
         for _ in range(0, CHECK_MSGS):
-            old_msg_time = self.wait_for_new_msg("act_time", old_msg_time)
+            act_msg = rospy.wait_for_message(self.act_msg[0], self.act_msg[1], timeout=5)
 
-            self.assertEqual(self.act_torque[0], 0)
-            self.assertEqual(self.act_torque[1], 0)
-            self.assertEqual(self.act_torque[2], 0)
+            self.assertEqual(act_msg.wrench.torque.x, 0)
+            self.assertEqual(act_msg.wrench.torque.y, 0)
+            self.assertEqual(act_msg.wrench.torque.z, 0)
 
     def test_magnetorquer_publishing(self):
         """Test that messages from B_field topic are received by checking that actuator messages are being published."""
-        old_msg_time = 0
 
         for _ in range(0, CHECK_MSGS):
-            _ = self.wait_for_new_msg("b_field_time", old_msg_time)
-            old_msg_time = self.act_time.to_sec()
+            _ = rospy.wait_for_message(self.bfield_msg[0], self.bfield_msg[1], timeout=5)
 
     def test_subscription_to_current(self):
         """Test that current messages are received on correct topic."""
@@ -215,21 +143,18 @@ class MagnetorquerNodeTest(unittest.TestCase):
         RUN_FAKE_IMU = True
         rospy.sleep(0.2)
 
-        old_msg_time = 0
-
         for _ in range(0, CHECK_MSGS):
-            old_msg_time = self.wait_for_new_msg("ctr_time", old_msg_time)
+            _ = rospy.wait_for_message(self.ctr_msg[0], self.ctr_msg[1], timeout=5)
 
         RUN_FAKE_IMU = False
 
+    @unittest.skip("This test will be moved out to a Propagator Integration Test")
     def test_torque_received_by_propagator(self):
         """Test that torques published by actuator are received by propagator and accounted for.
 
         This test compares the input torques published by the Magnetorquer node and the by the propagator
         published external torques. The external torques are published after the integration of the attitude
         dynamics, hence one time-step after the input torques are published.
-
-        This test currently does not work on slower machines as some messages are missed and therefore do not
         """
         global RUN_FAKE_IMU
         RUN_FAKE_IMU = True
@@ -240,15 +165,15 @@ class MagnetorquerNodeTest(unittest.TestCase):
 
         for _ in range(0, CHECK_MSGS):
             # wait for new message with external torques acting on spacecraft from propagator
-            _ = self.wait_for_new_msg("ext_time", old_msg_time)
+            [recv_torque, _] = self.wait_for_new_msg("ext_time", old_msg_time, topic_attribute="ext_torque")
 
-            # TODO: check if this works.. it does if machine quick enough.. otherwise messages missed..
-
-            self.assertEqual(send_torque[0], self.ext_torque[0])
-            self.assertEqual(send_torque[1], self.ext_torque[1])
-            self.assertEqual(send_torque[2], self.ext_torque[2])
+            rospy.loginfo("COMP: " + str(self.ext_time.to_sec()) + "---- " + str(self.act_time.to_sec()))
+            self.assertEqual(send_torque[0], recv_torque[0])
+            self.assertEqual(send_torque[1], recv_torque[1])
+            self.assertEqual(send_torque[2], recv_torque[2])
 
             # wait for new message from actuator
+            old_msg_time = self.ext_time.to_sec()
             _ = self.wait_for_new_msg("act_time", old_msg_time)
 
             old_msg_time = self.act_time.to_sec()
