@@ -128,7 +128,6 @@ class SimTimePublisher(object):
 
             self.epoch = Epoch()
             self._epoch_now = self.epoch.now()
-            rospy.loginfo("################################### " + str(Epoch.time_step_size))
 
         else:
             raise RuntimeError("Time is already being driven by " +

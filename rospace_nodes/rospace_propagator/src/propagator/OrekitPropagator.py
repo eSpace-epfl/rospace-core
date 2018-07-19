@@ -191,7 +191,6 @@ class OrekitPropagator(object):
 
         OrEpoch = to_orekit_date(epoch)
 
-        print OrEpoch.toString()
         _builder = PB.PropagatorBuilder(spc_name, propSettings, state, OrEpoch)
         _builder._build_state()
         _builder._build_integrator()

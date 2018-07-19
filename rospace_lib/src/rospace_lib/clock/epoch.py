@@ -79,11 +79,8 @@ class Epoch:
         self.epoch_datetime = datetime.strptime(self.epoch_string, "%Y-%m-%d %H:%M:%S")
 
         # update class instances
-        rospy.loginfo("STORING FREQ AND STEP ###########################")
         Epoch.publish_frequency = rospy.get_param('/publish_freq')
         Epoch.time_step_size = rospy.get_param('/time_step_size')
-
-        rospy.loginfo(str(Epoch.time_step_size))
 
     def now(self):
         """Get current simulation time in UTC."""
