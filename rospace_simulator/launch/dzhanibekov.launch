@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<launch>
+    <!-- Check if ns_target coordinates type defined -->
+    <!-- mode can be: "absolute" or "relative" -->
+    <arg name="record_bag" default="False" />
+    <arg name="ns_chaser" default="chaser" />
+    <arg name="ns_target" default="dzhanibekov" />
+    <rosparam if="$(arg record_bag)" param="start_running">True</rosparam>
+  
+
+    <!-- Load simulation world -->
+	<param name="robot_description" textfile="$(find rospace_simulator)/res/models/world_dzhanibekov.urdf" />
+    <!-- use simulation time -->
+    <!-- has to be set here otherwise library not setting wall time to zero -->
+    <param name="/use_sim_time" value="True" />
+
+    <!-- Launch propagator -->
+   <node pkg="rospace_propagator" name="propagator_abs" type="PropagationNode.py" output="screen">
+	<param name="oe_ta_rel" type="bool" value="False" />
+	<param name="oe_ch_init" type="yaml" value="{a: 7000, e: 0.0001, i: 68, O: 60, w: 120, v: 0.001}" />
+	<param name="oe_ta_init" type="yaml" value="{a: 7000, e: 0.0001, i: 30, O: 60, w: 120, v: 0.001}" />
+
+	<param name="oe_epoch" value="20141001T12:00:00"/>
+	<param name="TIME_SHIFT" type="double" value="0.0" />
+
+    <param name="ns_chaser" value="$(arg ns_chaser)" />
+    <param name="ns_target" value="$(arg ns_target)" />
+
+	<remap from="oe_chaser" to="/$(arg ns_chaser)/oe" />
+    <remap from="oe_target" to="/$(arg ns_target)/oe" />
+    <remap from="pose_chaser" to="/$(arg ns_chaser)/pose" />
+    <remap from="pose_target" to="/$(arg ns_target)/pose" />
+    <remap from="dtorque_chaser" to="/$(arg ns_chaser)/dist_torque" />
+    <remap from="dtorque_target" to="/$(arg ns_target)/dist_torque" />
+    <remap from="forcetorque_chaser" to="/$(arg ns_chaser)/force_torque" />
+    <remap from="forcetorque_target" to="/$(arg ns_target)/force_torque" />
+    <remap from="B_field_chaser" to="/$(arg ns_chaser)/B_field" />
+    <remap from="B_field_target" to="/$(arg ns_target)/B_field" />
+    <remap from="force_chaser" to="/$(arg ns_chaser)/force" />
+    <remap from="IspMean_chaser" to="/$(arg ns_chaser)/IspMean" />
+    <remap from="force_target" to="/$(arg ns_target)/force" />
+    <remap from="IspMean_target" to="/$(arg ns_target)/IspMean" />
+   </node>
+
+    <group ns="$(arg ns_chaser)">
+        <!-- Load Configuration File for sensors etc -->
+        <rosparam command="load" file="$(find rospace_simulator)/cfg/$(arg ns_chaser).yaml" />
+    </group>
+
+    <!-- Include configuration -->
+    <group ns="$(arg ns_target)">
+        <!-- Load Configuration File for sensors etc -->
+        <rosparam command="load" file="$(find rospace_simulator)/cfg/$(arg ns_target).yaml" />
+   
+        <!-- Launch TF publisher for visualizations -->
+        <node pkg="rospace_simulator" name="tf_pub" type="satelite_tf_publisher.py" output="screen">
+            <remap from="pose" to="pose" />
+            <remap from="~sensors" to="sensors" />
+            <remap from="~frames" to="frames" />
+            <param name="body_frame" value="$(arg ns_target)" />
+            <param name="mode" value="absolute" />
+            <remap from="target_oe" to="oe" />
+        </node>
+    </group>
+
+    <!-- start rviz -->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find rospace_simulator)/res/rviz/dzhanibekov.rviz" required="true" />
+
+
+     <!-- Launch Visualizer -->
+    <!-- <node name="rqt_ekf" pkg="rqt_space_plugins" type="rqt_orbit_ekf" /> -->
+    <node name="rqt_sc" pkg="rqt_simtime_plugin" type="rqt_simtime_plugin" />
+
+    <include if="$(arg record_bag)" file="$(find rospace_simulator)/launch/record_bag.launch" />
+
+</launch>

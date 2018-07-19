@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>rospace_lib</name>
-  <version>0.0.0</version>
+  <name>rospace_flightsoftware</name>
+  <version>0.1.0</version>
   <description>
-	    Simple python library for coordinate conversions
+	   Flightsoftware Test Node
   </description>
 
   <maintainer email="michael.pantic@gmail.com">Michael Pantic</maintainer>
@@ -17,5 +17,10 @@
   <build_depend>rostest</build_depend>
 
   <depend>rospy</depend>
+
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>rospace_lib</depend>
+  <depend>rospace_msgs</depend>
 
 </package>

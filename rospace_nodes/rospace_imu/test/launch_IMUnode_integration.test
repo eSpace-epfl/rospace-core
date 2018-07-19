@@ -1,0 +1,44 @@
+<launch>
+
+    <!-- ROS Integration Test -->
+    <test test-name="test_IMUnode" pkg="rospace_imu" type="rostest_IMUnode.py" time-limit="30.0">
+        <param name="spacecraft" value="testcraft" />
+    </test>
+
+    <!-- Start simulation automatically -->
+    <rosparam param="start_running">True</rosparam>
+
+    <!-- Launch CSO & target propagator -->
+    <!-- TODO: create test_orbit launch file with only one spacecraft -->
+    <include file="$(find rospace_propagator)/launch/absolute_orbit.launch">
+        <arg name="ns_chaser" value="testcraft" />
+        <!-- TODO: remove this in near future -->
+        <arg name="ns_target" value="target" />
+    </include>
+
+    <!-- Override frequency and step size -->
+    <param name="/propagator_abs/frequency" value="10" />
+    <param name="/propagator_abs/step_size" value="0.1" />
+
+    <!-- Place Testcraft into simulation environment -->
+    <group ns="testcraft">
+        <!-- Load Configuration File for sensors etc -->
+        <rosparam command="load" file="$(find rospace_simulator)/cfg/testcraft.yaml" />
+
+        <group ns="sensors">
+            <!-- Launch IMU -->
+            <include file="$(find rospace_imu)/launch/imu.launch">
+                <arg name="spacecraft" value="testcraft" />
+            </include>
+        </group>
+    </group>
+
+    <!-- ////////////////////////////////////////////////////////////////// -->
+    <!-- For now also add target. This should be removed in the near future -->
+    <group ns="target">
+        <!-- Load Configuration File for sensors etc -->
+        <rosparam command="load" file="$(find rospace_simulator)/cfg/target.yaml" />
+    </group>
+    <!-- ////////////////////////////////////////////////////////////////// -->
+
+</launch>

@@ -34,6 +34,11 @@ docs_and_tests:
 #    - rostest --text ${CI_PROJECT_DIR}/rospace_plugins/rqt_simtime_plugin/test/simtime_plugin.test
 
     - rostest --text ${CI_PROJECT_DIR}/rospace_lib/test/testSimTime.test
+    # integration & node tests:
+    - rostest --text ${CI_PROJECT_DIR}/rospace_nodes/rospace_imu/test/launch_IMUnode_integration.test
+    - rostest --text ${CI_PROJECT_DIR}/rospace_nodes/rospace_imu/test/launch_IMUnode.test
+    - rostest --text ${CI_PROJECT_DIR}/rospace_nodes/rospace_magnetorquer/test/launch_MagnetorquerNode_integration.test
+    - rostest --text ${CI_PROJECT_DIR}/rospace_nodes/rospace_flightsoftware/test/launch_FlightSoftwareNode_integration.test
 
     - pdoc --html --html-dir ~/docs ${CI_PROJECT_DIR}/rospace_lib/src/rospace_lib
     - pdoc --html --html-dir ~/docs ${CI_PROJECT_DIR}/rospace_plugins/rqt_simtime_plugin/src/rqt_simtime_plugin/
@@ -48,4 +53,3 @@ docs_and_tests:
   artifacts:
     paths:
     - docs.zip
-

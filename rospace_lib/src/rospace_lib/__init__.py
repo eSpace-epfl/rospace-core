@@ -11,5 +11,7 @@ from rospace_lib.Cartesian import *
 from rospace_lib.Constants import *
 from rospace_lib.KepOrbElem import *
 from rospace_lib.QNSRelOrbElements import *
+from rospace_lib.actuators import *
+from rospace_lib.sensor import *
 from rospace_lib.clock import *
 from rospace_lib.misc import *

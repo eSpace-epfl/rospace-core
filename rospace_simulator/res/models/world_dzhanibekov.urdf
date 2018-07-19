@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<robot name="cso_visualization">
+
+    <link name="J2K">
+        <visual>
+          <geometry>
+           <mesh filename="package://rospace_simulator/res/meshes/earth-mesh.stl" scale="1 1 1">
+            </mesh>
+          </geometry>
+          <material name="texture">
+		<texture filename="package://rospace_simulator/res/meshes/1_earth_8k.jpg"/>
+	  </material>
+        </visual>
+    </link>
+
+   
+
+    <link name="dzhanibekov">
+        <visual>
+            <geometry>
+                 <mesh filename="package://rospace_simulator/res/meshes/dzhanibekov.stl" scale="1 1 1">
+            </mesh>
+            </geometry>
+            <!-- material name="blue" / -->
+            <origin rpy="0 0 0" xyz="0 -0.057977 0"/>
+        </visual>
+    </link>
+
+    <joint name="dzhanibekov2J2K" type="fixed">
+        <parent link="J2K"/>
+        <child link="dzhanibekov"/>
+        <origin xyz="7000000 0 0 "/>
+    </joint>
+
+ </robot>
+

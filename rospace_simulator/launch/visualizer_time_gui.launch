@@ -23,6 +23,40 @@
         <arg name="ns_target" value="$(arg ns_target)" />
     </include>
 
+    <!-- Launch spacecraft specific nodes and parameters -->
+    <group ns="$(arg ns_chaser)">
+        <!-- Load Configuration File for sensors etc -->
+        <rosparam command="load" file="$(find rospace_simulator)/cfg/$(arg ns_chaser).yaml" />
+
+        <group ns="sensors">
+            <!-- Launch IMU -->
+            <include file="$(find rospace_imu)/launch/imu.launch">
+                <arg name="spacecraft" value="$(arg ns_chaser)" />
+            </include>
+        </group>
+
+        <group ns="actuators">
+            <!-- Launch Magnetorquer -->
+            <include file="$(find rospace_magnetorquer)/launch/magnetorquer.launch">
+                <arg name="spacecraft" value="$(arg ns_chaser)"/>
+            </include>
+        </group>
+        
+    </group>
+
+    <group ns="$(arg ns_target)">
+        <!-- Load Configuration File for sensors etc -->
+        <rosparam command="load" file="$(find rospace_simulator)/cfg/$(arg ns_target).yaml" />
+
+        <group ns="sensors">
+        <!-- Launch IMU -->
+            <include file="$(find rospace_imu)/launch/imu.launch">
+                <arg name="spacecraft" value="$(arg ns_target)" />
+            </include>
+        </group>
+    </group>
+
+
     <!-- Include CSO base definition -->
     <include file="$(find rospace_simulator)/launch/cso_base.launch">
         <arg name="ns_chaser" value="$(arg ns_chaser)" />
@@ -40,7 +74,6 @@
 
 
      <!-- Launch Visualizer -->
-    <!-- <node name="rqt_ekf" pkg="rqt_space_plugins" type="rqt_orbit_ekf" /> -->
     <node name="rqt_sc" pkg="rqt_simtime_plugin" type="rqt_simtime_plugin" />
 
     <include if="$(arg record_bag)" file="$(find rospace_simulator)/launch/record_bag.launch" />

@@ -93,6 +93,9 @@ ENV/
 # PyCharm project settings
 .idea
 
+# VScode project settings
+.vscode
+
 # Rope project settings
 .ropeproject
 

@@ -1,0 +1,28 @@
+Opened mesh /home/pantic/rospace_ws/src/rdv-cap-sim/rospace_simulator/res/meshes/dhanibeko.obj in 13 msec
+All files opened in 13 msec
+Mesh Bounding Box Size 0.200000 0.499987 1.000000
+Mesh Bounding Box Diag 1.135776 
+Mesh Volume is 0.041306
+Mesh Surface is 0.893844
+Thin shell barycenter -0.000000 -0.065016 0.000000
+Center of Mass is -0.000001 -0.057977 -0.000000
+Inertia Tensor is :
+| 0.003244 -0.000000 0.000000 |
+| -0.000000 0.002746 0.000000 |
+| 0.000000 0.000000 0.000707 |
+Principal axes are :
+| 1.000000 0.000002 -0.000000 |
+| -0.000002 1.000000 -0.000000 |
+| 0.000000 0.000000 1.000000 |
+axis momenta are :
+| 0.003244 0.002746 0.000707 |
+
+
+scaled Inertia Tensor:
+   0.078536  -0.000000   0.000000
+  -0.000000   0.066479   0.000000
+   0.000000   0.000000   0.017116
+
+
+
+

@@ -1,0 +1,173 @@
+name: "swisscube"
+
+
+propagator_settings:
+  name: "swisscube"
+  orbitProp:
+    State:
+      type: 'KeplerianEME2000'
+      settings:
+        mass: 1.0 # kg
+        rotation: 1 0 0 0 # quaternions
+        spin: 4 8 10 # omega in [deg/s]
+        acceleration: 0 0 0
+    integrator: # Steps have to be floats
+      minStep: 0.01
+      maxStep: 1000.0
+      initStep: 0.1
+      positionTolerance: 0.1
+    Gravity:
+      type: "EigenGravityWGS84"
+      settings: # Spherical Harmonics Field Coeffs
+        degree: 20
+        order: 20
+    Thrust:
+      type: ThrustModelVariable
+      settings: ""
+    SatShape: # Settings for creation of spacecraft model
+        type: "FacetsAndFixedSolarArray"
+        settings:
+          Facets: ## area in [m2]
+            front:
+              area: 0.01
+              nVector: 1 0 0  
+            back: 
+              area: 0.01
+              nVector: -1 0 0
+            left: 
+              area: 0.01
+              nVector: 0 0 1
+            right:
+              area: 0.01
+              nVector: 0 0 -1
+            top:
+              area: 0.01
+              nVector: 0 -1 0
+            bottom: 
+              area: 0.01
+              nVector: 0 1 0
+          SolarArea: 0.01 # 313x960 * 2
+          SolarDir: 0 1 1
+          absCoeff: 0.34
+          refCoeff: 0.66
+          dragCoeff: 2.0
+          liftRatio: 0.0 
+    SolarModel:
+        type: "" #"SolarPressureBoxModel"
+        settings:
+          abs_Estimated: True # false = fixed
+          ref_Estimated: True # false = fixed 
+    DragModel:
+        type: "DragDTM2000CELESTRACK"
+        settings:
+          cD_Estimated: True # if false cD fixed
+    ThirdBody:
+      Sun: False
+      Moon: False
+    SolidTides: # bodies which generate tides
+      add: False
+      settings:
+        Sun: False
+        Moon: False
+    OceanTides:
+      add: False
+      settings:
+        degree: 5
+        order: 5
+    addRelativity: False
+  attitudeProvider:
+    type:  'AttPropagation'
+    settings:
+      Discretization:
+        satellite_dim:  # has to be cuboid!
+          l_x: 0.1
+          l_y: 0.1
+          l_z: 0.1
+        inner_cuboids:  # number by which satellite has to be divided into smaller cuboids
+          numCub_x: 1
+          numCub_y: 1
+          numCub_z: 1
+        surface_rectangles:  # number by which surface of satellite is divided into smaller rectangular sufraces
+          numSR_x: 1
+          numSR_y: 1
+          numSR_z: 1
+        SolarArrays:
+          l_x: 0.01 #0.960
+          l_z: 0.01 #0.313
+          numSRSolar_x: 1
+          numSRSolar_z: 1
+          PosAndDir: # displacement of every Solar Panel from Satellite CoM and normal vector
+            SA1:
+              dCenter: 0 0 0.5
+              normalV: 0 0 1
+            SA2:
+              dCenter: 0 0 -0.5 
+              normalV: 0 0 1
+      GravityGradient:
+        add: False
+        FC_degree: 10
+        FC_order: 10
+      MagneticTorque:
+        add: False
+        settings:
+          Hysteresis:
+            H1:
+              vol: 2.375e-8
+              dir: 0 1 0
+              Bs: 0.027
+              Br: 0.004
+              Hc: 12.
+            H2:
+              vol: 2.375e-8
+              dir: 0 1 0
+              Bs: 0.027
+              Br: 0.004
+              Hc: 12.
+            H3:
+              vol: 2.375e-8
+              dir: 0 1 0
+              Bs: 0.027
+              Br: 0.004
+              Hc: 12.
+            H4:
+              vol: 2.375e-8
+              dir: 0 0 1
+              Bs: 0.027
+              Br: 0.004
+              Hc: 12.
+            H5:
+              vol: 2.375e-8
+              dir: 0 0 1
+              Bs: 0.027
+              Br: 0.004
+              Hc: 12.
+            H6:
+              vol: 2.375e-8
+              dir: 0 0 1
+              Bs: 0.027
+              Br: 0.004
+              Hc: 12.
+          BarMagnet:
+            BM1:
+              m: 0.3
+              dir: 1 0 0
+      SolarPressure:
+        add: False
+        AbsorbCoeff: 0.98
+        ReflectCoeff: 0.02
+        SolarArray_AbsorbCoeff: 0.90
+        SolarArray_ReflectCoeff: 0.10
+      AeroDrag:
+        add: False
+        DragCoeff: 2.0
+      inertiaTensor: # based on above facet dimensions
+        Ix: 0.001666667 0 0
+        Iy: 0 0.001666667 0
+        Iz: 0 0 0.001666667
+      integrator:
+        maxDT: 0
+        minStep: 0.01
+        maxStep: 1000.0
+        initStep: 0.1
+        absTol: -1.0 # if negative use tolerance from orbit propagation
+        relTol: -1.0 # if negative use tolerance from orbit propagation
