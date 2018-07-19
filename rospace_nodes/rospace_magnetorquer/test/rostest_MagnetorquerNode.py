@@ -222,7 +222,7 @@ class MagnetorquerNodeTest(unittest.TestCase):
 
         RUN_FAKE_IMU = False
 
-    @unittest.skip("Broken Test")
+    @unittest.skip("This test will be moved in near future to a separate Propagator Integration test.")
     def test_torque_received_by_propagator(self):
         """Test that torques published by actuator are received by propagator and accounted for.
 
@@ -230,6 +230,8 @@ class MagnetorquerNodeTest(unittest.TestCase):
         published external torques. The external torques are published after the integration of the attitude
         dynamics, hence one time-step after the input torques are published.
 
+        This test will be moved to a separate Propagator Integration test as it is more related to the propagator
+        than to the magnetorquer node.
         """
         global RUN_FAKE_IMU
         RUN_FAKE_IMU = True
