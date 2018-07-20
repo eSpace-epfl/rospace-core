@@ -1,3 +1,15 @@
+sensors:
+  imu:
+    module: 'ADXRS614'
+    class: 'ThreeAxisADXRS614'
+    position: 0 0 0
+    pose: 0 0 0 1.0
+    fov_x: 6
+    fov_y: 6
+    max_range: 50000
+    mu: 0
+    sigma: 0.01
+
 propagator_settings:
   orbit_propagation:
     State:
