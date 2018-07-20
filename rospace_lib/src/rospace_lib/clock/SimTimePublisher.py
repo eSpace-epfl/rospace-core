@@ -151,7 +151,7 @@ class SimTimePublisher(object):
         skipping the next timestep.
 
         Returns:
-            datetime: current epoch as datetime object
+            datetime.datetime: current epoch as datetime object
 
         Raises:
             RuntimeError: If used without the sleep_to_keep_frequency method

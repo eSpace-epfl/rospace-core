@@ -8,19 +8,12 @@ expected topics to which the node should publish are:
 
 <launch>
 
-<<<<<<< HEAD
-  <!-- Launch IMU node -->
+  <!-- Launch IMU node with appropriate sensor -->
+  <param name="/imu/module" value="TestSensor" />
+  <param name="/imu/class" value="ThreeAxisTestSensor" />
   <include file="$(find rospace_imu)/launch/imu.launch">
     <arg name="spacecraft" value="testcraft" />
   </include>
-=======
-	<!-- Launch IMU node with appropriate sensor -->
-	<param name="/imu/module" value="TestSensor" />
-	<param name="/imu/class" value="ThreeAxisTestSensor" />
-    <include file="$(find rospace_imu)/launch/imu.launch">
-        <arg name="spacecraft" value="testcraft" />
-    </include>
->>>>>>> master
 
   <!-- Hztest of IMU node -->
   <test test-name="hztest_IMUnode" pkg="rostest" type="hztest" name="imuHz">
