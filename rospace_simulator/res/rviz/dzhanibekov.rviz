@@ -94,6 +94,8 @@ Visualization Manager:
           Value: false
         t_handle:
           Value: true
+        t_handle_lvlh:
+          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: false
@@ -102,6 +104,8 @@ Visualization Manager:
       Tree:
         J2K:
           t_handle:
+            {}
+          t_handle_lvlh:
             {}
       Update Interval: 0
       Value: true
@@ -117,7 +121,7 @@ Visualization Manager:
   Global Options:
     Background Color: 0; 0; 0
     Default Light: true
-    Fixed Frame: t_handle
+    Fixed Frame: t_handle_lvlh
     Frame Rate: 30
   Name: root
   Tools:
@@ -153,10 +157,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.0010000000474974513
-      Pitch: 0.5147970914840698
+      Pitch: -0.25520363450050354
       Target Frame: dzhanibekov_lvlh
       Value: Orbit (rviz)
-      Yaw: 3.0304033756256104
+      Yaw: 5.6204023361206055
     Saved: ~
 Window Geometry:
   "&Displays":

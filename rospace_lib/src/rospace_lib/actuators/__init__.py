@@ -7,3 +7,4 @@
 # for complete details.
 
 from rospace_lib.actuators.Magnetorquers import *
+from rospace_lib.actuators.DipoleModel import *

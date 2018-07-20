@@ -15,4 +15,3 @@ from propagator.AttitudePropagation import *
 from propagator.DisturbanceTorques import *
 from propagator.ThrustModel import *
 from propagator.StateObserver import *
-from propagator.DipoleModel import *

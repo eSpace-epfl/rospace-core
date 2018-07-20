@@ -12,10 +12,8 @@ from math import sqrt, degrees
 import itertools
 import traceback
 
-from time import sleep
-
 from FileDataHandler import FileDataHandler
-from DipoleModel import DipoleModel
+from rospace_lib.actuators.DipoleModel import DipoleModel
 
 from org.orekit.bodies import BodyShape
 from org.orekit.forces import ForceModel
@@ -106,7 +104,7 @@ class DisturbanceTorqueArray(DisturbanceTorqueInterface):
         in_date: Initial date object
         inCub: Dictionary with information about satellite's inner body discretization
         meshDA: Dictionary with information about satellite's surface discretization
-        AttitdueFM: Dictionary with Force Model objects needed for disturbance torques 
+        AttitdueFM: Dictionary with Force Model objects needed for disturbance torques
     """
 
     @property
@@ -249,7 +247,7 @@ class DisturbanceTorqueArray(DisturbanceTorqueInterface):
 
         # get B-field in geodetic system (X:East, Y:North, Z:Nadir)
         B_geo = FileDataHandler.mag_field_model.calculateField(
-                            degrees(lat), degrees(lon), alt).getFieldVector()
+            degrees(lat), degrees(lon), alt).getFieldVector()
 
         # convert geodetic frame to inertial and from [nT] to [T]
         B_i = topo2inertial.transformVector(Vector3D(1e-9, B_geo))
@@ -308,9 +306,9 @@ class DisturbanceTorqueArray(DisturbanceTorqueInterface):
         self._compute_aero_torque(curr_date, omega)
 
         return self._gTorque.add(
-                self._mTorque.add(
-                 self._sTorque.add(
-                  self._aTorque)))
+            self._mTorque.add(
+                self._sTorque.add(
+                    self._aTorque)))
 
     def _compute_gravity_torque(self, curr_date):
         """Compute gravity gradient torque if gravity model provided.
@@ -400,7 +398,7 @@ class DisturbanceTorqueArray(DisturbanceTorqueInterface):
 
             # get B-field in geodetic system (X:East, Y:North, Z:Nadir)
             B_geo = FileDataHandler.mag_field_model.calculateField(
-                                degrees(lat), degrees(lon), alt).getFieldVector()
+                degrees(lat), degrees(lon), alt).getFieldVector()
 
             # convert geodetic frame to inertial and from [nT] to [T]
             B_i = topo2inertial.transformVector(Vector3D(1e-9, B_geo))
@@ -439,8 +437,8 @@ class DisturbanceTorqueArray(DisturbanceTorqueInterface):
                                                      curr_date)
 
             sunPos = self.inertial2Sat.applyTo(
-                    self.sun.getPVCoordinates(curr_date,
-                                              self.in_frame).getPosition())
+                self.sun.getPVCoordinates(curr_date,
+                                          self.in_frame).getPosition())
             sunPos = np.array([sunPos.x, sunPos.y, sunPos.z], dtype='float64')
 
             CoM = self.meshDA['CoM_np']
@@ -552,7 +550,7 @@ class DisturbanceTorqueLoop(DisturbanceTorqueInterface):
         in_date: Initial date object
         inCub: Dictionary with information about satellite's inner body discretization
         meshDA: Dictionary with information about satellite's surface discretization
-        AttitdueFM: Dictionary with Force Model objects needed for disturbance torques 
+        AttitdueFM: Dictionary with Force Model objects needed for disturbance torques
     """
     @property
     def gTorque(self):
@@ -697,7 +695,7 @@ class DisturbanceTorqueLoop(DisturbanceTorqueInterface):
 
         # get B-field in geodetic system (X:East, Y:North, Z:Nadir)
         B_geo = FileDataHandler.mag_field_model.calculateField(
-                            degrees(lat), degrees(lon), alt).getFieldVector()
+            degrees(lat), degrees(lon), alt).getFieldVector()
 
         # convert geodetic frame to inertial and from [nT] to [T]
         B_i = topo2inertial.transformVector(Vector3D(1e-9, B_geo))
@@ -757,9 +755,9 @@ class DisturbanceTorqueLoop(DisturbanceTorqueInterface):
             # external torque has to be set separately because it is received
             # through a ros subscriber
             return self._gTorque.add(
-                    self._mTorque.add(
-                     self._sTorque.add(
-                      self._aTorque)))
+                self._mTorque.add(
+                    self._sTorque.add(
+                        self._aTorque)))
         except Exception:
             print traceback.print_exc()
             raise
@@ -839,7 +837,7 @@ class DisturbanceTorqueLoop(DisturbanceTorqueInterface):
 
             # get B-field in geodetic system (X:East, Y:North, Z:Nadir)
             B_geo = FileDataHandler.mag_field_model.calculateField(
-                                degrees(lat), degrees(lon), alt).getFieldVector()
+                degrees(lat), degrees(lon), alt).getFieldVector()
 
             # convert geodetic frame to inertial and from [nT] to [T]
             B_i = topo2inertial.transformVector(Vector3D(1e-9, B_geo))
@@ -883,8 +881,8 @@ class DisturbanceTorqueLoop(DisturbanceTorqueInterface):
                                                      curr_date)
 
             sunPos = inertial2Sat.applyTo(
-                    self.sun.getPVCoordinates(curr_date,
-                                              self.in_frame).getPosition())
+                self.sun.getPVCoordinates(curr_date,
+                                          self.in_frame).getPosition())
             self._sTorque = Vector3D.ZERO
 
             iterator = itertools.izip(self.meshDA['CoM'],
