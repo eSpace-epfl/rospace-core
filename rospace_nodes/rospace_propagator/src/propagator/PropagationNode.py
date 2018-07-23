@@ -345,7 +345,8 @@ if __name__ == '__main__':
         # Parse settings for every spacecraft independently
         spc = PropagatorParser.parse_configuration_files(Spacecraft(ns_spacecraft),
                                                          ns_spacecraft,
-                                                         init_coords)
+                                                         init_coords,
+                                                         SimTime.datetime_oe_epoch)
 
         # Build propagator object from settings
         spc.build_propagator(SimTime.datetime_oe_epoch)

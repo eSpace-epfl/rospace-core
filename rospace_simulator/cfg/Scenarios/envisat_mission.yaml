@@ -1,0 +1,43 @@
+# @copyright Copyright (c) 2018, Christian Lanegger (lanegger.christian@gmail.com)
+#
+# @license zlib license
+#
+# This file is licensed under the terms of the zlib license.
+# See the LICENSE.md file in the root of this repository
+# for complete details.
+
+# Parsed by Clock Interface:
+##########################################################################################
+# (This information does not need to be specified)
+simulation_time:
+  oe_epoch: 20120204T21:55:26  # Time Epoch in Format: YYYYMMDDTHH:MM:SS (if not provided current UTC used)
+  time_shift: 200.0 # Negative Time Shift from oe_epoch (Useful for Initializing ROS-Bags)
+  frequency: 0.0
+  step_size: 60.0
+##########################################################################################
+
+# Parsed by Propagator API & satellite_tf_publisher:
+##########################################################################################
+init_coords:
+  envisat:
+    type: absolute
+    coord_type: cartesian
+    coord_frame: ITRF
+    coord_frame_attitude: J2000
+    init_coord:
+      x: -5993.619773
+      y: -0866.461234
+      z: +3786.662997
+      v_x: -4.118631433
+      v_y: +1.163639454
+      v_z: -6.233855098
+    init_attitude: nadir
+    init_spin:  # in body frame [deg/s]
+      w_x: 0
+      w_y: 0
+      w_z: 0
+    init_rot_acceleration:
+      w_dot_x: 0
+      w_dot_y: 0
+      w_dot_z: 0
+##########################################################################################

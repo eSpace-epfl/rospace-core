@@ -4,12 +4,11 @@
     <!-- Simulation Arguments -->
     <arg name="scenario" />
     <arg name="rostest_running" default="False"/>
-    <arg name="start_running" default="False" />
     <arg name="record_bag" default="False" />
+    <arg name="start_running" default="$(arg record_bag)" />
     <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
 
     <!-- Option To Record ROS-Bag during Simulation. Simulator starts automatically. -->
-    <rosparam if="$(arg record_bag)" param="start_running"> True </rosparam>
     <include if="$(arg record_bag)" file="$(find rospace_simulator)/launch/record_bag.launch" />
     <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
 

@@ -58,7 +58,7 @@ from org.hipparchus.geometry.euclidean.threed import Vector3D, Rotation
 def _build_default_gravity_Field(methodName):
     """Build gravity field using Normalized Provider with degree and order of 10.
 
-    Gravity model used: eigen-6s
+    Eigen gravity model is used.
 
     Args:
         methodName (string): name of method calling this function (for printing warning)
@@ -67,7 +67,8 @@ def _build_default_gravity_Field(methodName):
         NormalizedSphericalHarmonicsProvider: provides norm. spherical harmonics
 
     """
-    gfReader = EGMFormatReader('eigen-6s.gfc', False)
+    supported = GravityFieldFactory.ICGEM_FILENAME
+    gfReader = ICGEMFormatReader(supported, False)
     GravityFieldFactory.addPotentialCoefficientsReader(gfReader)
 
     mesg = "\033[93m  [WARN] [Builder." + methodName\
@@ -535,7 +536,7 @@ class CartesianEME2000(StateFactory):
         """
         satMass = setup['mass']
         pos = init_coord['position']
-        p = Vector3D(float(1e3),  # convert to[m]
+        p = Vector3D(float(1e3),  # convert to [m]
                      Vector3D(float(pos.R[0]),
                               float(pos.R[1]),
                               float(pos.R[2])))
@@ -591,7 +592,7 @@ class EigenGravity(GravityFactory):
             name (string): name of desired subclass
 
         """
-        if name == "EigenGravityWGS84":
+        if name == "EigenGravity":
             return True
         else:
             return False
@@ -648,7 +649,7 @@ class EGM96Gravity(GravityFactory):
             name (string): name of desired subclass
 
         """
-        if name == "EGM96GravityWGS84":
+        if name == "EGM96Gravity":
             return True
         else:
             return False

@@ -21,6 +21,10 @@
         <xacro:if value="${'swisscube' in namespace.lower()}">
             <xacro:swisscube_spacecraft namespace="${namespace}" joint_parent="${joint_parent}" />
         </xacro:if>
+
+        <xacro:if value="${'envisat' in namespace.lower()}">
+            <xacro:envisat_spacecraft namespace="${namespace}" joint_parent="${joint_parent}" />
+        </xacro:if>
     </xacro:macro>
 
 
@@ -87,6 +91,26 @@
                 <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
                 <geometry>
                     <box size="0.1 0.1 0.1"/>
+                </geometry>
+                <material name="Grey" />
+                <origin rpy="0 0 0" xyz="0 0 0"/>
+            </visual>
+        </link>
+
+        <joint name="${namespace}2${joint_parent}" type="fixed">
+            <parent link="${joint_parent}"/>
+            <child link="${namespace}"/>
+            <origin xyz="7000000 0 0" rpy="0.0 0.0 0.0"/>
+        </joint>
+    </xacro:macro>
+
+    <xacro:macro name="envisat_spacecraft" params="namespace joint_parent">
+        <link name="${namespace}">
+            <visual>
+                <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+                <geometry>
+                    <mesh filename="${meshes_location}/envisat/ENVISAT.stl" scale="1 1 1">
+                    </mesh>
                 </geometry>
                 <material name="Grey" />
                 <origin rpy="0 0 0" xyz="0 0 0"/>
