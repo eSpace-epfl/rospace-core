@@ -250,9 +250,9 @@ def force_torque_to_msgs(force, torque, time):
     """Packs force and torque vectors in satellite frame to message.
 
     Args:
-        force: force vector acting on satellite
-        torque: DisturbanceTorqueStorage object holding current torques acting on satellite
-        time: time stamp
+        force (numpy.array): force vector acting on satellite in body frame
+        torque (:obj:`OrekitPropagator.DisturbanceTorqueStorage`: current torques acting on satellite
+        time (:obj:`rospy.Time`): time stamp
 
     Returns:
        msg.WrenchStamped: message for total force and torque acting on satellite
@@ -308,8 +308,8 @@ def Bfield_to_msgs(bfield, time):
     """Packs the local magnetic field to message.
 
     Args:
-        bfield: local magnetic field vector in satellite frame
-        time: time stamp
+        bfield (Vector3D): local magnetic field vector in satellite frame
+        time (:obj:`rospy.Time`): time stamp
 
     Returns:
        msg.Vector3Stamped: message for the local magnetic field vector

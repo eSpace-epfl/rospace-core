@@ -17,7 +17,7 @@ propagator_settings:
       settings:
         mass: 0.82 # kg
     Gravity:
-      type: "EigenGravityWGS84"
+      type: "EigenGravity"
       settings: # Spherical Harmonics Field Coeffs
         degree: 140
         order: 140

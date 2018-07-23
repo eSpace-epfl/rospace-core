@@ -8,7 +8,6 @@
 
 import abc
 import numpy as np
-import math
 
 import FileDataHandler
 from ThrustModel import ThrustModel
@@ -30,7 +29,7 @@ from org.orekit.time import TimeScalesFactory
 from org.orekit.bodies import CelestialBodyFactory
 from org.orekit.bodies import CelestialBody
 from org.orekit.models.earth import ReferenceEllipsoid
-from org.orekit.orbits import KeplerianOrbit, OrbitType, PositionAngle
+from org.orekit.orbits import OrbitType
 from org.orekit.orbits import CartesianOrbit
 from org.orekit.propagation import SpacecraftState
 from org.orekit.propagation.numerical import NumericalPropagator
@@ -57,16 +56,15 @@ from org.hipparchus.geometry.euclidean.threed import Vector3D, Rotation
 
 
 def _build_default_gravity_Field(methodName):
-    """
-    Build gravity field using Normalized Provider with degree and order of 10.
+    """Build gravity field using Normalized Provider with degree and order of 10.
 
     Gravity model used: eigen-6s
 
     Args:
-        methodName: name of method calling this function (for printing warning)
+        methodName (string): name of method calling this function (for printing warning)
 
     Returns:
-        NormalizedSphericalHarmonicsProvider: provids norm. spherical harmonics
+        NormalizedSphericalHarmonicsProvider: provides norm. spherical harmonics
 
     """
     gfReader = EGMFormatReader('eigen-6s.gfc', False)
@@ -82,20 +80,19 @@ def _build_default_gravity_Field(methodName):
 
 
 def _build_default_earth():
-    '''
-    Build earth object using ReferenceElliposoid and GTOD as body frame.
+    """Build earth object using ReferenceElliposoid and GTOD as body frame.
 
     Uses Constants based on WGS84 Standard from Orekit library.
 
     This method is called when PropagatorBuilder object is created.
 
     Args:
-        methodName: name of method calling this function (for printing warning)
+        methodName (string): name of method calling this function (for printing warning)
 
     Returns:
         ReferenceEllipsoid: Earth Body with rotating body frame
 
-    '''
+    """
     return ReferenceEllipsoid(Cst.WGS84_EARTH_EQUATORIAL_RADIUS,
                               Cst.WGS84_EARTH_FLATTENING,
                               FramesFactory.getGTOD(IERS.IERS_2010, False),
@@ -104,9 +101,8 @@ def _build_default_earth():
 
 
 class Builder(object):
-    """
-    Base class for Propagator builder.
-    """
+    """Base class for Propagator builder."""
+
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
@@ -127,8 +123,7 @@ class Builder(object):
 
 
 class PropagatorBuilder(Builder):
-    """
-    Class building Orekit propagator based on provided settings.
+    """Class building Orekit propagator based on provided settings.
 
     Besides the settings also an initial satellite state and epoch
     have to be provided.
@@ -189,11 +184,7 @@ class PropagatorBuilder(Builder):
         self.refDate = epoch
 
     def _build_state(self):
-        """
-        Create initial Spacecraft State based on satellite's initial state
-        and mass.
-        """
-
+        """Create initial Spacecraft State based on satellite's initial state and mass."""
         StatFactory = [cls() for cls in StateFactory.__subclasses__()]
         ST = self.orbSettings['State']
         for model in StatFactory:
@@ -216,13 +207,11 @@ class PropagatorBuilder(Builder):
                   % (self.inertialFrame.getName())
 
     def _build_integrator(self):
-        """
-        Build orbit integrator based on settings specified in settings.
+        """Build orbit integrator based on settings specified in settings.
 
         Integrator used: DormandPrince853Integrator
         Orbit Type of propagation transformed to Cartesian.
         """
-
         intSettings = self.orbSettings['integrator']
         minStep = intSettings['minStep']
         maxStep = intSettings['maxStep']
@@ -244,10 +233,7 @@ class PropagatorBuilder(Builder):
         self.integrator.setInitialStepSize(float(initStep))
 
     def _build_propagator(self):
-        """
-        Build propagator object and add integrator and initial State to it.
-        """
-
+        """Build propagator object and add integrator and initial State to it."""
         self.propagator = NumericalPropagator(self.integrator)
         self.propagator.setOrbitType(self.orbitType)
         self.propagator.setInitialState(self.initialState)
@@ -256,10 +242,7 @@ class PropagatorBuilder(Builder):
               % (str(self.integrator.getName()), str(self.orbitType))
 
     def _build_attitude_propagation(self):
-        """
-        Set an attitude provider based on the type specified in settings.
-        """
-
+        """Set an attitude provider based on the type specified in settings."""
         AttFactory = [cls() for cls in AttitudeFactory.__subclasses__()]
         for provider in AttFactory:
             if provider.isApplicable(self.attSettings['type']):
@@ -267,13 +250,11 @@ class PropagatorBuilder(Builder):
                 break
 
     def _build_gravity(self):
-        """
-        Add gravity model to orbit propagation based on settings.
+        """Add gravity model to orbit propagation based on settings.
 
         Spacecraft will follow Newtonian orbit if type not matching any
         available Factory Class.
         """
-
         GMFactory = [cls() for cls in GravityFactory.__subclasses__()]
         GM = self.orbSettings['Gravity']
         for model in GMFactory:
@@ -289,10 +270,7 @@ class PropagatorBuilder(Builder):
                 break
 
     def _build_thirdBody(self):
-        """
-        Adds Third body perturbation of Sun and/or Moon based on settings.
-        """
-
+        """Add Third body perturbation of Sun and/or Moon based on settings."""
         bodies = self.orbSettings['ThirdBody']
         for Body, addBody in bodies.items():
             if addBody:
@@ -304,20 +282,17 @@ class PropagatorBuilder(Builder):
                     self.propagator.addForceModel(
                         ThirdBodyAttraction(
                             CelestialBodyFactory.getMoon()))
-
                 print "  [INFO]: added Attraction of %s." % (str(Body))
 
     def _build_solid_tides(self):
-        """
-        Adds Solid tides force model to propagation if specified in settings.
+        """Add Solid tides force model to propagation if specified in settings.
 
-        Uses IERS2010 conventions.
+        This method uses IERS2010 conventions.
 
         This method needs a gravity Field and Earth object. If one of those is
         not defined, they are default object is build by the build_default
         methods.
         """
-
         STides = self.orbSettings['SolidTides']
         if STides['add']:
             if self.gravField is None:
@@ -352,16 +327,14 @@ class PropagatorBuilder(Builder):
                 self.propagator.addForceModel(ST)
 
     def _build_ocean_tides(self):
-        """
-        Adds ocean tide force model to propagation if specified in settings.
+        """Add ocean tide force model to propagation if specified in settings.
 
-        Uses IERS2010 conventions.
+        This method uses IERS2010 conventions.
 
         This method needs a gravity Field and Earth object. If one of those is
         not defined, they are default object is build by the build_default
         methods.
         """
-
         OTides = self.orbSettings['OceanTides']
         if OTides['add']:
             if self.gravField is None:
@@ -380,14 +353,10 @@ class PropagatorBuilder(Builder):
                             TimeScalesFactory.getUT1(conventions, True))
 
             self.propagator.addForceModel(OT)
-
             print "  [INFO]: Ocean Tides force model added."
 
     def _build_relativity(self):
-        """
-        Adds relativity force model to propagator if specified in settings.
-        """
-
+        """Add relativity force model to propagator if specified in settings."""
         if self.orbSettings['addRelativity']:
             if self.gravField is None:
                 gravField = _build_default_gravity_Field('_build_relativity')
@@ -396,17 +365,14 @@ class PropagatorBuilder(Builder):
 
             self.propagator.addForceModel(Relativity(gravField.getMu()))
             print "  [INFO]: Relativity Correction force added."
-
         else:
             pass
 
     def _build_thrust(self):
-        """
-        Adds a thrust model to propagation based on type defined in settings.
+        """Add a thrust model to propagation based on type defined in settings.
 
         Thrust Model can be obtained using get_thrust_model() method.
         """
-
         TFactory = [cls() for cls in ThrustFactory.__subclasses__()]
         T = self.orbSettings['Thrust']
         for model in TFactory:
@@ -414,19 +380,17 @@ class PropagatorBuilder(Builder):
                 [propagator, TM] = model.Setup(self.propagator, T['settings'])
                 self.propagator = propagator
                 self.thrustM = TM
-
                 print "  [INFO]: Thrust added."
 
     def _build_drag_and_solar_pressure(self):
-        """
-        Create Spacecraft shape and then build solar and drag force models.
+        """Create Spacecraft shape and then build solar and drag force models.
 
         Drag and solar radiation pressure force models are added to propagation
         if to type defined in settings corresponding subclasses are found and
         shape is defined properly.
+
         If no satellite shape defined force models cannot be created.
         """
-
         SatModelSettings = self.orbSettings['SatShape']
         DragModelSettings = self.orbSettings['DragModel']
         SolarModelSettings = self.orbSettings['SolarModel']
@@ -453,69 +417,69 @@ class PropagatorBuilder(Builder):
                 break
 
     def get_propagator(self):
-        """
-        Call after build has been completed.
+        """Call after build has been completed.
 
         Returns:
-            Object: finished propagator.
-        """
+            Object: build propagator.
 
+        """
         # Print all force models which are being integrated
         print "[%s]: added Force models: \n%s"\
               % (self.SatType, str(self.propagator.getAllForceModels()))
-
         return self.propagator
 
     def get_earth(self):
-        """
+        """Get Earth object.
+
         Returns:
-            Object: Earth object which was created during gravity build. If
-                    none was created a default Earth object is created.
+            Object: Earth object which was created during propagator build.
+
         """
         return self.earth
 
     def get_thrust_model(self):
-        """
+        """Get Thrust Model.
+
         Returns:
             Object: Thrust model if build and added to propagator
                     (otherwise returns None).
-        """
 
+        """
         return self.thrustM
 
 
 #####################################################################
 class StateFactory(object):
-    """Base Class for different builds of states in which object is propagated.
-    """
+    """Base Class for different builds of states in which object is propagated."""
 
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def isApplicable(name):
-        """check for desired state build type"""
+        """Check for desired state build type."""
 
     @abc.abstractmethod
     def Setup(epoch, earth, state, setup):
-        """Build spacecraft state based on type selected"""
+        """Build spacecraft state based on type selected."""
 
 
 def _build_satellite_attitude(setup, orbit_pv, inertialFrame, earth, epoch):
-    '''Creates the initial attitude of the spacecraft based on the provided settings.
+    """Create the initial attitude of the spacecraft based on the provided settings.
 
-    If nadir pointing is defined the method takes the initial position and defines the correct
-    rotation by using OREKIT's NadirPointing attiude provider.
+    If nadir pointing is requested the method takes the initial position and defines the correct
+    rotation by using OREKIT's NadirPointing attitude provider.
 
     Args:
-        setup: additional settings defined in dictionary
-        orbit_pv: PVCoordinatesProvider from Orbit object
-        inertialFrame: inertial Frame of propagation
-        earth: Earth body object
-        epoch: initial epoch as AbsoluteDate object
+        setup (dict): additional settings defined in dictionary
+        orbit_pv (PVCoordinatesProvider): PVCoordinatesProvider from orbit object
+        inertialFrame (orekit.frames.FactoryManagedFrame): inertial frame of propagation
+        earth (ReferenceEllipsoid): Earth body object
+        epoch (AbsoluteDate): initial epoch
 
     Returns:
-        Attitude: OREKIT's atttiude object with the correct initial attiude
-    '''
+        Attitude: OREKIT's attitude object with the correct initial attitude
+
+    """
     if setup['attitude'] == 'nadir':
         satRot = NadirPointing(inertialFrame, earth). \
             getAttitude(orbit_pv, epoch, inertialFrame). \
@@ -534,10 +498,20 @@ def _build_satellite_attitude(setup, orbit_pv, inertialFrame, earth, epoch):
 
 
 class CartesianEME2000(StateFactory):
+    """Create state from settings parsed by :func:`propagator.PropagatorParser.parse_configuration_files`.
+
+    The state of the spacecraft will be build in such a manner that it will be propagated in Cartesian coordinates
+    with the J2000 frame as inertial frame.
+    """
 
     @staticmethod
     def isApplicable(name):
+        """Check for desired state build type.
 
+        Args:
+            name (string): name of desired subclass
+
+        """
         if name == "CartesianEME2000":
             return True
         else:
@@ -545,10 +519,7 @@ class CartesianEME2000(StateFactory):
 
     @staticmethod
     def Setup(epoch, earth, init_coord, setup):
-        """Create state from settings parsed by :func:`propagator.PropagatorParser.parse_configuration_files`.
-
-        The state of the spacecraft will be build in such a manner that it will be propagated in Cartesian coordinates
-        with the J2000 frame as inertial frame.
+        """Build spacecraft state.
 
         Args:
             epoch (orekit.AbsoluteDate): initial epoch or orbital elements
@@ -572,7 +543,7 @@ class CartesianEME2000(StateFactory):
                      Vector3D(float(pos.V[0]),
                               float(pos.V[1]),
                               float(pos.V[2])))
-        # Inertial frame where the satellite is defined (and earth)
+        # Inertial frame where the satellite is defined
         inertialFrame = FramesFactory.getEME2000()
 
         initialOrbit = CartesianOrbit(PVCoordinates(p, v),
@@ -592,25 +563,34 @@ class CartesianEME2000(StateFactory):
 
 #####################################################################
 class GravityFactory(object):
-    """
-    Base Class for different Gravity Force Models
-    """
+    """Base Class for different Gravity Force Models."""
 
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def isApplicable(name):
-        """check for desired Gravity Model"""
+        """Check for desired Gravity Model."""
 
     @abc.abstractmethod
     def Setup(propagator, setup, earth):
         """Create gravity field and add force model to propagator."""
 
 
-class EigenGravityWGS84(GravityFactory):
+class EigenGravity(GravityFactory):
+    """Add gravity perturbation using the HolmesFeatherstoneAttractionModel.
+
+    The Eigen-6s gravity model is used to compute the gravity field with normalized
+    spherical harmonics of degree and order defined in setup dictionary.
+    """
 
     @staticmethod
     def isApplicable(name):
+        """Check for desired Gravity Model.
+
+        Args:
+            name (string): name of desired subclass
+
+        """
         if name == "EigenGravityWGS84":
             return True
         else:
@@ -618,26 +598,17 @@ class EigenGravityWGS84(GravityFactory):
 
     @staticmethod
     def Setup(propagator, setup, earth):
-        """
-        Add gravity perturbation using the HolmesFeatherstoneAttractionModel.
-
-        As Earth model a ReferenceEllipsoid is used, with GTOD as body frame
-        (tidal effects are not ignored when interpolating EOP).
-
-        Uses WGS84 norm for the equatorial radius, flattening, standard
-        grav. parameter and angular velocity.
-
-        The Eigen-6s gravity model is used to compute the gravity field.
+        """Build gravity model using eigen-6s.
 
         Args:
-            propagator: propagator object
-            setup: additional settings defined in dictionary
+            propagator (object): propagator object
+            setup (dict): additional settings defined in dictionary
 
         Returns:
             Propagator: propagator
-            ReferenceEllipsoid: Earth body with GTOD as body frame
             NormalizedSphericalHarmonicsProvider: gravity field
             String: name of file used for the calculation of gravity potential
+
         """
         GravityFieldFactory.clearPotentialCoefficientsReaders()
         supported = GravityFieldFactory.ICGEM_FILENAME
@@ -662,10 +633,21 @@ class EigenGravityWGS84(GravityFactory):
         return [propagator, gravField, file_name]
 
 
-class EGM96GravityWGS84(GravityFactory):
+class EGM96Gravity(GravityFactory):
+    """Add gravity perturbation using the HolmesFeatherstoneAttractionModel.
+
+    The EGM96 gravity model is used to compute the gravity field with normalized
+    spherical harmonics of degree and order defined in setup dictionary.
+    """
 
     @staticmethod
     def isApplicable(name):
+        """Check for desired Gravity Model.
+
+        Args:
+            name (string): name of desired subclass
+
+        """
         if name == "EGM96GravityWGS84":
             return True
         else:
@@ -673,16 +655,7 @@ class EGM96GravityWGS84(GravityFactory):
 
     @staticmethod
     def Setup(propagator, setup, earth):
-        """
-        Add gravity perturbation using the HolmesFeatherstoneAttractionModel.
-
-        As Earth model a ReferenceEllipsoid is used, with GTOD as body frame
-        (tidal effects are not ignored when interpolating EOP).
-
-        Uses WGS84 norm for the equatorial radius, flattening, standard
-        grav. parameter and angular velocity.
-
-        The EGM96 gravity model is used to compute the gravity field.
+        """Build gravity model using EGM96.
 
         Args:
             propagator: propagator object
@@ -690,11 +663,10 @@ class EGM96GravityWGS84(GravityFactory):
 
         Returns:
             Propagator: propagator
-            ReferenceEllipsoid: Earth body with GTOD body frame
             NormalizedSphericalHarmonicsProvider: gravity field
             String: name of file used for the calculation of gravity potential
-        """
 
+        """
         GravityFieldFactory.clearPotentialCoefficientsReaders()
         supported = GravityFieldFactory.EGM_FILENAME
         gfReader = EGMFormatReader(supported, False)
@@ -722,15 +694,13 @@ class EGM96GravityWGS84(GravityFactory):
 
 #####################################################################
 class AttitudeFactory(object):
-    """
-    Base class which implements different attitude providers.
-    """
+    """Base class which implements different attitude providers."""
 
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def isApplicable(name):
-        """Check for desired Attitude Provider"""
+        """Check for desired Attitude Provider."""
 
     @abc.abstractmethod
     def Setup(builderInstance):
@@ -738,9 +708,16 @@ class AttitudeFactory(object):
 
 
 class AttNadir(AttitudeFactory):
+    """Adding Orekit's Attitude Provider aligning the z-axis of the spacecraft with the nadir vector."""
 
     @staticmethod
     def isApplicable(name):
+        """Check for desired Attitude Provider.
+
+        Args:
+            name (string): name of desired subclass
+
+        """
         if name == "AttNadir":
             return True
         else:
@@ -748,14 +725,14 @@ class AttNadir(AttitudeFactory):
 
     @staticmethod
     def Setup(builderInstance):
-        """
-        Adding Orekit's Attitude Provider aligning the z-axis of the spacecraft with nadir.
+        """Build nadir pointing attitude provider.
 
         Args:
-            builderInstance: Instance of propagator builder
+            builderInstance (PropagatorBuilder): Instance of propagator builder
 
         Returns:
             Propagator: propagator
+
         """
         propagator = builderInstance.propagator
         earth = builderInstance.earth
@@ -769,9 +746,27 @@ class AttNadir(AttitudeFactory):
 
 
 class AttPropagation(AttitudeFactory):
+    """Implements Attitude propagation and sets it as attitude provider.
+
+    The attitude propagator accounts for disturbance torques defined in settings cfg file.
+
+    The attitude propagation is decoupled from the orbit propagation and therefore a small
+    simulation time-step needs to be adapted to obtain realistic behavior. The attitude dynamics
+    are being integrated at the beginning of each orbit integration step. After integration the
+    attitude has to be therefore integrated once more to obtain the attitude at the final orbit
+    integration step.
+
+    A StateObserver object needs to be added to the propagator for the attitude propagation to work.
+    """
 
     @staticmethod
     def isApplicable(name):
+        """Check for desired Attitude Provider.
+
+        Args:
+            name (string): name of desired subclass
+
+        """
         if name == "AttPropagation":
             return True
         else:
@@ -779,16 +774,14 @@ class AttPropagation(AttitudeFactory):
 
     @staticmethod
     def Setup(builderInstance):
-        """
-        Implements Attitude propagation and sets it as attitude provider.
-
-        The attitude propagator accounts for disturbance torques defined in settings cfg file.
+        """Build attitude propagation and set it as provider.
 
         Args:
-            builderInstance: Instance of propagator builder
+            builderInstance (PropagatorBuiler): Instance of propagator builder
 
         Returns:
             Propagator: propagator
+
         """
         propagator = builderInstance.propagator
         setup = builderInstance.attSettings['settings']
@@ -932,11 +925,17 @@ class AttPropagation(AttitudeFactory):
         return propagator
 
 
-# Helper classes for attitude propagation:
 class NightEclipseDetector(PythonEventHandler):
+    """Helper class for attitude propagation.
+
+    This class implements orekit's NightEclipseDetector and is used to turn off/on
+    the disturbance torque induced by solar radiation pressure.
+    """
+
     attitudeProvider = None
 
     def eventOccurred(self, s, detector, increasing):
+        """Detect event if satellite leaving or moving into umbra."""
         if not increasing:
             # in umbra
             DT = NightEclipseDetector.attitudeProvider.getAddedDisturbanceTorques()
@@ -950,33 +949,31 @@ class NightEclipseDetector(PythonEventHandler):
         return EventHandler.Action.CONTINUE
 
     def resetState(self, detector, oldState):
+        """Reset Detector state."""
         return oldState
 #####################################################################
 
 
 #####################################################################
 class SpacecraftModelFactory(object):
-    """
-    Base Class for different types of BoxAndSolarArraySpacecraft objects.
-    """
+    """Base Class for different types of BoxAndSolarArraySpacecraft objects."""
 
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def isApplicable(name):
-        """Check for desired spacecraft model factory"""
+        """Check for desired spacecraft model factory."""
 
     @abc.abstractmethod
     def Setup(SatModelSettings):
-        """Set up BoxAndSolarArraySpacecraft object"""
+        """Set up BoxAndSolarArraySpacecraft object."""
 
 
 def load_facets_from_dict(Facets):
-    """
-    Give me Facets I give you JArray object.
+    """Translate facets defined in dictionary to JArray object.
 
     Args:
-        Facets: dictionary with facets are and normal vector
+        Facets (dict): facets' area and normal vector
 
     Example of Facets:
             front:
@@ -990,10 +987,9 @@ def load_facets_from_dict(Facets):
             .
 
     Returns:
-        JArray('object'): Filled with facet list for Orekit to create
-                          BoxAndSolarArraySpacecraft
-    """
+        JArray: Facet list which can be used by Orekit to create BoxAndSolarArraySpacecraft
 
+    """
     facet_list = []
     for val in Facets.itervalues():
         area = float(val['area'])
@@ -1008,9 +1004,23 @@ def load_facets_from_dict(Facets):
 
 
 class FacetsAndFixedSolarArray(SpacecraftModelFactory):
+    """Create a spacecraft model based on the facets defined in settings.
+
+    Solar Arrays rotate around fixed axis defined in settings with best
+    lightning.
+
+    Any number of facets can be added to settings. However shape of
+    spacecraft has to be convex.
+    """
 
     @staticmethod
     def isApplicable(name):
+        """Check for desired spacecraft model build class.
+
+        Args:
+            name (string): name of desired subclass
+
+        """
         if name == "FacetsAndFixedSolarArray":
             return True
         else:
@@ -1018,17 +1028,7 @@ class FacetsAndFixedSolarArray(SpacecraftModelFactory):
 
     @staticmethod
     def Setup(SatModelSettings):
-        """
-        Creates a spacecraft model based on the facets defined in settings.
-
-        Solar Arrays rotate around fixed axis defined in settings with best
-        lightning.
-
-        Any number of facets can be added to settings. However shape of
-        spacecraft has to be convex.
-
-        Args:
-            SatModelSettings: dictionary needed for build
+        """Build BoxAndSolarArraySpacecraft object.
 
         Example of SatModelSettings:
           Facets: area in [m2]
@@ -1057,10 +1057,13 @@ class FacetsAndFixedSolarArray(SpacecraftModelFactory):
           dragCoeff: 1.3
           liftRatio: 0.0
 
-        Returns:
-            BoxAndSolarArraySpacecraft: satellite model
-        """
+        Args:
+            SatModelSettings (dict): Settings in format provided in example.
 
+        Returns:
+            BoxAndSolarArraySpacecraft: Satellite model
+
+        """
         Facets = SatModelSettings['Facets']
 
         facet_list = load_facets_from_dict(Facets)
@@ -1086,25 +1089,36 @@ class FacetsAndFixedSolarArray(SpacecraftModelFactory):
 
 #####################################################################
 class DragFactory(object):
-    """
-    Base class for different drag and atmosphere models
-    """
+    """Base class for different drag and atmosphere models."""
 
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def isApplicable(name):
-        """Check for desired drag factory"""
+        """Check for desired drag factory."""
 
     @abc.abstractmethod
     def Setup(builderInstance):
-        """Create drag instance and add it to propagator"""
+        """Create drag instance and add it to propagator."""
 
 
 class DragDTM2000MSAFE(DragFactory):
+    """Add a Drag Force to orbit propagation using DTM2000 model as atmosphere.
+
+    The data for the model is obtained from MSFC Solar Activity Future Estimation (MSAFE).
+
+    Uses a BoxAndSolarArraySpacecraft object and aerodynamic parameters
+    configured in the settings.
+    """
 
     @staticmethod
     def isApplicable(name):
+        """Check for desired drag model build class.
+
+        Args:
+            name (string): name of desired subclass
+
+        """
         if name == "DragDTM2000MSAFE":
             return True
         else:
@@ -1112,17 +1126,16 @@ class DragDTM2000MSAFE(DragFactory):
 
     @staticmethod
     def Setup(builderInstance):
-        """
-        Adds a Drag Force to orbit propagation using DTM2000 model as atmosphere.
+        """Build drag model.
 
-        Uses a BoxAndSolarArraySpacecraft object and aerodynamic parameters
-        configured in the settings.
+        Args:
+            builderInstance (PropagatorBuilder): instance of propagator builder
 
         Returns:
             propagator: Propagator
             atmosphere: DTM2000 model of atmosphere
-        """
 
+        """
         propagator = builderInstance.propagator
         earth = builderInstance.earth
         starfighter = builderInstance.spacecraft
@@ -1157,9 +1170,23 @@ class DragDTM2000MSAFE(DragFactory):
 
 
 class DragDTM2000CELESTRACK(DragFactory):
+    """Add a Drag Force to orbit propagation using DTM2000 model as atmosphere.
+
+    The data for the model is obtained from Celestrak. See:
+        http://celestrak.com/SpaceData/
+
+    Uses a BoxAndSolarArraySpacecraft object and aerodynamic parameters
+    configured in the settings.
+    """
 
     @staticmethod
     def isApplicable(name):
+        """Check for desired drag model build class.
+
+        Args:
+            name (string): name of desired subclass
+
+        """
         if name == "DragDTM2000CELESTRACK":
             return True
         else:
@@ -1167,15 +1194,15 @@ class DragDTM2000CELESTRACK(DragFactory):
 
     @staticmethod
     def Setup(builderInstance):
-        """
-        Adds a Drag Force to orbit propagation using DTM2000 model as atmosphere.
+        """Build drag model.
 
-        Uses a BoxAndSolarArraySpacecraft object and aerodynamic parameters
-        configured in the settings.
+        Args:
+            builderInstance (PropagatorBuilder): instance of propagator builder
 
         Returns:
             propagator: Propagator
             atmosphere: DTM2000 model of atmosphere
+
         """
         propagator = builderInstance.propagator
         earth = builderInstance.earth
@@ -1204,25 +1231,34 @@ class DragDTM2000CELESTRACK(DragFactory):
 
 
 class SolarPressureFactory(object):
-    """
-    Base class for different solar pressure models used in orbit propagation.
-    """
+    """Base class for different solar pressure models used in orbit propagation."""
 
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def isApplicable(name):
-        """Check for desired solar pressure factory"""
+        """Check for desired solar pressure factory."""
 
     @abc.abstractmethod
     def Setup(builderInstance):
-        """Create Solar pressure force model and add it to propagator"""
+        """Create Solar pressure force model and add it to propagator."""
 
 
 class SolarPressureBoxModel(SolarPressureFactory):
+    """Add solar radiation pressure force model to orbit propagation.
+
+    The model is build based on a BoxAndSolarArraySpacecraft and therefore it needs that
+    a satellite shape has been build before.
+    """
 
     @staticmethod
     def isApplicable(name):
+        """Check for desired solar radiation pressure model build class.
+
+        Args:
+            name (string): name of desired subclass
+
+        """
         if name == "SolarPressureBoxModel":
             return True
         else:
@@ -1230,19 +1266,15 @@ class SolarPressureBoxModel(SolarPressureFactory):
 
     @staticmethod
     def Setup(builderInstance):
-        """
-        Adds solar radiation pressure force model to orbit propagation.
-
-        Needs a that a satellite shape has been created beforehand in builder
-        instance.
+        """Build solar radiation pressure model using a BoxAndSolarArraySpacecraft object.
 
         Args:
-            builderInstance: Instance of propagator builder
+            builderInstance (PropagatorBuilder): Instance of propagator builder
 
         Returns:
             propagator: Propagator
-        """
 
+        """
         propagator = builderInstance.propagator
         earth = builderInstance.earth
 
@@ -1273,25 +1305,35 @@ class SolarPressureBoxModel(SolarPressureFactory):
 
 #####################################################################
 class ThrustFactory(object):
-    """
-    Base class for different solar pressure models used in orbit propagation
-    """
+    """Base class for different solar pressure models used in orbit propagation."""
 
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def isApplicable(name):
-        """Check for desired thrust model"""
+        """Check for desired thrust model."""
 
     @abc.abstractmethod
     def Setup(propagator, thrustSettings):
-        """Create thrust model and add it to propagator"""
+        """Create thrust model and add it to propagator."""
 
 
 class ThrustModelVariable(ThrustFactory):
+    """Creates thrust model based on orekit's ConstantThrustManeuver class.
+
+    Direction of thrust and magnitude is changeable after creation
+    of the object, meaning that Force Models in propagator don't have to be
+    reset when changing thrusting maneuver (in contrast to orekit's class)
+    """
 
     @staticmethod
     def isApplicable(name):
+        """Check for desired thrust model build class.
+
+        Args:
+            name (string): name of desired subclass
+
+        """
         if name == "ThrustModelVariable":
             return True
         else:
@@ -1299,18 +1341,13 @@ class ThrustModelVariable(ThrustFactory):
 
     @staticmethod
     def Setup(propagator, thrustSettings):
-        """
-        Creates thrust model based on orekit's ConstantThrustManeuver class.
-
-        Direction of thrust and magnitude is changeable after creation
-        of the object, meaning that Force Models in propagator don't have to be
-        reset when changing thrusting maneuver (in contrast to orekit's class)
+        """Build thrust model which allows change in direction and magnitude.
 
         Returns:
-            propagator: Propagator
-            thrustM: Thrust model
-        """
+            object: Propagator
+            ThrustModel: Thrust model
 
+        """
         thrustM = ThrustModel()
         propagator.addForceModel(thrustM)
 
@@ -1318,9 +1355,21 @@ class ThrustModelVariable(ThrustFactory):
 
 
 class ThrustModelConstant(ThrustFactory):
+    """Creates an ConstantThrustManeuver class.
+
+    Direction of thrust and magnitude is fixed and defined in the settings.
+    The spacecraft thrust from the beginning of the simulation for the duration
+    specified in the settings file.
+    """
 
     @staticmethod
     def isApplicable(name):
+        """Check for desired thrust model build class.
+
+        Args:
+            name (string): name of desired subclass
+
+        """
         if name == "ThrustModelConstant":
             return True
         else:
@@ -1328,16 +1377,12 @@ class ThrustModelConstant(ThrustFactory):
 
     @staticmethod
     def Setup(propagator, thrustSettings):
-        """
-        Creates an ConstantThrustManeuver class.
-
-        Direction of thrust and magnitude is fixed and defined in the settings.
-        The spacecraft thrust from the beginning of the simulation for the duration
-        specified in the settings file.
+        """Build thrust model from orekit's ConstantThrustManeuver class.
 
         Returns:
-            propagator: Propagator
-            thrustM: Thrust model
+            object: Propagator
+            ThrustModel: Thrust model
+
         """
         TS = thrustSettings
         direction = [float(x) for x in TS['dir'].split(" ")]
@@ -1360,4 +1405,4 @@ class ThrustModelConstant(ThrustFactory):
 
 
 class Propagator(object):
-    """Propagator object to be build"""
+    """Propagator object to be build."""

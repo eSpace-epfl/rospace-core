@@ -10,7 +10,7 @@ import rospace_lib
 import numpy as np
 import PropagatorBuilder as PB
 import os
-from math import degrees, sin, cos
+from math import degrees
 
 from FileDataHandler import FileDataHandler, to_orekit_date
 
@@ -28,8 +28,7 @@ from org.hipparchus.geometry.euclidean.threed import Vector3D
 
 
 class DisturbanceTorqueStorage(object):
-    '''Stores disturbance torques in satellite frame and their activation
-    status in numpy array.
+    """Stores disturbance torques in satellite frame and their activation status.
 
     The torques are stored in following order:
         - gravity gradient
@@ -38,7 +37,7 @@ class DisturbanceTorqueStorage(object):
         - drag torque
         - external torque
         - sum of all torques
-    '''
+    """
 
     def __init__(self):
         self._add = []
@@ -73,27 +72,23 @@ class DisturbanceTorqueStorage(object):
 
 
 class OrekitPropagator(object):
-    """
-    Class building numerical propagator using the orekit library methods.
-    """
+    """Class building a numerical propagator using the OREKIT library methods.
 
-    # _data_checklist = dict()
-    # """Holds dates for which data from orekit-data folder is loaded"""
-    # _mag_field_coll = None
-    # """Java Collection holding all loaded magnetic field models"""
-    # _mag_field_model = None
-    # """Currently used magnetic field model, transformed to correct year"""
+    Attributes:
+        _propagator_num (orekit.propagation.numerical.NumericalPropagator): build numerical propagator object
+        _hasAttitudeProp (bool): bool if propagator is propagating also attitude (default = False)
+        _hasThrust (bool): bool if propagator is taking thrust forces into account (default = False)
+
+    """
 
     @staticmethod
     def init_jvm():
-        """
-        Initialize Java virtual machine for Orekit.
+        """Initialize Java virtual machine for Orekit.
 
         This method also loads the orekit-data.zip from the pythonpath or
         form the current directory and sets up the orekit DataProviers to
         access it (how to do so has been copied from setup_orekit_curdir()).
         """
-
         orekit.initVM()
 
         path_to_file = None
@@ -115,19 +110,21 @@ class OrekitPropagator(object):
 
     @staticmethod
     def _write_satellite_state(state):
-        """
-        Method to extract satellite orbit state vector, rotation and force
-        from Java object and put it in a numpy array.
+        """Extract satellite orbit state vector, rotation and force.
+
+        The objects are converted from Java object to numpy arrays. As OREKIT uses [m]
+        as units for propagation but the rospace_lib objects currently use [km]
+        also the units are converted.
 
         Args:
-            SpacecraftState: satellite state vector
+            SpacecraftState (orekit.propagation.SpacecraftState): satellite state vector
 
         Returns:
-            numpy.array: cartesian state vector in TEME frame
+            numpy.array: Cartesian state vector in J2000 frame
             numpy.array: current attitude rotation in quaternions
             numpy.array: force in satellite body frame
-        """
 
+        """
         pv = state.getPVCoordinates()
         cart_teme = rospace_lib.CartesianITRF()
         cart_teme.R = np.array([pv.position.x,
@@ -146,8 +143,13 @@ class OrekitPropagator(object):
 
         return [cart_teme, att, force_sF]
 
-    def _write_d_torques(self):
+    def __init__(self):
+        self._propagator_num = None
+        self._hasAttitudeProp = False
+        self._hasThrust = False
 
+    def _write_d_torques(self):
+        """Write disturbance torques into Container object (Internal method)."""
         dtorque = DisturbanceTorqueStorage()
 
         if self._hasAttitudeProp:
@@ -160,14 +162,8 @@ class OrekitPropagator(object):
 
         return dtorque
 
-    def __init__(self):
-        self._propagator_num = None
-        self._hasAttitudeProp = False
-        self._hasThrust = False
-
     def initialize(self, spc_name, propSettings, state, epoch):
-        """
-        Method builds propagator object based on settings defined in arguments.
+        """Build propagator object based on settings defined in arguments.
 
         Propagator object is build using PropagatorBuilder. This takes
         information from a python dictionary to add and build propagator
@@ -176,19 +172,16 @@ class OrekitPropagator(object):
         After build this method checks if Attitude propagation and Thrusting
         has been set as active. If yes the following object variables are set
         to True:
-            - hasAttitudeProp
-            - hasThrust
+            - _hasAttitudeProp
+            - _hasThrust
 
         Args:
-            spc_name: name of spacecraft
-            propSettings: dictionary containing info about propagator settings
-            state: initial state of spacecraft
-            epoch: initial epoch @ which state is defined as datetime object
+            spc_name (string): name of spacecraft
+            propSettings (dict): dictionary containing info about propagator settings
+            state (dict): initial state of spacecraft
+            epoch (datetime.datetime): initial epoch @ which state is defined
 
-        Raises:
-            AssertionError: if propagator settings file was not found
         """
-
         OrEpoch = to_orekit_date(epoch)
 
         _builder = PB.PropagatorBuilder(spc_name, propSettings, state, OrEpoch)
@@ -217,8 +210,7 @@ class OrekitPropagator(object):
             self._hasThrust = True
 
     def propagate(self, epoch):
-        """
-        Propagate satellite to given epoch.
+        """Propagate satellite to given epoch.
 
         Method calculates if external forces and torques are acting on
         satellite (Thrust), then propagates its state.
@@ -226,21 +218,21 @@ class OrekitPropagator(object):
         The newly propagated state is set as the satellite's new initial state.
 
         Args:
-            epoch: epoch to which propagator has to propagate
+            epoch (datetime.datetime): epoch to which propagator has to be propagated
 
         Returns:
-            numpy.array: cartesian state vector in TEME frame
+            numpy.array: Cartesian state vector in J2000 frame
             numpy.array: current attitude rotation in quaternions
             numpy.array: force acting on satellite in body frame
             numpy.array: disturbance torques acting on satellite in body frame
-            numpy.array: Magnetic field at satellite position in TEME frame
-        """
+            Vector3D: Magnetic field at satellite position in body frame
 
+        """
         orekit_date = to_orekit_date(epoch)
 
+        # Update external forces and torques in models
         if self._hasAttitudeProp:
             self.calculate_external_torque()
-
         if self._hasThrust:
             self.calculate_thrust()
 
@@ -268,6 +260,7 @@ class OrekitPropagator(object):
         return [cart_teme, att, force_sF, dtorque, B_field_b]
 
     def _calculate_magnetic_field(self, oDate):
+        """Calculate the magnetic field at position of the spacecraft (Internal Method)."""
         space_state = self._propagator_num.getInitialState()
         satPos = space_state.getPVCoordinates().getPosition()
         inertial2Sat = space_state.getAttitude().getRotation()
@@ -291,9 +284,10 @@ class OrekitPropagator(object):
 
         return inertial2Sat.applyTo(B_i)
 
+#######################################################################################
+# REVISIT:
     def calculate_thrust(self):
-        """
-        Method that updates parameter in Thrust Model.
+        """Method that updates parameter in Thrust Model.
 
         Method checks if first message from propulsion node received (stored in
          self.F_T), then computes the norm of the thrust vector and updates the
@@ -326,8 +320,7 @@ class OrekitPropagator(object):
                 self.ThrustModel.firing = False
 
     def calculate_external_torque(self):
-        """
-        Method which feeds external torques to attitude propagation provider.
+        """Method which feeds external torques to attitude propagation provider.
 
         Method checks if torque has already been set by message from propulsion
         node (stored in self.torque), and then feeds them to the provider.
@@ -353,8 +346,7 @@ class OrekitPropagator(object):
             attProv.setExternalTorque(N_T)
 
     def thrust_callback(self, force_torque, thrust_ispM):
-        """
-        Callback function for subscriber to the propulsion node.
+        """Callback function for subscriber to the propulsion node.
 
         The propulsion node has to set torque and force back to zero if no
         force/torque is present.

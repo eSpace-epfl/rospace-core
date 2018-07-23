@@ -14,7 +14,7 @@ propagator_settings:
       initStep: 0.1
       positionTolerance: 0.001
     Gravity:
-      type: "EigenGravityWGS84"
+      type: "EigenGravity"
       settings: # Spherical Harmonics Field Coeffs
         degree: 240
         order: 240

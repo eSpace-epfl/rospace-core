@@ -14,7 +14,7 @@ propagator_settings:
       initStep: 0.1
       positionTolerance: 0.1
     Gravity:
-      type: "EigenGravityWGS84"
+      type: "EigenGravity"
       settings: # Spherical Harmonics Field Coeffs
         degree: 20
         order: 20
@@ -27,11 +27,11 @@ propagator_settings:
           Facets: ## area in [m2]
             front:
               area: 4.0
-              nVector: 1 0 0  
-            back: 
+              nVector: 1 0 0
+            back:
               area: 4.0
               nVector: -1 0 0
-            left: 
+            left:
               area: 4.0
               nVector: 0 0 1
             right:
@@ -40,7 +40,7 @@ propagator_settings:
             top:
               area: 4.0
               nVector: 0 -1 0
-            bottom: 
+            bottom:
               area: 4.0
               nVector: 0 1 0
           SolarArea: 20.0 # 313x960 * 2
@@ -48,12 +48,12 @@ propagator_settings:
           absCoeff: 0.34
           refCoeff: 0.66
           dragCoeff: 2.0
-          liftRatio: 0.0 
+          liftRatio: 0.0
     SolarModel:
         type: "" #"SolarPressureBoxModel"
         settings:
           abs_Estimated: True # false = fixed
-          ref_Estimated: True # false = fixed 
+          ref_Estimated: True # false = fixed
     DragModel:
         type: "" # "DragDTM2000CELESTRACK"
         settings:
