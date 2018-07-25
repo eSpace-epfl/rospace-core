@@ -40,16 +40,15 @@ def _get_name_of_loaded_files(folder_name):
 
 
 def to_orekit_date(epoch):
-    """
-    Method to convert UTC simulation time from python's datetime object to
-    orekits AbsoluteDate object
+    """Convert UTC simulation time from python's datetime object to Orekit's AbsoluteDate object.
 
     Args:
-        epoch: UTC simulation time as datetime object
+        epoch (datetime.datetime): UTC simulation time
 
     Returns:
         AbsoluteDate: simulation time in UTC
     """
+
     seconds = float(epoch.second) + float(epoch.microsecond) / 1e6
     orekit_date = AbsoluteDate(epoch.year,
                                epoch.month,
@@ -60,6 +59,27 @@ def to_orekit_date(epoch):
                                TimeScalesFactory.getUTC())
 
     return orekit_date
+
+
+def to_datetime_date(epoch):
+    """Convert UTC simulation time from Orekit's AbsoluteDate object to python's datetime object.
+
+    Args:
+        epoch (AbsoluteDate): UTC simulation time
+
+    Returns:
+        datetime.datetime: simulation time in UTC
+
+    """
+    # 2014-07-21T18:34:02.845
+    epoch_str = epoch.toString()
+    nofrag, frag = epoch_str.split('.')
+    nofrag_datetime = datetime.strptime(nofrag, "%Y-%m-%dT%H:%M:%S")
+    frag = frag[:6]  # truncate to microseconds
+    frag += (6 - len(frag)) * '0'  # add 0s
+    datetime_date = nofrag_datetime.replace(microsecond=int(frag))
+
+    return datetime_date
 
 
 class FileDataHandler(object):
@@ -151,12 +171,11 @@ class FileDataHandler(object):
 
         MSAFE_file = _get_name_of_loaded_files('MSAFE')
         if MSAFE_file:
-            msafe = \
-                MarshallSolarActivityFutureEstimation(
-                    "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)" +
-                    "\\p{Digit}\\p{Digit}\\p{Digit}\\p{Digit}F10\\" +
-                    ".(?:txt|TXT)",
-                    MarshallSolarActivityFutureEstimation.StrengthLevel.AVERAGE)
+            msafe = MarshallSolarActivityFutureEstimation(
+                "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)" +
+                "\\p{Digit}\\p{Digit}\\p{Digit}\\p{Digit}F10\\" +
+                ".(?:txt|TXT)",
+                MarshallSolarActivityFutureEstimation.StrengthLevel.AVERAGE)
             MS_start_date = msafe.getMinDate()
             MS_end_date = msafe.getMaxDate()
             checklist['MSAFE_dates'] = [MS_start_date, MS_end_date]
@@ -198,8 +217,8 @@ class FileDataHandler(object):
             checklist['MinMax_dates'] = [first_date, last_date]
 
         mesg = "[INFO]: Simulation can run between epochs: " + \
-               str(first_date) + " & " + str(last_date) + \
-               " (based on loaded files)."
+            str(first_date) + " & " + str(last_date) + \
+            " (based on loaded files)."
         print mesg
 
         FileDataHandler._data_checklist = checklist
@@ -223,11 +242,11 @@ class FileDataHandler(object):
         oDate = to_orekit_date(epoch)
         if oDate.compareTo(min_max[0]) < 0:
             err_msg = "No file loaded with valid data for current epoch " + \
-                      str(oDate) + "! Earliest possible epoch: " + min_max[0]
+                str(oDate) + "! Earliest possible epoch: " + min_max[0]
             raise ValueError(err_msg)
         if oDate.compareTo(min_max[1]) > 0:
             err_msg = "No file loaded with valid data for current epoch " + \
-                      str(oDate) + "! Latest possible epoch: " + min_max[1]
+                str(oDate) + "! Latest possible epoch: " + min_max[1]
             raise ValueError(err_msg)
 
         d_year = GeoMagneticField.getDecimalYear(epoch.day,

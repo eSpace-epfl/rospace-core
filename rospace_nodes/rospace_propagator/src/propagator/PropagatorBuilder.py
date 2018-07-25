@@ -206,6 +206,8 @@ class PropagatorBuilder(Builder):
         else:
             print "  [INFO]: Satellite state created in %s Frame."\
                   % (self.inertialFrame.getName())
+            if self.inertialFrame.toString() == "TEME":
+                print "\033[93m  [Warn]: The TEME frame should only be used with TLE's for propagation. \033[0m"
 
     def _build_integrator(self):
         """Build orbit integrator based on settings specified in settings.
@@ -548,6 +550,74 @@ class CartesianEME2000(StateFactory):
         inertialFrame = FramesFactory.getEME2000()
 
         initialOrbit = CartesianOrbit(PVCoordinates(p, v),
+                                      inertialFrame,
+                                      epoch,
+                                      Cst.WGS84_EARTH_MU)
+
+        orbit_pv = PVCoordinatesProvider.cast_(initialOrbit)
+        satAtt = _build_satellite_attitude(init_coord, orbit_pv, inertialFrame,
+                                           earth, epoch)
+
+        initialState = SpacecraftState(initialOrbit, satAtt, satMass)
+
+        return [inertialFrame, initialOrbit, initialState]
+
+
+class CartesianTEME(StateFactory):
+    """Create state from settings parsed by :func:`propagator.PropagatorParser.parse_configuration_files`.
+
+    The state of the spacecraft will be build in such a manner that it will be propagated in Cartesian coordinates
+    with the TEME frame as inertial frame.
+
+    This Setup should only be used for TLE.
+    """
+
+    @staticmethod
+    def isApplicable(name):
+        """Check for desired state build type.
+
+        Args:
+            name (string): name of desired subclass
+
+        """
+        if name == "CartesianTEME":
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def Setup(epoch, earth, init_coord, setup):
+        """Build spacecraft state.
+
+        Args:
+            epoch (orekit.AbsoluteDate): initial epoch or orbital elements
+            earth (orekit.models.earth.ReferenceEllipsoid): Earth object
+            init_coord (rospace_lib.Cartesian.Cartesian): initial coordinates of satellite as
+            setup (dictionary): additional settings defined in dictionary
+
+        Returns:
+            orekit.frames.FactoryManagedFrame: EME2000 as inertial Frame of Orbit
+            orekit.orbits.CartesianOrbit: Cartesian orbit
+            orekit.propagation.SpacecraftState: Spacecraft state
+
+        """
+        satMass = setup['mass']
+        pos = init_coord['position']
+        p = Vector3D(float(1e3),  # convert to [m]
+                     Vector3D(float(pos.R[0]),
+                              float(pos.R[1]),
+                              float(pos.R[2])))
+        v = Vector3D(float(1e3),  # convert to [m/s]
+                     Vector3D(float(pos.V[0]),
+                              float(pos.V[1]),
+                              float(pos.V[2])))
+        # Inertial frame where the satellite is defined
+        init_frame = FramesFactory.getEME2000()
+        inertialFrame = FramesFactory.getTEME()
+        TEME2EME = init_frame.getTransformTo(inertialFrame, epoch)
+        pv_TEME = TEME2EME.transformPVCoordinates(PVCoordinates(p, v))
+
+        initialOrbit = CartesianOrbit(pv_TEME,
                                       inertialFrame,
                                       epoch,
                                       Cst.WGS84_EARTH_MU)

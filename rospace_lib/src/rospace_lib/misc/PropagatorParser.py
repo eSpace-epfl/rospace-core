@@ -9,13 +9,15 @@
 # for complete details.
 
 import rospy
-import rospace_lib
 
 import sys
+import os
+import yaml
 import numpy as np
 from math import radians
 
-from FileDataHandler import to_orekit_date
+from rospace_lib import Cartesian, CartesianTEME, KepOrbElem
+from rospace_lib.misc.FileDataHandler import to_orekit_date
 
 from org.orekit.frames import FramesFactory
 from org.orekit.utils import PVCoordinates
@@ -24,15 +26,25 @@ from org.orekit.utils import IERSConventions as IERS
 from org.hipparchus.geometry.euclidean.threed import Vector3D
 
 
-def parse_configuration_files(spc_obj, ns_spacecraft, init_coords, init_epoch):
+def parse_configuration_files(spc_obj, init_coords, init_epoch):
 
     ns_spacecraft = spc_obj.namespace
-    spc_obj.propagator_settings = rospy.get_param("/" + ns_spacecraft + "/propagator_settings", 0)
-    try:
-        assert (spc_obj.propagator_settings != 0)
-    except AssertionError:
-        raise AssertionError("Could not find propagator settings." +
-                             "Check if all spacecraft names-spaces correctly defined in Scenario!")
+
+    if spc_obj.__class__.__name__ == "Simulator_Spacecraft":
+        spc_obj.propagator_settings = rospy.get_param("/" + ns_spacecraft + "/propagator_settings", 0)
+        try:
+            assert (spc_obj.propagator_settings != 0)
+        except AssertionError:
+            raise AssertionError("Could not find propagator settings." +
+                                 "Check if all spacecraft names-spaces correctly defined in Scenario!")
+
+    elif spc_obj.__class__.__name__ == "Planning_Spacecraft":
+        # Opening spacecraft file
+        abs_path = os.path.dirname(os.path.abspath(__file__))
+        scenario_path = os.path.join(
+            abs_path, "../../../../rospace_simulator/cfg/Spacecrafts/" + ns_spacecraft + ".yaml")
+        scenario_file = file(scenario_path, "r")
+        spc_obj.propagator_settings = yaml.load(scenario_file)["propagator_settings"]
 
     # get init oe values
     spc_dict = {}
@@ -67,8 +79,9 @@ def parse_configuration_files(spc_obj, ns_spacecraft, init_coords, init_epoch):
 ########################################################################################################################
 def _pose_absolute_keplerian(ns_spacecraft, init_coords, init_epoch):
     pos = init_coords["init_coord"]
+    init_state = Cartesian()
 
-    init_pose_oe = rospace_lib.KepOrbElem()
+    init_pose_oe = KepOrbElem()
     init_pose_oe.a = float(pos["a"])
     init_pose_oe.e = float(pos["e"])
     init_pose_oe.i = float(pos["i"])
@@ -82,23 +95,53 @@ def _pose_absolute_keplerian(ns_spacecraft, init_coords, init_epoch):
         except KeyError:
             raise ValueError("No Anomaly for initialization of spacecraft: " + ns_spacecraft)
 
-    init_state = rospace_lib.Cartesian()
-    init_state.from_keporb(init_pose_oe)
+    # Coordinates given in J2000 Frame
+    # ----------------------------------------------------------------------------------------
+    if init_coords["coord_frame"] == "J2000":
+        init_state.from_keporb(init_pose_oe)
+    # ----------------------------------------------------------------------------------------
+
+    if init_coords["coord_frame"] == "TEME":
+        teme_state = CartesianTEME()
+        teme_state.from_keporb(init_pose_oe)
+
+        init_frame = FramesFactory.getTEME()
+        inertialFrame = FramesFactory.getEME2000()
+
+        TEME2EME = init_frame.getTransformTo(inertialFrame, to_orekit_date(init_epoch))
+        p = Vector3D(float(1e3),  # convert to [m]
+                     Vector3D(float(teme_state.R[0]),
+                              float(teme_state.R[1]),
+                              float(teme_state.R[2])))
+        v = Vector3D(float(1e3),  # convert to [m/s]
+                     Vector3D(float(teme_state.V[0]),
+                              float(teme_state.V[1]),
+                              float(teme_state.V[2])))
+
+        pv_EME = TEME2EME.transformPVCoordinates(PVCoordinates(p, v))
+
+        init_state.R = np.array([pv_EME.position.x, pv_EME.position.y, pv_EME.position.z]) / 1e3  # convert to [km]
+        init_state.V = np.array([pv_EME.velocity.x, pv_EME.velocity.y, pv_EME.velocity.z]) / 1e3  # convert to [km/s]
+
+    # ----------------------------------------------------------------------------------------
 
     return init_state
 
 
 def _pose_absolute_cartesian(ns_spacecraft, init_coords, init_epoch):
     pos = init_coords["init_coord"]
+    init_state = Cartesian()
 
     # Coordinates given in J2000 Frame
+    # ----------------------------------------------------------------------------------------
     if init_coords["coord_frame"] == "J2000":
-        init_state = rospace_lib.Cartesian()
         init_state.R = np.array([float(pos["x"]), float(pos["y"]), float(pos["z"])])
 
         init_state.V = np.array([float(pos["v_x"]), float(pos["v_y"]), float(pos["v_z"])])
+    # ----------------------------------------------------------------------------------------
 
     # Coordinates given in ITRF Frame
+    # ----------------------------------------------------------------------------------------
     elif init_coords["coord_frame"] == "ITRF":
         inertialFrame = FramesFactory.getEME2000()
         init_frame = FramesFactory.getITRF(IERS.IERS_2010, False)  # False -> don't ignore tidal effects
@@ -114,7 +157,6 @@ def _pose_absolute_cartesian(ns_spacecraft, init_coords, init_epoch):
         ITRF2EME = init_frame.getTransformTo(inertialFrame, to_orekit_date(init_epoch))
         pv_EME = ITRF2EME.transformPVCoordinates(PVCoordinates(p, v))
 
-        init_state = rospace_lib.Cartesian()
         init_state.R = np.array([pv_EME.position.x, pv_EME.position.y, pv_EME.position.z]) / 1e3  # convert to [km]
         init_state.V = np.array([pv_EME.velocity.x, pv_EME.velocity.y, pv_EME.velocity.z]) / 1e3  # convert to [km/s]
 
@@ -122,6 +164,7 @@ def _pose_absolute_cartesian(ns_spacecraft, init_coords, init_epoch):
         raise ValueError("[" + ns_spacecraft + " ]: " + "Conversion from coordinate frame " +
                          init_coords["coord_frame"] +
                          " not implemented. Please provided coordinates in a different reference frame.")
+    # ----------------------------------------------------------------------------------------
 
     return init_state
 

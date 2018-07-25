@@ -12,7 +12,7 @@ import PropagatorBuilder as PB
 import os
 from math import degrees
 
-from FileDataHandler import FileDataHandler, to_orekit_date
+from rospace_lib.misc.FileDataHandler import FileDataHandler, to_orekit_date
 
 import orekit
 
@@ -126,22 +126,27 @@ class OrekitPropagator(object):
 
         """
         pv = state.getPVCoordinates()
-        cart_teme = rospace_lib.CartesianITRF()
-        cart_teme.R = np.array([pv.position.x,
-                                pv.position.y,
-                                pv.position.z]) / 1000
-        cart_teme.V = np.array([pv.velocity.x,
-                                pv.velocity.y,
-                                pv.velocity.z]) / 1000
+        state_frame = state.getFrame().toString()
+        if state_frame == "TEME":
+            cart = rospace_lib.CartesianTEME()
+        else:  # for now no other frames defined
+            cart = rospace_lib.Cartesian()
+
+        cart.R = np.array([pv.position.x,
+                           pv.position.y,
+                           pv.position.z]) / 1000
+        cart.V = np.array([pv.velocity.x,
+                           pv.velocity.y,
+                           pv.velocity.z]) / 1000
 
         att = state.getAttitude()
 
         a_sF = att.getRotation().applyTo(pv.acceleration)
         force_sF = np.array([a_sF.x,
                              a_sF.y,
-                             a_sF.z]) * state.getMass()
+                             a_sF.z])*state.getMass()
 
-        return [cart_teme, att, force_sF]
+        return [cart, att, force_sF]
 
     def __init__(self):
         self._propagator_num = None
@@ -254,10 +259,10 @@ class OrekitPropagator(object):
 
         # return and store output of propagation
         dtorque = self._write_d_torques()
-        [cart_teme, att, force_sF] = self._write_satellite_state(state)
+        [cart, att, force_sF] = self._write_satellite_state(state)
         B_field_b = self._calculate_magnetic_field(orekit_date)
 
-        return [cart_teme, att, force_sF, dtorque, B_field_b]
+        return [cart, att, force_sF, dtorque, B_field_b]
 
     def _calculate_magnetic_field(self, oDate):
         """Calculate the magnetic field at position of the spacecraft (Internal Method)."""

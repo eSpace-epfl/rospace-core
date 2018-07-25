@@ -7,7 +7,7 @@
 # for complete details.
 
 from propagator.PropagationNode import *
-from propagator.FileDataHandler import *
+# from propagator.FileDataHandler import *
 from propagator.PropagatorBuilder import *
 from propagator.SatelliteDiscretization import *
 from propagator.OrekitPropagator import *

@@ -12,7 +12,7 @@ from math import sqrt, degrees
 import itertools
 import traceback
 
-from FileDataHandler import FileDataHandler
+from rospace_lib.misc.FileDataHandler import FileDataHandler
 from rospace_lib.actuators.DipoleModel import DipoleModel
 
 from org.orekit.bodies import BodyShape
@@ -199,6 +199,7 @@ class DisturbanceTorqueArray(DisturbanceTorqueInterface):
 
         if 'MagneticModel' in AttitudeFM:
             self.dipoleM = DipoleModel()
+
             self._initialize_dipole_model(AttitudeFM['MagneticModel'])
 
         if 'SolarModel' in AttitudeFM:
