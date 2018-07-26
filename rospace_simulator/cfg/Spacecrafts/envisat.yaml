@@ -2,7 +2,7 @@ propagator_settings:
   name: "ENVISAT"
   orbit_propagation:
     State:
-      type: CartesianEME2000
+      type: CartesianJ2000
       settings:
         mass: 7990.0 # kg
     integrator: # Steps have to be floats

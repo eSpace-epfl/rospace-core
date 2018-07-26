@@ -84,7 +84,7 @@ def _pose_absolute_keplerian(ns_spacecraft, init_coords, init_epoch):
     init_pose_oe = KepOrbElem()
     init_pose_oe.a = float(pos["a"])
     init_pose_oe.e = float(pos["e"])
-    init_pose_oe.i = float(pos["i"])
+    init_pose_oe.i = float(radians(pos["i"]))
     init_pose_oe.O = float(radians(pos["O"]))
     init_pose_oe.w = float(radians(pos["w"]))
     try:

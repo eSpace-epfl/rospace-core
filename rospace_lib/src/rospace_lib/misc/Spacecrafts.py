@@ -49,14 +49,6 @@ class Spacecraft(object):
         namespace (string): name of spacecraft (namespace in which it is defined)
 
     """
-    java_vm = None
-
-    @staticmethod
-    def _init_jvm():
-        """First spacecraft -> Start java vm and all needed models (now mag.field model)
-        """
-        Spacecraft.java_vm = OrekitPropagator.init_jvm()
-
     @property
     def mass(self):
         """Return mass stored in propagator.
@@ -264,8 +256,7 @@ class Planning_Spacecraft(Spacecraft):
         # set relative state if chaser-spacecraft
         if hasattr(self, "rel_state"):
             if parent_state is not None:
-                # check if states are in same frame
-                try:
+                try:  # check if states are in same frame
                     assert (self.abs_state.frame == parent_state.frame)
                 except AssertionError:
                     raise TypeError("State of " + self.namespace + "is given in frame: " + self.abs_state.frame +
@@ -305,8 +296,8 @@ class Planning_Spacecraft(Spacecraft):
 
         orekit_date = to_orekit_date(new_epoch)
         # Evaluate new initial orbit
-        print initState.getOrbit().getType()
-        print initState.getOrbit().getType().toString() == "CARTESIAN"
+        # print initState.getOrbit().getType()
+        # print initState.getOrbit().getType().toString() == "CARTESIAN"
         initialOrbit = CartesianOrbit(PVCoordinates(p, v), initState.getFrame(), orekit_date, Cst.WGS84_EARTH_MU)
 
         # Create new spacecraft state
@@ -371,7 +362,10 @@ class Planning_Spacecraft(Spacecraft):
 
         """
         if hasattr(self, "rel_state"):
-            self.abs_state.from_lvlh_frame(target.abs_state, self.rel_state)
+            # ugly hack
+            tmp = deepcopy(self.abs_state)
+            tmp.from_lvlh_frame(target.abs_state, self.rel_state)
+            self._last_state[0] = deepcopy(tmp)
         else:
             raise AttributeError("Spacecraft " + self.namespace +
                                  " is not defined as chaser! Cannot set absolute state from target state!")

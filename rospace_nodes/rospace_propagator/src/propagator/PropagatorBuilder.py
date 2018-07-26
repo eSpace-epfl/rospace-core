@@ -9,11 +9,12 @@
 import abc
 import numpy as np
 
-import FileDataHandler
 from ThrustModel import ThrustModel
 from AttitudePropagation import AttitudePropagation
 from StateObserver import StateObserver
 from SatelliteDiscretization import DiscretizationInterface as DiscInterface
+from rospace_lib.misc.FileDataHandler import FileDataHandler
+from rospace_lib.KepOrbElem import OscKepOrbElem
 
 from org.orekit.python import PythonEventHandler
 
@@ -29,8 +30,8 @@ from org.orekit.time import TimeScalesFactory
 from org.orekit.bodies import CelestialBodyFactory
 from org.orekit.bodies import CelestialBody
 from org.orekit.models.earth import ReferenceEllipsoid
-from org.orekit.orbits import OrbitType
-from org.orekit.orbits import CartesianOrbit
+from org.orekit.orbits import OrbitType, PositionAngle
+from org.orekit.orbits import CartesianOrbit, KeplerianOrbit
 from org.orekit.propagation import SpacecraftState
 from org.orekit.propagation.numerical import NumericalPropagator
 from org.orekit.forces import BoxAndSolarArraySpacecraft
@@ -500,7 +501,7 @@ def _build_satellite_attitude(setup, orbit_pv, inertialFrame, earth, epoch):
     return Attitude(epoch, inertialFrame, satRot, spin, acc)
 
 
-class CartesianEME2000(StateFactory):
+class CartesianJ2000(StateFactory):
     """Create state from settings parsed by :func:`propagator.PropagatorParser.parse_configuration_files`.
 
     The state of the spacecraft will be build in such a manner that it will be propagated in Cartesian coordinates
@@ -515,7 +516,7 @@ class CartesianEME2000(StateFactory):
             name (string): name of desired subclass
 
         """
-        if name == "CartesianEME2000":
+        if name == "CartesianJ2000":
             return True
         else:
             return False
@@ -614,8 +615,8 @@ class CartesianTEME(StateFactory):
         # Inertial frame where the satellite is defined
         init_frame = FramesFactory.getEME2000()
         inertialFrame = FramesFactory.getTEME()
-        TEME2EME = init_frame.getTransformTo(inertialFrame, epoch)
-        pv_TEME = TEME2EME.transformPVCoordinates(PVCoordinates(p, v))
+        EME2TEME = init_frame.getTransformTo(inertialFrame, epoch)
+        pv_TEME = EME2TEME.transformPVCoordinates(PVCoordinates(p, v))
 
         initialOrbit = CartesianOrbit(pv_TEME,
                                       inertialFrame,
@@ -629,6 +630,55 @@ class CartesianTEME(StateFactory):
         initialState = SpacecraftState(initialOrbit, satAtt, satMass)
 
         return [inertialFrame, initialOrbit, initialState]
+
+
+class KeplerianJ2000(StateFactory):
+
+    @staticmethod
+    def isApplicable(name):
+
+        if name == "KeplerianJ2000":
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def Setup(epoch, earth, init_coord, setup):
+        """Create initial spacecraft state and orbit based on Keplerian elements.
+
+        Args:
+            epoch: initial epoch or orbital elements
+            state: initial state of satellite
+            setup: additional settings defined in dictionary
+
+        Returns:
+            inertialFrame: EME2000 as inertial Frame of Orbit
+            initialOrbit: Keplerian orbit
+            initialState: Spacecraft state
+        """
+        satMass = setup['mass']
+        pos = init_coord['position']
+        kep_state = OscKepOrbElem()
+        kep_state.from_cartesian(pos)
+
+        # Inertial frame where the satellite is defined (and earth)
+        inertialFrame = FramesFactory.getEME2000()
+
+        initialOrbit = KeplerianOrbit(float(kep_state.a * 1000), float(kep_state.e), float(kep_state.i),
+                                      float(kep_state.w), float(kep_state.O), float(kep_state.v),
+                                      PositionAngle.TRUE,
+                                      inertialFrame,
+                                      epoch,
+                                      Cst.WGS84_EARTH_MU)
+
+        orbit_pv = PVCoordinatesProvider.cast_(initialOrbit)
+        satAtt = _build_satellite_attitude(init_coord, orbit_pv, inertialFrame,
+                                           earth, epoch)
+
+        initialState = SpacecraftState(initialOrbit, satAtt, satMass)
+
+        return [inertialFrame, initialOrbit, initialState]
+
 #####################################################################
 
 
