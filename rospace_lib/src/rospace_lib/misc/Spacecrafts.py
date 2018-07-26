@@ -33,22 +33,8 @@ from org.orekit.utils import Constants as Cst
 
 
 class Spacecraft(object):
-    """Class holding a object for every spacecraft that is being propagated.
+    """Class holding a object for every spacecraft that is being propagated."""
 
-    This object is being used for propagation and the publishing of messages
-    containing the propagation output.
-
-    The object holds its own build propagator object as well as all publishes and
-    subscribers with correctly defined topics, so that no mix-up between spacecrafts
-    can occur
-
-    Args:
-        namespace (string): name of spacecraft (namespace in which it is defined)
-
-    Attributes:
-        namespace (string): name of spacecraft (namespace in which it is defined)
-
-    """
     @property
     def mass(self):
         """Return mass stored in propagator.
@@ -91,7 +77,10 @@ class Spacecraft(object):
 
         self.namespace = namespace
         self._propagator = None
-        self._last_state = [None, None, None, None, None]
+        # self._last_state = [None, None, None, None, None]
+        self.cartesian_pose = None
+        self.current_attitude = None
+        self.acting_force_ = None
 
         self._parsed_settings = {}
         self._parsed_settings["init_coords"] = {}
@@ -121,6 +110,22 @@ class Spacecraft(object):
 
 
 class Simulator_Spacecraft(Spacecraft):
+    """Spacecraft object for the simulator.
+
+    This object can be used for propagation and the publishing of messages
+    containing the propagation output.
+
+    The object holds its own build propagator object as well as all publishes and
+    subscribers with correctly defined topics, so that no mix-up between spacecrafts
+    can occur.
+
+    Args:
+        namespace (string): name of spacecraft (namespace in which it is defined)
+
+    Attributes:
+        namespace (string): name of spacecraft (namespace in which it is defined)
+
+    """
 
     def __init__(self, namespace):
         super(Simulator_Spacecraft, self).__init__(namespace)
@@ -308,19 +313,6 @@ class Planning_Spacecraft(Spacecraft):
 
         # ugly hack for now
         self._last_state[0] = new_state
-
-    # def set_abs_state_from_cartesian(self, cartesian):
-    #     """Given some cartesian coordinates set the absolute state of the spacecraft.
-
-    #     Args:
-    #         cartesian (Cartesian): state vector of spacecraft
-
-    #     """
-    #     if cartesian.frame == self.abs_state.frame:
-    #         self.abs_state = deepcopy(cartesian)
-    #     else:
-    #         raise TypeError(
-    #             "[" + self.namespace + "]: State of Cartesian elements is not the same as in which spacecraft defined!")
 
     def get_osc_oe(self):
         """Return the osculating orbital elements of the spacecraft.

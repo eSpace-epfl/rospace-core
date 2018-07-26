@@ -60,10 +60,10 @@ propagator_settings:
       settings:
         mass: 100.0 # kg
     integrator: # Steps have to be floats
-      minStep: 0.001
+      minStep: 0.01
       maxStep: 1000.0
       initStep: 0.1
-      positionTolerance: 0.1
+      positionTolerance: 0.0001
     Gravity:
       type: EigenGravity
       settings: # Spherical Harmonics Field Coeffs

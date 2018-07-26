@@ -13,7 +13,7 @@ from ThrustModel import ThrustModel
 from AttitudePropagation import AttitudePropagation
 from StateObserver import StateObserver
 from SatelliteDiscretization import DiscretizationInterface as DiscInterface
-from rospace_lib.misc.FileDataHandler import FileDataHandler
+from rospace_lib.misc.FileDataHandler import FileDataHandler, _get_name_of_loaded_files
 from rospace_lib.KepOrbElem import OscKepOrbElem
 
 from org.orekit.python import PythonEventHandler
@@ -744,7 +744,7 @@ class EigenGravity(GravityFactory):
 
         propagator.addForceModel(gravModel)
 
-        file_name = FileDataHandler._get_name_of_loaded_files('Potential')
+        file_name = _get_name_of_loaded_files('Potential')
         if len(file_name) > 1:
             file_name = file_name[0]  # Orekit uses first loaded file
         elif len(file_name) == 0:
@@ -802,7 +802,7 @@ class EGM96Gravity(GravityFactory):
 
         propagator.addForceModel(gravModel)
 
-        file_name = FileDataHandler._get_name_of_loaded_files('Potential')
+        file_name = _get_name_of_loaded_files('Potential')
         if len(file_name) > 1:
             file_name = file_name[0]  # orekit uses first loaded file
         elif len(file_name) == 0:
