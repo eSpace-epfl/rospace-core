@@ -1,0 +1,91 @@
+@startuml
+' @copyright Copyright (c) 2018, Christian Lanegger (lanegger.christian@epfl.ch)
+'
+' @license zlib license
+'
+' This file is licensed under the terms of the zlib license.
+' See the LICENSE.md file in the root of this repository
+' for complete details.
+
+skinparam ClassBackgroundColor #F3EFEB/E1D5E7
+skinparam ClassBorderColor     #5F4869
+skinparam ClassArrowColor      #5F4869
+skinparam NoteBackgroundColor  #F3EFEB
+skinparam NoteBorderColor      #5F4869
+skinparam NoteFontColor        #5F4869
+skinparam PackageFontSize      12
+skinparam ClassFontSize        11
+
+package propagator #F5F5F5{
+
+
+    package PropagatorBuilder #DDEBD8{
+        interface Builder {
+            +{abstract} _buid_state()
+            +{abstract}_build_integrator()
+            +{abstract} _build_propagator()
+            +{abstract} _get_propagator()
+        }
+        class PropagatorBuilder {
+            + PropagatorBuilder()
+            + _buid_state()
+            + _build_integrator()
+            + _build_propagator()
+            + _get_propagator()
+            {method}.
+            {method}.
+            {method}.
+
+        }
+        class Propagator <<  (O,Salmon) >>
+
+        abstract GravityFractory {
+            +{static}isApplicable(name : String)
+            +{static}Setup(setup : dict)
+        }
+        class GravityPerturbationModel_1 {
+            +{static}Setup(setup : dict)
+        }
+        class GravityPerturbationModel_2 {
+            +{static}Setup(setup : dict)
+        }
+
+        abstract ThrustFactory {
+            +{static}isApplicable(name : String)
+            +{static}Setup(setup : dict)
+        }
+        class ThrustModel {
+            +{static}Setup(setup : dict)
+        }
+
+        note "Other Perturbation\nModel Classes" as nFM
+    }
+
+    package OrekitPropagator #DDEBD8{
+        class OrekitPropagator {
+            +builder : PropagatorBuilder
+            +{method}<<build_propagator>>
+        }
+
+        note bottom of OrekitPropagator
+            self.builder._build_force()
+        end note
+
+    }
+
+}
+
+ Builder <|.right. PropagatorBuilder
+Propagator <-- PropagatorBuilder
+Builder -right-* OrekitPropagator
+PropagatorBuilder *-- GravityFractory
+GravityFractory <|-- GravityPerturbationModel_1
+GravityFractory <|-- GravityPerturbationModel_2
+
+ThrustFactory --* PropagatorBuilder
+ThrustFactory <|-- ThrustModel
+
+GravityFractory .right. nFM
+ThrustFactory .left. nFM
+
+@enduml

@@ -1,0 +1,169 @@
+@startuml
+' @copyright Copyright (c) 2018, Christian Lanegger (lanegger.christian@epfl.ch)
+'
+' @license zlib license
+'
+' This file is licensed under the terms of the zlib license.
+' See the LICENSE.md file in the root of this repository
+' for complete details.
+
+skinparam ClassBackgroundColor #F3EFEB/E1D5E7
+skinparam ClassBorderColor     #5F4869
+skinparam ClassArrowColor      #5F4869
+skinparam NoteBackgroundColor  #F3EFEB
+skinparam NoteBorderColor      #5F4869
+skinparam NoteFontColor        #5F4869
+skinparam PackageFontSize      12
+skinparam ClassFontSize        11
+
+package ROSpace_core #F5F5F5{
+
+    package rospace_nodes.propagator #DDEBD8 {
+
+        class PropagatorNode <<  (N,#3F8DCD) >>
+
+        interface Builder {
+            +{abstract} _buid_state()
+            +{abstract} _build_integrator()
+            +{abstract} _build_propagator()
+            +{abstract} _get_propagator()
+        }
+        class PropagatorBuilder {
+            + _build_force_model_X()
+        }
+
+        class OrekitPropagator {
+            +propagator_num : NumericalPropagator
+            -external_torque : numpy.array
+            -induced_thrust : numpy.array
+            -isp_value : float
+
+            +init_jvm()
+            +initialize(spc_name : String, prop_settings : Dict, init_coords : Dict, epoch : datetime)
+            +propagate(epoch : datetime)
+            -_calculate_thrust()
+            -_calculate_external_torque()
+            -_calculate_magnetic_field(date : AbsoluteDate) : Vector3D
+            -_write_satellite_state(state : SpacecraftState) : List
+
+        }
+        class NumericalPropagator {
+            +state : SpacecraftState
+            +propagate(epoch : AbsoluteDate)
+            +getAttitude(orbit : OrbitType , epoch : AbsoluteDate, frame : Frame)
+            +getInitialState() : SpacecraftState
+            +setInitialState() : SpacecraftState
+        }
+
+
+        interface AttitudeProvider {
+            +{abstract}getAttitude(pvProv : PVCoordinatesProvider, epoch : AbsoluteDate, frame : Frame)
+        }
+        class AttitudePropagation {
+
+        }
+
+        class StateObserver {
+            +state : SpacecraftState
+        }
+        interface ForceModel {
+            +{abstract}addContribution(s : SpacecraftState, adder :)
+        }
+
+        interface DisturbanceTorques {
+            +{abstract}compute_torques(rot : Rotation, spin : numpy.array, dt : float) : Vector3D
+            -{abstract}compute_gravity_torque(epoch : AbsoluteDate)
+            -{abstract}compute_magnetic_torque(epoch : AbsoluteDate)
+            -{abstract}compute_solar_torque(epoch : AbsoluteDate)
+            -{abstract}compute_aero_torque(epoch : AbsoluteDate , spin : numpy.array)
+
+        }
+        class DisturbanceTorquesArray {
+            +update_satellite_state(integration_date : AbsoluteDate)
+            -_initialize_dipole_model(model : Dict)
+        }
+
+    }
+
+    package rospace_lib #DDEBD8 {
+
+        package misc #D5E8E4 {
+        class FileDataHandler {
+            -_data_checklist : Dict
+            -_mag_field_coll : Collection
+            -_mg_field_model : GeoMagneticField
+            +{static}load_magnetic_field_models(epoch : AbsoluteDate)
+            +{static}create_data_validity_checklist()
+            +{static}check_data_availability(epoch : datetime)
+
+        }
+
+            abstract Spacecrafts {
+                +mass : Float
+                +propagator_settings : Dict
+                +init_coords : Dict
+                -_last_state : List
+                -_propagator : NumericalPropagator
+                +build_propagator(init_epoch : datetime)
+                +propagate(epoch_now : datetime)
+            }
+            class Simulator_Spacecraft {
+                +publishers : Publisher
+                +build_communication()
+                +publish()
+            }
+
+        }
+        package clock #D5E8E4 {
+
+            class SimTimePublisher {
+                -updater : SimTimeUpdater
+                -service : SimTimeService
+                +set_up_simulation_time()
+                +update_simulation_time() : Datetime
+                +sleep_to_keep_frequency()
+            }
+
+        }
+
+
+    }
+
+    package Rospy #DDEBD8 {
+
+        class Publisher {
+            +publish(msg : Message)
+        }
+        class Subscriber
+    }
+
+Spacecrafts <|-- Simulator_Spacecraft
+Simulator_Spacecraft --> OrekitPropagator
+Publisher <-- Simulator_Spacecraft
+Subscriber <-- Simulator_Spacecraft
+' Simulator_Spacecraft --> Publisher
+' Simulator_Spacecraft --> Subscriber
+
+Simulator_Spacecraft --* PropagatorNode
+SimTimePublisher <-- PropagatorNode
+PropagatorNode o-- FileDataHandler
+
+OrekitPropagator --> NumericalPropagator
+OrekitPropagator o-- PropagatorBuilder
+
+PropagatorBuilder ..|> Builder
+PropagatorBuilder --> NumericalPropagator
+
+NumericalPropagator *-- AttitudePropagation
+AttitudePropagation ..|> AttitudeProvider
+AttitudePropagation --> DisturbanceTorquesArray
+AttitudePropagation *-- StateObserver
+
+DisturbanceTorquesArray ..|> DisturbanceTorques
+
+StateObserver ..|> ForceModel
+
+' OrekitPropagator .[hidden]up. PropagatorNode
+
+
+@enduml

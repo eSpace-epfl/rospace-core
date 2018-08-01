@@ -1,0 +1,127 @@
+' @copyright Copyright (c) 2018, Christian Lanegger (lanegger.christian@epfl.ch)
+'
+' @license zlib license
+'
+' This file is licensed under the terms of the zlib license.
+' See the LICENSE.md file in the root of this repository
+' for complete details.
+@startuml
+' skinparam maxmessagesize 80
+skinparam SequenceDividerFontSize 20
+skinparam ParticipantFontSize 20
+skinparam ArrowFontSize 16
+skinparam SequenceGroupFontSize 18
+skinparam SequenceActorBorderColor            #575757
+skinparam SequenceParticipantBackgroundColor  #DDEBD8
+skinparam SequenceParticipantBorderColor      #575757
+skinparam SequenceLifeLineBackgroundColor     #F5F5F5|BFBFBF
+skinparam SequenceLifeLineBorderColor         #575757
+skinparam SequenceArrowColor                  #575757
+skinparam SequenceBorderColor                 #575757
+
+hide footbox
+
+participant "ROS" as ros
+participant PropagationNode
+participant SimTimePublisher
+participant Simulator_Spacecraft
+participant PropagatorParser
+participant OrekitPropagator
+participant Publisher
+participant Subscriber
+participant FileDataHandler
+
+activate ros
+ros -> PropagationNode : create
+    activate PropagationNode
+    PropagationNode -> SimTimePublisher : create
+        activate SimTimePublisher
+        deactivate SimTimePublisher
+
+    PropagationNode -> OrekitPropagator : initialize jvm
+        activate OrekitPropagator
+        deactivate OrekitPropagator
+
+    PropagationNode -> FileDataHandler : load magnetic field model
+        activate FileDataHandler
+        deactivate FileDataHandler
+
+    PropagationNode -> SimTimePublisher : set_up_time
+        activate SimTimePublisher
+        deactivate SimTimePublisher
+    loop #DDEBD8 for all spacecrafts
+        PropagationNode -> Simulator_Spacecraft : create
+            activate Simulator_Spacecraft
+            Simulator_Spacecraft --> PropagationNode : spacecraft
+            deactivate Simulator_Spacecraft
+
+        PropagationNode -> PropagatorParser : parse_configuration_file(spacecraft, configuration)
+            activate PropagatorParser
+            PropagatorParser --> Simulator_Spacecraft : [init_coord, settings]
+                activate Simulator_Spacecraft
+                deactivate Simulator_Spacecraft
+            PropagatorParser --> PropagationNode : spacecraft
+            deactivate PropagatorParser
+
+        PropagationNode -> Simulator_Spacecraft : build_propagator
+            activate Simulator_Spacecraft
+            Simulator_Spacecraft -> OrekitPropagator : initialize
+                activate OrekitPropagator
+                OrekitPropagator -> OrekitPropagator : build propagator
+                    activate OrekitPropagator
+                    deactivate OrekitPropagator
+                OrekitPropagator --> Simulator_Spacecraft : propagtor
+                deactivate OrekitPropagator
+            deactivate Simulator_Spacecraft
+
+        PropagationNode -> Simulator_Spacecraft : build communication
+            activate Simulator_Spacecraft
+            Simulator_Spacecraft -> Publisher : create
+                activate Publisher
+                deactivate Publisher
+            Simulator_Spacecraft -> Subscriber : create
+                activate Subscriber
+                deactivate Subscriber
+            deactivate Simulator_Spacecraft
+    end
+
+    PropagationNode -> FileDataHandler : create data availability
+        activate FileDataHandler
+        FileDataHandler --> PropagationNode : checklist
+        deactivate FileDataHandler
+
+    loop #DDEBD8 while not rospy.is_shutdown()
+        PropagationNode -> SimTimePublisher : update
+            activate SimTimePublisher
+            SimTimePublisher --> PropagationNode : new epoch
+            deactivate SimTimePublisher
+
+        PropagationNode -> FileDataHandler : check data availability
+            activate FileDataHandler
+            deactivate FileDataHandler
+
+            loop #E1D5E7 for all spacecrafts
+                PropagationNode -> Simulator_Spacecraft : propagate
+                    activate Simulator_Spacecraft
+                    Simulator_Spacecraft -> OrekitPropagator : propagate
+                        activate OrekitPropagator
+                        OrekitPropagator -> Subscriber : get force_torque
+                            activate Subscriber
+                            Subscriber --> OrekitPropagator : [Force, Torque]
+                            deactivate Subscriber
+                        OrekitPropagator --> Simulator_Spacecraft : new state
+                        deactivate OrekitPropagator
+                    Simulator_Spacecraft -> Publisher : publish messages
+                        activate Publisher
+                        deactivate Publisher
+                    deactivate Simulator_Spacecraft
+            end
+
+        PropagationNode -> SimTimePublisher : sleep
+            activate SimTimePublisher
+            deactivate SimTimePublisher
+    end
+
+    PropagationNode --> ros : exit
+
+@enduml

@@ -1,0 +1,86 @@
+' @copyright Copyright (c) 2018, Christian Lanegger (lanegger.christian@epfl.ch)
+'
+' @license zlib license
+'
+' This file is licensed under the terms of the zlib license.
+' See the LICENSE.md file in the root of this repository
+' for complete details.
+@startuml
+' skinparam roundcorner 20
+' skinparam maxmessagesize 100
+skinparam SequenceDividerFontSize 20
+skinparam ParticipantFontSize 20
+skinparam ArrowFontSize 16
+skinparam SequenceGroupFontSize 18
+skinparam SequenceActorBorderColor            #575757
+skinparam SequenceParticipantBackgroundColor  #DDEBD8
+skinparam SequenceParticipantBorderColor      #575757
+skinparam SequenceLifeLineBackgroundColor     #F5F5F5|BFBFBF
+skinparam SequenceLifeLineBorderColor         #575757
+skinparam SequenceArrowColor                  #575757
+skinparam SequenceBorderColor                 #575757
+
+hide footbox
+
+participant NumericalPropagator
+participant AttitudePropagator
+participant Integrators
+participant ClassicalRungeKutta
+participant DormandPrince853
+participant "Differential\nEquations" as diffEq
+participant "Times\nDerivative" as tDer
+participant "Disturbance\nTorques" as DTs
+participant StateObserver
+
+activate NumericalPropagator
+NumericalPropagator -> AttitudePropagator : getAttitude
+    activate AttitudePropagator
+    AttitudePropagator -> StateObserver : get previous state
+        activate StateObserver
+            StateObserver --> AttitudePropagator : state(t_0 + (i-1)*dt)
+        deactivate StateObserver
+    AttitudePropagator -> diffEq : create
+    AttitudePropagator -> Integrators : integrate
+        activate Integrators
+        alt #DDEBD8 integration step <= maxDT
+            Integrators -> ClassicalRungeKutta : single step
+                activate ClassicalRungeKutta
+                ClassicalRungeKutta -> tDer : create
+                ClassicalRungeKutta -> diffEq : computeDerivatives
+                    activate diffEq
+                    diffEq -> DTs : get disturbance torques
+                        activate DTs
+                        DTs --> diffEq : torques
+                        deactivate DTs
+                    diffEq --> ClassicalRungeKutta : state at [dt_o]
+                    deactivate diffEq
+                ClassicalRungeKutta --> Integrators : state at [dt_o]
+                deactivate ClassicalRungeKutta
+
+        else intgration step > maxDT
+            Integrators -> DormandPrince853 : integrate
+                activate DormandPrince853
+                DormandPrince853 -> tDer : create
+                    activate tDer
+                    deactivate tDer
+                loop #E1D5E7 until j * dt_a == dt_o
+                    DormandPrince853 -> diffEq : computeDerivatives
+                        activate diffEq
+                        diffEq -> DTs : get disturbance torques
+                            activate DTs
+                            DTs --> diffEq :torques
+                            deactivate DTs
+                        diffEq --> DormandPrince853 : state at [j*dt_a]
+                        deactivate diffEq
+                end
+                DormandPrince853 --> Integrators : state at [dt_o]
+                deactivate DormandPrince853
+        end
+        Integrators --> AttitudePropagator : state at [dt_o]
+        deactivate Integrators
+    AttitudePropagator --> NumericalPropagator : state at [dt_o]
+    deactivate AttitudePropagator
+deactivate NumericalPropagator
+
+
+@enduml

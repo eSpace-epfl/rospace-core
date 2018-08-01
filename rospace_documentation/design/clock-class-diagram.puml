@@ -1,0 +1,75 @@
+@startuml
+' @copyright Copyright (c) 2018, Christian Lanegger (lanegger.christian@epfl.ch)
+'
+' @license zlib license
+'
+' This file is licensed under the terms of the zlib license.
+' See the LICENSE.md file in the root of this repository
+' for complete details.
+
+skinparam ClassBackgroundColor #F3EFEB/E1D5E7
+skinparam ClassBorderColor     #5F4869
+skinparam ClassArrowColor      #5F4869
+skinparam PackageFontSize      12
+skinparam ClassFontSize        11
+
+package ROS #F5F5F5{
+
+
+    package Rospy #DDEBD8{
+        class Publisher{
+            +void publish(clock_msgs : Clock)
+        }
+
+        class Service{
+            +Service(name : String, service_class : Service Class, handler: Method)
+        }
+        class ServiceProxy{
+            +ServiceProxy(name : String , service_class: Service Class, persistent : Bool)
+            +__call__(request : SRV Instance)
+        }
+    }
+}
+
+package ROSpace_Core #F5F5F5{
+
+
+    package rospace_nodes.propagator #DDEBD8{
+        class PropagatorNode <<  (N,#3F8DCD) >>
+    }
+
+    package rospace_lib.clock #DDEBD8{
+        class SimTimePublisher{
+            +set_up_simulation_time()
+            +update_simulation_time() : Datetime
+            +sleep_to_keep_frequency()
+        }
+
+        class SimTimeUpdater{
+            +updateClock(clock_msg : Clock, epoch_now : Datetime)
+            +updateTimeFactors(realtimeFactor : Float, frequency : Float, step : Float)
+        }
+
+        class SimTimeService{
+            +handle_start_stop_clock(request : SRV Instance) : List
+        }
+    }
+
+    package RQTplugins #DDEBD8{
+        class SimTimePlugin
+    }
+
+}
+'connections:
+Service -- ServiceProxy
+PropagatorNode   --> "1" SimTimePublisher
+SimTimePublisher *-- "1" SimTimeUpdater
+SimTimePublisher *-- "1" SimTimeService
+SimTimePublisher --> "1" Publisher
+SimTimeService --> "1" Service
+SimTimePlugin --> "1" ServiceProxy
+
+' beauty connection:
+RQTplugins -[hidden]left- SimTimeUpdater
+
+@enduml
