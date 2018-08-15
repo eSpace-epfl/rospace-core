@@ -10,11 +10,10 @@
 import rospy
 import numpy as np
 import message_filters
-from datetime import datetime
 from copy import deepcopy
 
 from propagator.OrekitPropagator import OrekitPropagator
-from rospace_lib.misc.FileDataHandler import FileDataHandler, to_datetime_date, to_orekit_date
+from rospace_lib.misc.FileDataHandler import to_datetime_date, to_orekit_date
 from rospace_lib import Cartesian, CartesianTEME, CartesianLVLH, OscKepOrbElem, KepOrbElem
 
 from rospace_msgs.msg import PoseVelocityStamped
@@ -26,7 +25,6 @@ from rospace_msgs.msg import SatelliteTorque
 
 from org.hipparchus.geometry.euclidean.threed import Vector3D
 from org.orekit.propagation import SpacecraftState
-from org.orekit.frames import FramesFactory
 from org.orekit.orbits import CartesianOrbit
 from org.orekit.utils import PVCoordinates
 from org.orekit.utils import Constants as Cst
@@ -39,11 +37,18 @@ class Spacecraft(object):
     def mass(self):
         """Return mass stored in propagator.
 
-        Return:
+        Returns:
             float: Current mass of spacecraft
 
+        Raises:
+            AttributeError: if propagator not build before mass called
+
         """
-        return self._propagator.getInitialState().getMass()
+        if self._propagator is not None:
+            return self._propagator._propagator_num.getInitialState().getMass()
+        else:
+            err_msg = "Mass of " + self.namespace + " not initialized. Build propagator method has to be called first!"
+            raise AttributeError(err_msg)
 
     @property
     def propagator_settings(self):
@@ -77,10 +82,11 @@ class Spacecraft(object):
 
         self.namespace = namespace
         self._propagator = None
-        # self._last_state = [None, None, None, None, None]
         self.cartesian_pose = None
         self.current_attitude = None
-        self.acting_force_ = None
+        self.acting_force = None
+        self.acting_torques = None
+        self.local_b_field = None
 
         self._parsed_settings = {}
         self._parsed_settings["init_coords"] = {}
@@ -106,7 +112,15 @@ class Spacecraft(object):
             epoch_now(datetime.datetime): time to which spacecraft will be propagated
 
         """
-        self._last_state = self._propagator.propagate(epoch_now)
+        _last_state = self._propagator.propagate(epoch_now)
+
+        # store last state in correct instances
+        # _last_state is stored as: [cart, att, force, d_torque, B_field]
+        self.cartesian_pose = _last_state[0]
+        self.current_attitude = _last_state[1]
+        self.acting_force = _last_state[2]
+        self.acting_torques = _last_state[3]
+        self.local_b_field = _last_state[4]
 
 
 class Simulator_Spacecraft(Spacecraft):
@@ -178,11 +192,9 @@ class Simulator_Spacecraft(Spacecraft):
         """
         rospy_now = rospy.Time.now()
         # last_state is stored as: [cart, att, force, d_torque, B_field]
-        [msg_oe, msg_pose] = cart_to_msgs(self._last_state[0], self._last_state[1], rospy_now)
-        msg_B_field = Bfield_to_msgs(self._last_state[4], rospy_now)
-        [msg_ft, msg_d_torque] = force_torque_to_msgs(self._last_state[2],
-                                                      self._last_state[3],
-                                                      rospy_now)
+        [msg_oe, msg_pose] = cart_to_msgs(self.cartesian_pose, self.current_attitude, rospy_now)
+        msg_B_field = Bfield_to_msgs(self.local_b_field, rospy_now)
+        [msg_ft, msg_d_torque] = force_torque_to_msgs(self.acting_force, self.acting_torques, rospy_now)
 
         self._pub_oe.publish(msg_oe)
         self._pub_pose.publish(msg_pose)
@@ -192,27 +204,59 @@ class Simulator_Spacecraft(Spacecraft):
 
 
 class Planning_Spacecraft(Spacecraft):
+    """Spacecraft object for the planning module.
+
+    The object holds its own build propagator object as well as all methods required
+    for the planning module. It serves as kind of wrapper between the core of the
+    ROSpace simulator and the planning module.
+
+    In addition to the spacecraft base class it provides a method to reset the initial
+    conditions of the spacecraft without re-building the propagator object.
+
+    Two types of spacecrafts can be defined: a target and chaser spacecraft. The chaser
+    spacecraft hold also the current relative state to its target (parent) spacecraft.
+
+    Args:
+        namespace (String): name of spacecraft (namespace in which it is defined)
+        chaser (Bool): True if chaser spacecraft, else false
+
+    Attributes:
+        namespace (String): name of spacecraft (namespace in which it is defined)
+        prop_type (String): '2-body' if propagating keplerian orbit
+        rel_state (CaretsianLVLH): relative state (only if spacecraft is a chaser)
+
+    """
 
     @property
     def abs_state(self):
-        return self._last_state[0]
-        # state_frame = self._propagator._propagator_num.getInitialState().getFrame()
-        # pv = self._propagator._propagator_num.getInitialState().getPVCoordinates()
-        # if state_frame.toString() == "TEME":
-        #     cart = CartesianTEME()
-        # else:
-        #     cart = Cartesian()
+        """Return the absolute state of the spacecraft.
 
-        # cart.R = np.array([pv.position.x, pv.position.y, pv.position.z]) / 1e3
-        # cart.V = np.array([pv.velocity.x, pv.velocity.y, pv.velocity.z]) / 1e3
-        # return cart
+        The spacecraft state is extracted from the OREKIT propagator object and returned as
+        Cartesian object.
 
-    @property
-    def mass(self):
-        return self._propagator._propagator_num.getInitialState().getMass()
+        Returns:
+            Cartesian: absolute state of spacecraft
+
+        """
+        state_frame = self._propagator._propagator_num.getInitialState().getFrame()
+        pv = self._propagator._propagator_num.getInitialState().getPVCoordinates()
+        if state_frame.toString() == "TEME":
+            cart = CartesianTEME()
+        else:
+            cart = Cartesian()
+
+        cart.R = np.array([pv.position.x, pv.position.y, pv.position.z]) / 1e3
+        cart.V = np.array([pv.velocity.x, pv.velocity.y, pv.velocity.z]) / 1e3
+        return cart
 
     @property
     def date(self):
+        """Return date of spacecraft state.
+
+        Returns:
+            datetime.datetime: date of current spacecraft state
+
+        """
         abs_date = self._propagator._propagator_num.getInitialState().getDate()
         return to_datetime_date(abs_date)
 
@@ -224,8 +268,24 @@ class Planning_Spacecraft(Spacecraft):
         if chaser:
             self.rel_state = CartesianLVLH()
 
-    def build_propagator(self, epoch_now, prop_type, parent_state=None):
-        """Intermediate class for building propagator. Turns of pertub. for 2-body"
+    def build_propagator(self, init_epoch, prop_type, parent_state=None):
+        """Build the spacecraft's propagator object.
+
+        This is a wrapper for the Spacecraft build_propagator method.
+
+        This method first checks if orbit should be propagated using a 2-body
+        propagator or if disturbances should be active (real-world called in planning).
+        In case of 2 body propagation the disturbances are turned of by this method and
+        the build_propagator method of the base class is called.
+
+        If the spacecraft is a chaser spacecraft the relative state is initialized as well.
+
+        Args:
+            init_epoch (datetime.datetime): initial epoch in which initial coordinates are defined
+            prop_type (string): '2-body' for propagation of keplerian orbits else disturbances
+                initialized from spacecraft configuration file
+            parent_state (Cartesian): state of parent spacecraft from which relative state is build
+
         """
         self.prop_type = prop_type
 
@@ -253,12 +313,9 @@ class Planning_Spacecraft(Spacecraft):
             self._parsed_settings["prop_settings"]["orbit_propagation"] = orb_prop_dict
 
         # build propagator
-        super(Planning_Spacecraft, self).build_propagator(epoch_now)
+        super(Planning_Spacecraft, self).build_propagator(init_epoch)
 
-        # ugly_hack 2.0: set self._last_state:
-        super(Planning_Spacecraft, self).propagate(epoch_now)
-
-        # set relative state if chaser-spacecraft
+        # set relative state if propagator for chaser-spacecraft is being build
         if hasattr(self, "rel_state"):
             if parent_state is not None:
                 try:  # check if states are in same frame
@@ -297,13 +354,12 @@ class Planning_Spacecraft(Spacecraft):
                               float(new_state.V[2])))
 
         # Extract frame from initial/pre-propagated state
-        initState = self._propagator._propagator_num.getInitialState()
+        orbit_frame = self._propagator._propagator_num.getInitialState().getFrame()
 
         orekit_date = to_orekit_date(new_epoch)
+
         # Evaluate new initial orbit
-        # print initState.getOrbit().getType()
-        # print initState.getOrbit().getType().toString() == "CARTESIAN"
-        initialOrbit = CartesianOrbit(PVCoordinates(p, v), initState.getFrame(), orekit_date, Cst.WGS84_EARTH_MU)
+        initialOrbit = CartesianOrbit(PVCoordinates(p, v), orbit_frame, orekit_date, Cst.WGS84_EARTH_MU)
 
         # Create new spacecraft state
         newSpacecraftState = SpacecraftState(initialOrbit, new_mass)
@@ -311,14 +367,11 @@ class Planning_Spacecraft(Spacecraft):
         # Rewrite propagator initial conditions
         self._propagator._propagator_num.setInitialState(newSpacecraftState)
 
-        # ugly hack for now
-        self._last_state[0] = new_state
-
     def get_osc_oe(self):
         """Return the osculating orbital elements of the spacecraft.
 
         Returns:
-              kep_osc (OscKepOrbElem): Osculating orbital elements.
+              OscKepOrbElem: Osculating orbital elements.
 
         """
         kep_osc = OscKepOrbElem()
@@ -330,7 +383,7 @@ class Planning_Spacecraft(Spacecraft):
         """Return mean orbital elements of the satellite.
 
         Returns:
-            kep_mean (KepOrbElem): Mean orbital elements.
+            KepOrbElem: Mean orbital elements.
 
         """
         kep_osc = self.get_osc_oe()
@@ -350,14 +403,13 @@ class Planning_Spacecraft(Spacecraft):
         """Set absolute state given target absolute state and chaser relative state.
 
         Args:
-             target (Satellite): State of the target.
+             target (Planning_Spacecraft): object of the target spacecraft.
 
         """
         if hasattr(self, "rel_state"):
-            # ugly hack
             tmp = deepcopy(self.abs_state)
             tmp.from_lvlh_frame(target.abs_state, self.rel_state)
-            self._last_state[0] = deepcopy(tmp)
+            self.change_initial_conditions(tmp, self.date, self.mass)
         else:
             raise AttributeError("Spacecraft " + self.namespace +
                                  " is not defined as chaser! Cannot set absolute state from target state!")

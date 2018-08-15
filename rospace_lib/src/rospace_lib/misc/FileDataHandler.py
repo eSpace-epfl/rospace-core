@@ -20,15 +20,15 @@ from org.orekit.utils import IERSConventions as IERS
 
 
 def _get_name_of_loaded_files(folder_name):
-    '''
-    Gets names of files in defined folder loaded by the data provider.
+    """Get names of files in defined folder loaded by the data provider.
 
     Args:
         folder_name: string of folder name containing files
 
     Returns:
         List<String>: all file names loaded by data provider in folder
-    '''
+
+    """
     file_names = []
     manager = DataProvidersManager.getInstance()
     string_set = manager.getLoadedDataNames()
@@ -47,8 +47,8 @@ def to_orekit_date(epoch):
 
     Returns:
         AbsoluteDate: simulation time in UTC
-    """
 
+    """
     seconds = float(epoch.second) + float(epoch.microsecond) / 1e6
     orekit_date = AbsoluteDate(epoch.year,
                                epoch.month,
@@ -71,7 +71,6 @@ def to_datetime_date(epoch):
         datetime.datetime: simulation time in UTC
 
     """
-    # 2014-07-21T18:34:02.845
     epoch_str = epoch.toString()
     nofrag, frag = epoch_str.split('.')
     nofrag_datetime = datetime.strptime(nofrag, "%Y-%m-%dT%H:%M:%S")
@@ -92,6 +91,17 @@ class FileDataHandler(object):
 
     @staticmethod
     def load_magnetic_field_models(epoch):
+        """Load the OREKIT's GeoMagneticModel into the workspace.
+
+        The model is stored in the class instance "mag_field_model" by which it also can be accessed.
+
+        Args:
+            epoch (AbsoluteDate): (initial) epoch of simulation
+
+        Raises:
+            ValueError: If no model found or none available for desired epoch
+
+        """
         curr_year = GeoMagneticField.getDecimalYear(epoch.day,
                                                     epoch.month,
                                                     epoch.year)
@@ -130,8 +140,7 @@ class FileDataHandler(object):
 
     @staticmethod
     def create_data_validity_checklist():
-        """Get files loader by DataProvider and create dict() with valid dates for
-        loaded data.
+        """Get files loader by DataProvider and create dict() with valid dates for loaded data.
 
         Creates a list with valid start and ending date for data loaded by the
         DataProvider during building. The method looks for follwing folders
@@ -225,10 +234,9 @@ class FileDataHandler(object):
 
     @staticmethod
     def check_data_availability(epoch):
-        """
-        Checks if loaded files from orekit-data have data for current epoch.
+        """Check if loaded files from orekit-data have data for current epoch.
 
-        Also checks if loaded magnetic model is valid for current epoch and
+        Also check if loaded magnetic model is valid for current epoch and
         updates the model's coefficients to current epoch using secular
         variation coefficients.
 
@@ -237,6 +245,7 @@ class FileDataHandler(object):
 
         Raises:
             ValueError: if no data loaded for current epoch
+
         """
         min_max = FileDataHandler._data_checklist['MinMax_dates']
         oDate = to_orekit_date(epoch)

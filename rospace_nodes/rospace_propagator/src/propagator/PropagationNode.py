@@ -86,8 +86,7 @@ if __name__ == '__main__':
 
             for spc in spacecrafts:
                 try:
-                    # propagate to epoch_now
-                    spc.propagate(epoch_now)
+                    spc.propagate(epoch_now)  # propagate to epoch_now
                 except Exception as e:
                     print "ERROR in propagation of: [", spc.namespace, "]"
                     print e.message, e.args
