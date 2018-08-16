@@ -1,12 +1,13 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="dzhanibekov">
 
-    <xacro:include filename="$(find rospace_simulator)/res/urdf/spacecrafts.urdf.xacro" />
+    <xacro:arg name="scenario" default="False"/>
 
+    <xacro:include filename="$(find rospace_simulator)/res/urdf/spacecrafts.urdf.xacro" />
     <xacro:include filename="$(find rospace_simulator)/res/urdf/planets.urdf.xacro" />
 
     <!-- Location of Scenario Configuation File -->
-    <xacro:property name="config_location" value="$(find rospace_simulator)/cfg/Scenarios/dzhanibekov.yaml" />
+    <xacro:property name="config_location" value="$(find rospace_simulator)/cfg/Scenarios/dzhanibekov/$(arg scenario).yaml" />
 
     <!-- Initialize/Load parameters necessary for model creation -->
     <xacro:property name="inertial_frame" value="J2K"/>
