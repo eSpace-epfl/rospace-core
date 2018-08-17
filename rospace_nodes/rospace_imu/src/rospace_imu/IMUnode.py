@@ -35,7 +35,7 @@ def callback_IMU_pose(data):
 def publish_IMU_message():
     """Publish the IMU sensor readings at a rate of 10[Hz].
     """
-    pub = rospy.Publisher('imu', Imu, queue_size=10)
+    pub = rospy.Publisher("imu", Imu, queue_size=10)
 
     rate = rospy.Rate(10)  # 10hz
 
@@ -53,16 +53,23 @@ def publish_IMU_message():
         rate.sleep()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
-        rospy.init_node('imu_node', anonymous=True)
+        rospy.init_node("imu_node", anonymous=True)
 
         # retrieves module corresponding to sensor module and class in rosparam
-        spacecraft_namespace = rospy.get_namespace()
-        sensor_module_name = str(rospy.get_param(spacecraft_namespace+"imu/module"))
-        sensor_class_name = str(rospy.get_param(spacecraft_namespace + "imu/class"))
-        sensor_module = importlib.import_module('rospace_lib.sensor.'+sensor_module_name)
-        sensor_class = getattr(sensor_module, sensor_class_name)
+        # load imu configuration into workspace
+        imu_cfg = rospy.get_param(rospy.get_namespace(), 0)
+        try:
+            assert (imu_cfg is not 0)
+        except AssertionError:
+            raise ValueError("Imu configuration could not be found in spacecraft cfg file!")
+
+        # find correct sensor whose name ends with "imu"
+        imu_cfg = [value for key, value in imu_cfg.iteritems() if key.endswith("imu")][0]
+
+        sensor_module = importlib.import_module("rospace_lib.sensor." + imu_cfg["module"])
+        sensor_class = getattr(sensor_module, imu_cfg["class"])
         rate_gyro = sensor_class()
 
         import_sensor_lib = importlib.import_module("matplotlib.text")

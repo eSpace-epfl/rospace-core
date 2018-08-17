@@ -1,5 +1,5 @@
 sensors:
-  imu:
+  target_s0_imu:
     module: 'ADXRS614'
     class: 'ThreeAxisADXRS614'
     position: 0 0 0
