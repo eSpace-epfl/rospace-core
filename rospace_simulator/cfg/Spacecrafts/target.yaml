@@ -13,7 +13,7 @@ sensors:
 propagator_settings:
   orbit_propagation:
     State:
-      type: CartesianTEME
+      type: CartesianJ2000
       settings:
         mass: 0.82 # kg
     integrator: # Steps have to be floats

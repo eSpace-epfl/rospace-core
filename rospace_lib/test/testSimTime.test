@@ -16,7 +16,7 @@ calls are being made, which should not be allowed.
 <launch>
 
 	<!-- Load Scenario with initial values -->
-	<rosparam param="scenario" command="load" file="$(find rospace_simulator)/cfg/Scenarios/test_mission.yaml" />
+	<rosparam param="scenario" command="load" file="$(find rospace_simulator)/cfg/Scenarios/test_mission/test_mission.yaml" />
 
 	<!-- Run SimTimePublisher Test -->
 	<test test-name="testSimTime" pkg="rospace_lib" type="rostest_SimTimePublisher.py" time-limit="10.0"/>
