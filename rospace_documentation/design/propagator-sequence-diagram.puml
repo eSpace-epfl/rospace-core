@@ -1,0 +1,95 @@
+' @copyright Copyright (c) 2018, Christian Lanegger (lanegger.christian@epfl.ch)
+'
+' @license zlib license
+'
+' This file is licensed under the terms of the zlib license.
+' See the LICENSE.md file in the root of this repository
+' for complete details.
+@startuml
+' skinparam roundcorner 20
+' skinparam maxmessagesize 100
+skinparam SequenceDividerFontSize 20
+skinparam ParticipantFontSize 20
+skinparam ArrowFontSize 16
+skinparam SequenceGroupFontSize 18
+skinparam SequenceActorBorderColor            #575757
+skinparam SequenceParticipantBackgroundColor  #DDEBD8
+skinparam SequenceParticipantBorderColor      #575757
+skinparam SequenceLifeLineBackgroundColor     #F5F5F5|BFBFBF
+skinparam SequenceLifeLineBorderColor         #575757
+skinparam SequenceArrowColor                  #575757
+skinparam SequenceBorderColor                 #575757
+
+hide footbox
+
+participant OrekitPropagator
+participant NumericalPropagator
+participant Integrator
+participant "Differential\nEquations" as DiffEq
+participant StateMapper
+participant OrbitType
+participant "Times\nDerivative" as tDerivative
+participant "Attitude\nPropagation" as attProp
+participant ForceModel
+participant StateObserver
+
+activate OrekitPropagator
+OrekitPropagator -> NumericalPropagator : propagate to [epoch]
+    activate NumericalPropagator
+    NumericalPropagator -> DiffEq : create
+        activate DiffEq
+        deactivate DiffEq
+
+    NumericalPropagator -> tDerivative : create
+        activate tDerivative
+        deactivate tDerivative
+
+    NumericalPropagator -> Integrator : integrate
+        activate Integrator
+        loop #DDEBD8 until i * dt_o == (epoch - old_epoch)
+            Integrator -> DiffEq : compute\nDerivatives
+                activate DiffEq
+                    DiffEq -> StateMapper : ArrayToState
+                        activate StateMapper
+                        StateMapper -> OrbitType : mapOrbit
+                            activate OrbitType
+                            deactivate OrbitType
+                        StateMapper -> attProp : getAttitude(orbit, date, frame)
+                            activate attProp
+                            attProp -> StateObserver : get previous state
+                                activate StateObserver
+                                StateObserver --> attProp : state at [(i-1) * dt_o]
+                                deactivate StateObserver
+                                attProp --> StateMapper : Attitude
+                            deactivate attProp
+                        StateMapper --> DiffEq : SpacecraftState
+                        deactivate StateMapper
+                        DiffEq -> StateObserver : addContribution(SpacecraftState)
+                            activate StateObserver
+                            StateObserver -> StateObserver : store\nstate
+                                activate StateObserver
+                                deactivate StateObserver
+                            deactivate StateObserver
+                        loop #E1D5E7 for all added force models
+                            DiffEq -> ForceModel : addContribution(SpacecraftState)
+                                activate ForceModel
+                                ForceModel -> tDerivative : addAcceleration
+                                    activate tDerivative
+                                    deactivate tDerivative
+                                deactivate ForceModel
+                        end
+            DiffEq --> Integrator : state\nat [i*dt_o]
+            deactivate DiffEq
+        end
+
+        Integrator --> NumericalPropagator : state at epoch
+        deactivate Integrator
+
+    NumericalPropagator --> OrekitPropagator : state at epoch
+    deactivate NumericalPropagator
+
+OrekitPropagator -> attProp : getAttitude(orbit, date, frame)
+    activate attProp
+    attProp --> OrekitPropagator : Attitude at epoch
+
+@enduml
