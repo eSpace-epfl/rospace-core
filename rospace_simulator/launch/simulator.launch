@@ -19,7 +19,7 @@
     <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
 
     <!-- Initialize the Specified Scenario -->
-    <include file="$(find rospace_simulator)/launch/Scenarios/$(arg mission).launch">
+    <include file="$(find rospace_simulator)/launch/Missions/$(arg mission).launch">
         <arg name="scenario" value="$(arg scenario)"/>
     </include>
     <!-- ///////////////////////////////////////////////////////////////////////////////////  -->

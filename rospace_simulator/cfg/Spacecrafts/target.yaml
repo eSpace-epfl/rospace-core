@@ -1,14 +1,14 @@
+frames:
+  target_cog:
+    pose: 0 0 0 1
+    position: 0 0 0
+
 sensors:
   target_s0_imu:
     module: 'ADXRS614'
     class: 'ThreeAxisADXRS614'
     position: 0 0 0
     pose: 0 0 0 1.0
-    fov_x: 6
-    fov_y: 6
-    max_range: 50000
-    mu: 0
-    sigma: 0.01
 
 propagator_settings:
   orbit_propagation:
@@ -81,5 +81,5 @@ propagator_settings:
         order: 5
     addRelativity: False
   attitudeProvider:
-    type:  "" #'AttNadir'
+    type:  ""
     settings: ''

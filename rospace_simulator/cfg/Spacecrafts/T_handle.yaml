@@ -91,30 +91,32 @@ propagator_settings:
     type:  'AttPropagation'
     settings:
       Discretization:
-        satellite_dim:  # has to be cuboid!
-          l_x: 0.2
-          l_y: 0.5
-          l_z: 1.0
-        inner_cuboids:  # number by which satellite has to be divided into smaller cuboids
-          numCub_x: 1
-          numCub_y: 1
-          numCub_z: 1
-        surface_rectangles:  # number by which surface of satellite is divided into smaller rectangular sufraces
-          numSR_x: 1
-          numSR_y: 1
-          numSR_z: 1
-        SolarArrays:
-          l_x: 0.01 #0.960
-          l_z: 0.01 #0.313
-          numSRSolar_x: 1
-          numSRSolar_z: 1
-          PosAndDir: # displacement of every Solar Panel from Satellite CoM and normal vector
-            SA1:
-              dCenter: 0 0 0.5
-              normalV: 0 0 1
-            SA2:
-              dCenter: 0 0 -0.5
-              normalV: 0 0 1
+        type: BoxWingModel
+        settings:
+          satellite_dim:  # has to be cuboid!
+            l_x: 0.2
+            l_y: 0.5
+            l_z: 1.0
+          inner_cuboids:  # number by which satellite has to be divided into smaller cuboids
+            numCub_x: 1
+            numCub_y: 1
+            numCub_z: 1
+          surface_rectangles:  # number by which surface of satellite is divided into smaller rectangular sufraces
+            numSR_x: 1
+            numSR_y: 1
+            numSR_z: 1
+          SolarArrays:
+            l_x: 0.01 #0.960
+            l_z: 0.01 #0.313
+            numSRSolar_x: 1
+            numSRSolar_z: 1
+            PosAndDir: # displacement of every Solar Panel from Satellite CoM and normal vector
+              SA1:
+                dCenter: 0 0 0.5
+                normalV: 0 0 1
+              SA2:
+                dCenter: 0 0 -0.5
+                normalV: 0 0 1
       GravityGradient:
         add: False
         FC_degree: 10

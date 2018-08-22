@@ -1,7 +1,7 @@
 <launch>
 
-	<arg name="full_directory" value="/home/christian/Documents/ETH/ROSpace/Validation/Orbit/EnviSat/re-validation" />
-	<arg name="bag_name" value="envi_thesis_best_result" />
+	<arg name="full_directory" value="$(find rospace_simulator)/res/rosbags" />
+	<arg name="bag_name" value="my_bag" />
 	<arg name="end_time" value="86400" />
 
 	<node pkg="rosbag" type="record" name="$(arg bag_name)" output="screen" args="-O $(arg full_directory)/$(arg bag_name) --duration=$(arg end_time) -a" required="True"/>

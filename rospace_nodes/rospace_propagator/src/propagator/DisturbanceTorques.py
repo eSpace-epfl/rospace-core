@@ -344,7 +344,9 @@ class DisturbanceTorqueArray(DisturbanceTorqueInterface):
 
             satM = self.spacecraft_state.getMass()
             mCub = self.inCub['dm'] * satM
-            mCub = np.concatenate((mCub, self.inCub['dm_boom']), axis=0)  # boom store with mass
+            # add booms
+            if "dm_boom" in self.inCub:
+                mCub = np.concatenate((mCub, self.inCub['dm_boom']), axis=0)  # boom store with mass
             CoM = self.inCub['CoM_np']
 
             dmPos_s = CoM + self.satPos_s
