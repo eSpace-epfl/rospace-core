@@ -1,0 +1,19 @@
+<launch>
+
+    <!-- ///////////////// Mission Arguments /////////////////////// -->
+    <arg name="scenario" value="test_mission" />
+    <!-- ///////////////// Include Spacecrafts /////////////////////// -->
+
+    <!-- Load Scenario with initial values -->
+    <rosparam param="scenario" command="load" file="$(find rospace_simulator)/cfg/Scenarios/$(arg scenario).yaml" />
+
+
+    <!-- ///////////////// Include Spacecrafts /////////////////////// -->
+    <!-- For every spacecraft its corresponding scenario name has to be specified. -->
+    <include file="$(find rospace_simulator)/launch/Spacecrafts/testcraft.launch">
+        <arg name="ns_spacecraft" value="testcraft" />
+    </include>
+
+    <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
+
+</launch>

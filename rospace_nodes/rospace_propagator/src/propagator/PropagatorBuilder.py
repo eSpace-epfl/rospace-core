@@ -166,15 +166,15 @@ class PropagatorBuilder(Builder):
         - Setup: executes build if isApplicable returned true
     """
 
-    def __init__(self, settings, state, epoch):
+    def __init__(self, name, settings, state, epoch):
         self.propagator = Propagator()
 
-        self.SatType = settings['name']
+        self.SatType = name
 
         print "Building %s:" % (self.SatType)
-        self.orbSettings = settings['orbitProp']
+        self.orbSettings = settings['orbit_propagation']
         self.attSettings = settings['attitudeProvider']
-        self.stateElements = state
+        self.init_coords = state
 
         self.initialOrbit = None
         self.initialState = None
@@ -200,7 +200,7 @@ class PropagatorBuilder(Builder):
             if model.isApplicable(ST['type']):
                 [inFrame, inOrbit, inState] = model.Setup(self.refDate,
                                                           self.earth,
-                                                          self.stateElements,
+                                                          self.init_coords,
                                                           ST['settings'])
 
                 self.inertialFrame = inFrame
@@ -298,12 +298,12 @@ class PropagatorBuilder(Builder):
             if addBody:
                 if str(Body) == 'Sun':
                     self.propagator.addForceModel(
-                                        ThirdBodyAttraction(
-                                           CelestialBodyFactory.getSun()))
+                        ThirdBodyAttraction(
+                            CelestialBodyFactory.getSun()))
                 elif str(Body) == 'Moon':
                     self.propagator.addForceModel(
-                                        ThirdBodyAttraction(
-                                           CelestialBodyFactory.getMoon()))
+                        ThirdBodyAttraction(
+                            CelestialBodyFactory.getMoon()))
 
                 print "  [INFO]: added Attraction of %s." % (str(Body))
 
@@ -486,8 +486,7 @@ class PropagatorBuilder(Builder):
 
 #####################################################################
 class StateFactory(object):
-    """
-    Base Class for different builds of initial states
+    """Base Class for different builds of states in which object is propagated.
     """
 
     __metaclass__ = abc.ABCMeta
@@ -517,130 +516,21 @@ def _build_satellite_attitude(setup, orbit_pv, inertialFrame, earth, epoch):
     Returns:
         Attitude: OREKIT's atttiude object with the correct initial attiude
     '''
-    if setup['rotation'] == 'nadir':
-            satRot = NadirPointing(inertialFrame, earth). \
-                      getAttitude(orbit_pv, epoch, inertialFrame). \
-                      getRotation()
+    if setup['attitude'] == 'nadir':
+        satRot = NadirPointing(inertialFrame, earth). \
+            getAttitude(orbit_pv, epoch, inertialFrame). \
+            getRotation()
     else:
-        satRot = [float(x) for x in setup['rotation'].split(" ")]
-        satRot = Rotation(satRot[0], satRot[1], satRot[2], satRot[3], False)
+        satRot = Rotation(setup['attitude'][0], setup['attitude'][1],
+                          setup['attitude'][2], setup['attitude'][3], False)
 
-    spin = [math.radians(float(x)) for x in setup['spin'].split(" ")]
-    spin = Vector3D(float(spin[0]), float(spin[1]), float(spin[2]))
+    spin = Vector3D(float(setup['spin'][0]), float(setup['spin'][1]), float(setup['spin'][2]))
 
-    acc = [math.radians(float(x)) for x in setup['acceleration'].split(" ")]
-    acc = Vector3D(float(acc[0]), float(acc[1]), float(acc[2]))
+    acc = Vector3D(float(setup['rotation_acceleration'][0]),
+                   float(setup['rotation_acceleration'][1]),
+                   float(setup['rotation_acceleration'][2]))
 
     return Attitude(epoch, inertialFrame, satRot, spin, acc)
-
-
-class KeplerianEME2000(StateFactory):
-
-    @staticmethod
-    def isApplicable(name):
-
-        if name == "KeplerianEME2000":
-            return True
-        else:
-            return False
-
-    @staticmethod
-    def Setup(epoch, earth, state, setup):
-        """
-        Create initial spacecraft state and orbit based on Keplerian elements.
-
-        Args:
-            epoch: initial epoch or orbital elements
-            state: initial state of satellite
-            setup: additional settings defined in dictionary
-
-        Returns:
-            inertialFrame: EME2000 as inertial Frame of Orbit
-            initialOrbit: Keplerian orbit
-            initialState: Spacecraft state
-        """
-
-        satMass = setup['mass']
-
-        a = float(state.a)
-        e = float(state.e)
-        i = float(state.i)
-        w = float(state.w)
-        O = float(state.O)
-        v = float(state.v)
-
-        # Inertial frame where the satellite is defined (and earth)
-        inertialFrame = FramesFactory.getEME2000()
-
-        initialOrbit = KeplerianOrbit(a*1000, e, i, w, O, v,
-                                      PositionAngle.TRUE,
-                                      inertialFrame,
-                                      epoch,
-                                      Cst.WGS84_EARTH_MU)
-
-        orbit_pv = PVCoordinatesProvider.cast_(initialOrbit)
-        satAtt = _build_satellite_attitude(setup, orbit_pv, inertialFrame,
-                                           earth, epoch)
-
-        initialState = SpacecraftState(initialOrbit, satAtt, satMass)
-
-        return [inertialFrame, initialOrbit, initialState]
-
-
-class CartesianITRF(StateFactory):
-
-    @staticmethod
-    def isApplicable(name):
-
-        if name == "CartesianITRF":
-            return True
-        else:
-            return False
-
-    @staticmethod
-    def Setup(epoch, earth, state, setup):
-        """
-        Create initial spacecraft state and orbit using PV-Coordinates in ITRF2008 Frame.
-
-        Args:
-            epoch: initial epoch or orbital elements
-            state: initial state of satellite [Position, Velocity]
-            setup: additional settings defined in dictionary
-
-        Returns:
-            inertialFrame: EME2000 as inertial Frame of Orbit
-            initialOrbit: Cartesian orbit
-            initialState: Spacecraft state
-        """
-
-        satMass = setup['mass']
-
-        p = Vector3D(float(state.R[0]),
-                     float(state.R[1]),
-                     float(state.R[2]))
-        v = Vector3D(float(state.V[0]),
-                     float(state.V[1]),
-                     float(state.V[2]))
-
-        # Inertial frame where the satellite is defined (and earth)
-        inertialFrame = FramesFactory.getEME2000()
-        # False bool -> don't ignore tidal effects
-        orbitFrame = FramesFactory.getITRF(IERS.IERS_2010, False)
-        ITRF2EME = orbitFrame.getTransformTo(inertialFrame, epoch)
-        pv_EME = ITRF2EME.transformPVCoordinates(PVCoordinates(p, v))
-
-        initialOrbit = CartesianOrbit(pv_EME,
-                                      inertialFrame,
-                                      epoch,
-                                      Cst.WGS84_EARTH_MU)
-
-        orbit_pv = PVCoordinatesProvider.cast_(initialOrbit)
-        satAtt = _build_satellite_attitude(setup, orbit_pv, inertialFrame,
-                                           earth, epoch)
-
-        initialState = SpacecraftState(initialOrbit, satAtt, satMass)
-
-        return [inertialFrame, initialOrbit, initialState]
 
 
 class CartesianEME2000(StateFactory):
@@ -654,30 +544,34 @@ class CartesianEME2000(StateFactory):
             return False
 
     @staticmethod
-    def Setup(epoch, earth, state, setup):
-        """
-        Create initial spacecraft state and orbit using PV-Coordinates in J2000 Frame.
+    def Setup(epoch, earth, init_coord, setup):
+        """Create state from settings parsed by :func:`propagator.PropagatorParser.parse_configuration_files`.
+
+        The state of the spacecraft will be build in such a manner that it will be propagated in Cartesian coordinates
+        with the J2000 frame as inertial frame.
 
         Args:
-            epoch: initial epoch or orbital elements
-            state: initial state of satellite [Position, Velocity]
-            setup: additional settings defined in dictionary
+            epoch (orekit.AbsoluteDate): initial epoch or orbital elements
+            earth (orekit.models.earth.ReferenceEllipsoid): Earth object
+            init_coord (rospace_lib.Cartesian.Cartesian): initial coordinates of satellite as
+            setup (dictionary): additional settings defined in dictionary
 
         Returns:
-            inertialFrame: EME2000 as inertial Frame of Orbit
-            initialOrbit: Cartesian orbit
-            initialState: Spacecraft state
+            orekit.frames.FactoryManagedFrame: EME2000 as inertial Frame of Orbit
+            orekit.orbits.CartesianOrbit: Cartesian orbit
+            orekit.propagation.SpacecraftState: Spacecraft state
+
         """
-
         satMass = setup['mass']
-
-        p = Vector3D(float(state.R[0]),
-                     float(state.R[1]),
-                     float(state.R[2]))
-        v = Vector3D(float(state.V[0]),
-                     float(state.V[1]),
-                     float(state.V[2]))
-
+        pos = init_coord['position']
+        p = Vector3D(float(1e3),  # convert to[m]
+                     Vector3D(float(pos.R[0]),
+                              float(pos.R[1]),
+                              float(pos.R[2])))
+        v = Vector3D(float(1e3),  # convert to [m/s]
+                     Vector3D(float(pos.V[0]),
+                              float(pos.V[1]),
+                              float(pos.V[2])))
         # Inertial frame where the satellite is defined (and earth)
         inertialFrame = FramesFactory.getEME2000()
 
@@ -687,7 +581,7 @@ class CartesianEME2000(StateFactory):
                                       Cst.WGS84_EARTH_MU)
 
         orbit_pv = PVCoordinatesProvider.cast_(initialOrbit)
-        satAtt = _build_satellite_attitude(setup, orbit_pv, inertialFrame,
+        satAtt = _build_satellite_attitude(init_coord, orbit_pv, inertialFrame,
                                            earth, epoch)
 
         initialState = SpacecraftState(initialOrbit, satAtt, satMass)
@@ -954,8 +848,8 @@ class AttPropagation(AttitudeFactory):
                                                                   order)
             AttitudeFM['GravityModel'] = \
                 HolmesFeatherstoneAttractionModel(
-                                        earth.getBodyFrame(),
-                                        gravField)
+                earth.getBodyFrame(),
+                gravField)
 
         if solarSettings['add'] or dragSettings['add']:
             surfaceMesh = disc.discretize_outer_surface(solarSettings,
@@ -967,9 +861,9 @@ class AttPropagation(AttitudeFactory):
                 # dummy spacecraft which enables access to methods
                 #  needed to create SolarRadiationPressure object
                 dummy = IsotropicRadiationClassicalConvention(
-                                                1.0,
-                                                solarSettings['AbsorbCoeff'],
-                                                solarSettings['ReflectCoeff'])
+                    1.0,
+                    solarSettings['AbsorbCoeff'],
+                    solarSettings['ReflectCoeff'])
 
                 # Force Model needed to get Lighting ratio:
                 eqRad = earth.getEquatorialRadius()
@@ -992,10 +886,10 @@ class AttPropagation(AttitudeFactory):
                 if atmo is None:
                     msafe = \
                         MarshallSolarActivityFutureEstimation(
-                         "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)" +
-                         "\\p{Digit}\\p{Digit}\\p{Digit}\\p{Digit}F10\\" +
-                         ".(?:txt|TXT)",
-                         MarshallSolarActivityFutureEstimation.StrengthLevel.AVERAGE)
+                            "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)" +
+                            "\\p{Digit}\\p{Digit}\\p{Digit}\\p{Digit}F10\\" +
+                            ".(?:txt|TXT)",
+                            MarshallSolarActivityFutureEstimation.StrengthLevel.AVERAGE)
 
                     manager = DataProvidersManager.getInstance()
                     manager.feed(msafe.getSupportedNames(), msafe)
@@ -1248,10 +1142,10 @@ class DragDTM2000MSAFE(DragFactory):
         # txt have the format Jan2017F10.txt
         msafe = \
             MarshallSolarActivityFutureEstimation(
-             "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)" +
-             "\\p{Digit}\\p{Digit}\\p{Digit}\\p{Digit}F10\\" +
-             ".(?:txt|TXT)",
-             MarshallSolarActivityFutureEstimation.StrengthLevel.AVERAGE)
+                "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)" +
+                "\\p{Digit}\\p{Digit}\\p{Digit}\\p{Digit}F10\\" +
+                ".(?:txt|TXT)",
+                MarshallSolarActivityFutureEstimation.StrengthLevel.AVERAGE)
 
         manager = DataProvidersManager.getInstance()
         manager.feed(msafe.getSupportedNames(), msafe)
@@ -1369,9 +1263,9 @@ class SolarPressureBoxModel(SolarPressureFactory):
                 coef.setSelected(True)
 
         propagator.addForceModel(
-              SolarRadiationPressure(sun,
-                                     earth.getEquatorialRadius(),
-                                     starfighter))
+            SolarRadiationPressure(sun,
+                                   earth.getEquatorialRadius(),
+                                   starfighter))
 
         return propagator
 #####################################################################

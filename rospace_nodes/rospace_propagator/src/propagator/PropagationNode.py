@@ -17,6 +17,8 @@ import rospace_lib
 
 from math import radians
 
+import PropagatorParser
+
 from OrekitPropagator import OrekitPropagator
 from FileDataHandler import FileDataHandler
 from rospace_msgs.msg import PoseVelocityStamped
@@ -28,6 +30,138 @@ from rospace_msgs.msg import SatelliteTorque
 from std_srvs.srv import Empty
 
 
+class Spacecraft(object):
+    """Class holding a object for every spacecraft that is being propagated.
+
+    This object is being used for propagation and the publishing of messages
+    containing the propagation output.
+
+    The object holds its own build propagator object as well as all publishes and
+    subscribers with correctly defined topics, so that no mix-up between spacecrafts
+    can occur
+
+    Args:
+        namespace (string): name of spacecraft (namespace in which it is defined)
+
+    Attributes:
+        namespace (string): name of spacecraft (namespace in which it is defined)
+
+    """
+
+    @property
+    def propagator_settings(self):
+        """Return parsed propagator settings.
+
+        Return:
+            dict: Propagator settings used by :class:`propagator.PropagatorBuilder.PropagatorBuilder`
+
+        """
+        return self._parsed_settings["prop_settings"]
+
+    @property
+    def init_coords(self):
+        """Return parsed initial coordinates.
+
+        Return:
+            dict: Initial coordinates used by :class:`propagator.PropagatorBuilder.PropagatorBuilder`
+
+        """
+        return self._parsed_settings["init_coords"]
+
+    @propagator_settings.setter
+    def propagator_settings(self, sett):
+        self._parsed_settings["prop_settings"] = sett
+
+    @init_coords.setter
+    def init_coords(self, coords):
+        self._parsed_settings["init_coords"] = coords
+
+    def __init__(self, namespace):
+
+        self.namespace = namespace
+        self._propagator = None
+        self._last_state = None
+
+        self._parsed_settings = {}
+        self._parsed_settings["init_coords"] = {}
+        self._parsed_settings["prop_settings"] = {}
+
+    def build_communication(self):
+        """Create Publishers and Subscribers, which are linked to the correct topics in the spacecrafts namespace.
+
+        This method has to be called after the propagator object was build using :func:`build_propagator`.
+
+        Raises:
+            RuntimeError: If method is called even though no propagator object has been provided
+
+        """
+        self._pub_oe = rospy.Publisher("/" + self.namespace + "/oe", SatelitePose, queue_size=10)
+        self._pub_pose = rospy.Publisher("/" + self.namespace + "/pose", PoseVelocityStamped, queue_size=10)
+        self._pub_dtorq = rospy.Publisher("/" + self.namespace + "/dist_torque", SatelliteTorque, queue_size=10)
+        self._pub_ft = rospy.Publisher("/" + self.namespace + "/force_torque", WrenchStamped, queue_size=10)
+        self._pub_bfield = rospy.Publisher("/" + self.namespace + "/B_field", Vector3Stamped, queue_size=10)
+
+        try:
+            assert (self._propagator is not None)
+        except AssertionError:
+            raise RuntimeError("[" + self.namespace + "] " +
+                               "Error: Propagator object has to be build before calling this method!")
+
+        if self._propagator._hasThrust:
+            external_force_ch = message_filters.Subscriber("/" + self.namespace + "/thrust_force", WrenchStamped)
+            thrust_ispM_ch = message_filters.Subscriber("/" + self.namespace + '/isp_mean', ThrustIsp)
+            self._thrust_sub = message_filters.TimeSynchronizer([external_force_ch, thrust_ispM_ch], 10)
+            self._thrust_sub.registerCallback(self._propagator.thrust_callback)
+        if self._propagator._hasAttitudeProp:
+            self._ext_torque_sub = rospy.Subscriber("/" + self.namespace + "/actuator_torque", WrenchStamped,
+                                                    self._propagator.magnetorque_callback)
+
+    def build_propagator(self, init_epoch):
+        """Build the Orekit-Propagator object for the spacecraft.
+
+        Args:
+            init_epoch (datetime.datetime): initial epoch in which initial coordinates are defined
+
+        """
+        self._propagator = OrekitPropagator()
+        self._propagator.initialize(self.namespace,
+                                    self._parsed_settings["prop_settings"],
+                                    self._parsed_settings["init_coords"],
+                                    init_epoch)
+
+    def propagate(self, epoch_now):
+        """Propagate spacecraft to epoch_now.
+
+        Args:
+            epoch_now(datetime.datetime): time to which spacecraft will be propagated
+        """
+        self._last_state = self._propagator.propagate(epoch_now)
+
+    def publish(self):
+        """Publish all spacecraft related messages.
+
+        Following messages are published:
+            - Keplerian Elements
+            - Pose (Position, Velocity, Attitude, Spin)
+            - Disturbance Torques acting on spacecraft
+            - Local magnetic field in spacecraft body frame
+
+        """
+        rospy_now = rospy.Time.now()
+        # last_state is stored as: [cart, att, force, d_torque, B_field]
+        [msg_oe, msg_pose] = cart_to_msgs(self._last_state[0], self._last_state[1], rospy_now)
+        msg_B_field = Bfield_to_msgs(self._last_state[4], rospy_now)
+        [msg_ft, msg_d_torque] = force_torque_to_msgs(self._last_state[2],
+                                                      self._last_state[3],
+                                                      rospy_now)
+
+        self._pub_oe.publish(msg_oe)
+        self._pub_pose.publish(msg_pose)
+        self._pub_dtorq.publish(msg_d_torque)
+        self._pub_ft.publish(msg_ft)
+        self._pub_bfield.publish(msg_B_field)
+
+
 class ExitServer(threading.Thread):
     '''Server which shuts down node correctly when called.
 
@@ -35,6 +169,7 @@ class ExitServer(threading.Thread):
     This causes a problem when a profiler is used, as the results are not output
     if shut down is not performed in the right way.
     '''
+
     def __init__(self):
         threading.Thread.__init__(self)
         self.exiting = False
@@ -49,113 +184,19 @@ class ExitServer(threading.Thread):
         rospy.spin()
 
 
-def get_init_state_from_param():
-    """
-    Method to get orbital elements from parameters.
-
-    Depending on which parameters defined in launch file different
-    parameters are extracted.
-
-    Returns:
-        Object: Initial state of chaser
-        Object: Initial state of target
-    """
-    if rospy.has_param("~oe_ch_init/a"):
-        # mean elements for init
-        a = float(rospy.get_param("~oe_ch_init/a"))
-        e = float(rospy.get_param("~oe_ch_init/e"))
-        i = float(rospy.get_param("~oe_ch_init/i"))
-        O = float(rospy.get_param("~oe_ch_init/O"))
-        w = float(rospy.get_param("~oe_ch_init/w"))
-
-        init_state_ch = rospace_lib.KepOrbElem()
-        init_state_ch.a = a
-        init_state_ch.e = e
-        init_state_ch.i = radians(i)  # inclination
-        init_state_ch.O = radians(O)
-        init_state_ch.w = radians(w)
-
-        if rospy.has_param("~oe_ch_init/v"):
-            init_state_ch.v = radians(float(rospy.get_param("~oe_ch_init/v")))
-        elif rospy.has_param("~oe_ch_init/m"):
-            init_state_ch.m = radians(float(rospy.get_param("~oe_ch_init/m")))
-        else:
-            raise ValueError("No Anomaly for initialization of chaser")
-
-        if rospy.get_param("~oe_ta_rel"):  # relative target state
-            qns_init_ta = rospace_lib.QNSRelOrbElements()
-            # a = 0.001
-            qns_init_ta.dA = float(rospy.get_param("~oe_ta_init/ada"))  # / (a*1000.0)
-            qns_init_ta.dL = float(rospy.get_param("~oe_ta_init/adL"))  # / (a*1000.0)
-            qns_init_ta.dEx = float(rospy.get_param("~oe_ta_init/adEx"))  # / (a*1000.0)
-            qns_init_ta.dEy = float(rospy.get_param("~oe_ta_init/adEy"))  # / (a*1000.0)
-            qns_init_ta.dIx = float(rospy.get_param("~oe_ta_init/adIx"))  # / (a*1000.0)
-            qns_init_ta.dIy = float(rospy.get_param("~oe_ta_init/adIy"))  # / (a*1000.0)
-
-            init_state_ta = rospace_lib.KepOrbElem()
-            init_state_ta.from_qns_relative(qns_init_ta, init_state_ch)
-
-        else:  # absolute target state
-            a_t = float(rospy.get_param("~oe_ta_init/a"))
-            e_t = float(rospy.get_param("~oe_ta_init/e"))
-            i_t = float(rospy.get_param("~oe_ta_init/i"))
-            O_t = float(rospy.get_param("~oe_ta_init/O"))
-            w_t = float(rospy.get_param("~oe_ta_init/w"))
-
-            init_state_ta = rospace_lib.KepOrbElem()
-            init_state_ta.a = a_t
-            init_state_ta.e = e_t
-            init_state_ta.i = radians(i_t)
-            init_state_ta.O = radians(O_t)
-            init_state_ta.w = radians(w_t)
-
-            if rospy.has_param("~oe_ta_init/v"):
-                init_state_ta.v = radians(float(rospy.get_param("~oe_ta_init/v")))
-            elif rospy.has_param("~oe_ta_init/m"):
-                init_state_ta.m = radians(float(rospy.get_param("~oe_ta_init/m")))
-            else:
-                raise ValueError("No Anomaly for initialization of target")
-
-    elif rospy.has_param("~oe_ch_init/x"):
-        x = float(rospy.get_param("~oe_ch_init/x"))
-        y = float(rospy.get_param("~oe_ch_init/y"))
-        z = float(rospy.get_param("~oe_ch_init/z"))
-        xDot = float(rospy.get_param("~oe_ch_init/xDot"))
-        yDot = float(rospy.get_param("~oe_ch_init/yDot"))
-        zDot = float(rospy.get_param("~oe_ch_init/zDot"))
-
-        init_state_ch = rospace_lib.CartesianITRF()
-        init_state_ch.R = np.array([x, y, z])
-        init_state_ch.V = np.array([xDot, yDot, zDot])
-
-        x = float(rospy.get_param("~oe_ta_init/x"))
-        y = float(rospy.get_param("~oe_ta_init/y"))
-        z = float(rospy.get_param("~oe_ta_init/z"))
-        xDot = float(rospy.get_param("~oe_ta_init/xDot"))
-        yDot = float(rospy.get_param("~oe_ta_init/yDot"))
-        zDot = float(rospy.get_param("~oe_ta_init/zDot"))
-
-        init_state_ta = rospace_lib.CartesianITRF()
-        init_state_ta.R = np.array([x, y, z])
-        init_state_ta.V = np.array([xDot, yDot, zDot])
-
-    return [init_state_ch, init_state_ta]
-
-
 def cart_to_msgs(cart, att, time):
-    """
-    Packs cartesian orbit elements to message.
+    """Packs Cartesian orbit elements to message.
 
     Args:
         cart (:obj:`rospace_lib.Cartesian`): orbit state vector
-        att (Orekit.Attitude): satellite attitude in quaternions
+        att (orekit.Attitude): satellite attitude in quaternions
         time (:obj:`rospy.Time`): time stamp
 
     Returns:
        msg.SatelitePose: message containing orbital elements and orientation
        msg.PoseStamed: message for cartesian TEME pose
-    """
 
+    """
     # convert to keplerian elements
     oe = rospace_lib.KepOrbElem()
     oe.from_cartesian(cart)
@@ -293,62 +334,26 @@ if __name__ == '__main__':
     SimTime = rospace_lib.clock.SimTimePublisher()
     SimTime.set_up_simulation_time()
 
-    # Init publisher and rate limiter
-    pub_ch = rospy.Publisher('oe_chaser', SatelitePose, queue_size=10)
-    pub_pose_ch = rospy.Publisher('pose_chaser', PoseVelocityStamped, queue_size=10)
-    pub_dtorque_ch = rospy.Publisher('dtorque_chaser', SatelliteTorque, queue_size=10)
-    pub_FT_ch = rospy.Publisher('forcetorque_chaser', WrenchStamped, queue_size=10)
-    pub_Bfield_ch = rospy.Publisher('B_field_chaser', Vector3Stamped, queue_size=10)
-
-    pub_ta = rospy.Publisher('oe_target', SatelitePose, queue_size=10)
-    pub_pose_ta = rospy.Publisher('pose_target', PoseVelocityStamped, queue_size=10)
-    pub_dtorque_ta = rospy.Publisher('dtorque_target', SatelliteTorque, queue_size=10)
-    pub_FT_ta = rospy.Publisher('forcetorque_target', WrenchStamped, queue_size=10)
-    pub_Bfield_ta = rospy.Publisher('B_field_target', Vector3Stamped, queue_size=10)
-
-    [init_state_ch, init_state_ta] = get_init_state_from_param()
-
     OrekitPropagator.init_jvm()
 
-    # Initialize Data handlers, loading data in orekit .zip file
+    # Initialize Data handlers, loading data in orekit.zip file
     FileDataHandler.load_magnetic_field_models(SimTime.datetime_oe_epoch)
 
-    prop_chaser = OrekitPropagator()
-    # get settings from yaml file
-    ch_prop_file = "/" + rospy.get_param("~ns_chaser") + "/propagator_settings"
-    propSettings = rospy.get_param(ch_prop_file, 0)
-    prop_chaser.initialize(propSettings,
-                           init_state_ch,
-                           SimTime.datetime_oe_epoch)
+    spacecrafts = []  # List of to be propagated spacecrafts
+    sc_settings = rospy.get_param("scenario/init_coords")
+    for ns_spacecraft, init_coords in sc_settings.items():
+        # Parse settings for every spacecraft independently
+        spc = PropagatorParser.parse_configuration_files(Spacecraft(ns_spacecraft),
+                                                         ns_spacecraft,
+                                                         init_coords)
 
-    # Subscribe to propulsion node and attitude control if one of those is active
-    if prop_chaser._hasThrust:
-        external_force_ch = message_filters.Subscriber('thrust_force_chaser', WrenchStamped)
-        thrust_ispM_ch = message_filters.Subscriber('IspMean_chaser', ThrustIsp)
-        Tsync = message_filters.TimeSynchronizer([external_force_ch, thrust_ispM_ch], 10)
-        Tsync.registerCallback(prop_chaser.thrust_callback)
-    if prop_chaser._hasAttitudeProp:
-        external_torque = rospy.Subscriber('actuator_torque_chaser', WrenchStamped, prop_chaser.magnetotorque_callback)
+        # Build propagator object from settings
+        spc.build_propagator(SimTime.datetime_oe_epoch)
 
-    prop_target = OrekitPropagator()
-    # get settings from yaml file
-    ta_prop_file = "/" + rospy.get_param("~ns_target") + "/propagator_settings"
-    propSettings = rospy.get_param(ta_prop_file, 0)
-    prop_target.initialize(propSettings,
-                           init_state_ta,
-                           SimTime.datetime_oe_epoch)
+        # Set up publishers and subscribers
+        spc.build_communication()
 
-    # TODO: Michael's way how to subscribe to forces of torquer. Change so that subscribers are the same
-    # sub_target_force = rospy.Subscriber('force', WrenchStamped, prop_target.thrust_torque_callback)
-
-    # Subscribe to propulsion node and attitude control if one of those is active
-    if prop_target._hasThrust:
-        external_force_ta = message_filters.Subscriber('thrust_force_target', WrenchStamped)
-        thrust_ispM_ta = message_filters.Subscriber('IspMean_target', ThrustIsp)
-        Tsync = message_filters.TimeSynchronizer([external_force_ta, thrust_ispM_ta], 10)
-        Tsync.registerCallback(prop_target.thrust_callback)
-    if prop_target._hasAttitudeProp:
-        external_torque = rospy.Subscriber('actuator_torque_target', WrenchStamped, prop_target.magnetotorque_callback)
+        spacecrafts.append(spc)
 
     FileDataHandler.create_data_validity_checklist()
 
@@ -361,37 +366,20 @@ if __name__ == '__main__':
         if SimTime.time_shift_passed:
             # check if data still loaded
             FileDataHandler.check_data_availability(epoch_now)
-            # propagate to epoch_now
-            [cart_ch, att_ch, force_ch, d_torque_ch, B_field_ch] = \
-                prop_chaser.propagate(epoch_now)
-            [cart_ta, att_ta, force_ta, d_torque_ta, B_field_ta] = \
-                prop_target.propagate(epoch_now)
 
-            rospy_now = rospy.Time.now()
+            for spc in spacecrafts:
+                try:
+                    # propagate to epoch_now
+                    spc.propagate(epoch_now)
+                except Exception as e:
+                    print "ERROR in propagation of: [", spc.namespace, "]"
+                    print e.message, e.args
+                    print "Shutting down Propagator!"
+                    ExitServer.exiting = True
 
-            [msg_ch, msg_pose_ch] = cart_to_msgs(cart_ch, att_ch, rospy_now)
-            [msg_FT_ch, msg_dtorque_ch] = force_torque_to_msgs(force_ch,
-                                                               d_torque_ch,
-                                                               rospy_now)
-            msg_B_field_ch = Bfield_to_msgs(B_field_ch, rospy_now)
-            pub_ch.publish(msg_ch)
-            pub_pose_ch.publish(msg_pose_ch)
-            pub_dtorque_ch.publish(msg_dtorque_ch)
-            pub_FT_ch.publish(msg_FT_ch)
-            pub_Bfield_ch.publish(msg_B_field_ch)
+            for spc in spacecrafts:
+                # Publish messages
+                spc.publish()
 
-            [msg_ta, msg_pose_ta] = cart_to_msgs(cart_ta, att_ta, rospy_now)
-
-            [msg_FT_ta, msg_dtorque_ta] = force_torque_to_msgs(force_ta,
-                                                               d_torque_ta,
-                                                               rospy_now)
-
-            msg_B_field_ta = Bfield_to_msgs(B_field_ta, rospy_now)
-
-            pub_ta.publish(msg_ta)
-            pub_pose_ta.publish(msg_pose_ta)
-            pub_dtorque_ta.publish(msg_dtorque_ta)
-            pub_FT_ta.publish(msg_FT_ta)
-            pub_Bfield_ta.publish(msg_B_field_ta)
-
+        # Maintain correct frequency
         SimTime.sleep_to_keep_frequency()

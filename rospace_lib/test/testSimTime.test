@@ -1,3 +1,23 @@
+<!--
+@copyright Copyright (c) 2018, Christian Lanegger (lanegger.christian@gmail.com)
+
+@license zlib license
+
+This file is licensed under the terms of the zlib license.
+See the LICENSE.md file in the root of this repository
+for complete details.
+
+//////////////////////////////////////////////////////////////////////////////////////
+SimTimePublihser Test
+Test for the SimTimePublihser, testing that module is behaving correctly and raises error if
+calls are being made, which should not be allowed.
+ -->
+
 <launch>
+
+	<!-- Load Scenario with initial values -->
+	<rosparam param="scenario" command="load" file="$(find rospace_simulator)/cfg/Scenarios/test_mission.yaml" />
+
+	<!-- Run SimTimePublisher Test -->
 	<test test-name="testSimTime" pkg="rospace_lib" type="rostest_SimTimePublisher.py" time-limit="10.0"/>
 </launch>

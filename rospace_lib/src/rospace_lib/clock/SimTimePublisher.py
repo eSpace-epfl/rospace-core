@@ -95,17 +95,8 @@ class SimTimePublisher(object):
             rospy.loginfo("Time is being driven by the node %s.",
                           str(self._time_driving_node))
 
-            # get defined simulation parameters from rosparam
-            sim_parameter = dict()
-            if rospy.has_param("~TIME_SHIFT"):
-                # get simulation time shift before t=0:
-                sim_parameter['time_shift'] = float(rospy.get_param("~TIME_SHIFT"))
-            if rospy.has_param("~frequency"):
-                sim_parameter['frequency'] = int(rospy.get_param("~frequency"))
-            if rospy.has_param("~oe_epoch"):
-                sim_parameter['oe_epoch'] = str(rospy.get_param("~oe_epoch"))
-            if rospy.has_param("~step_size"):
-                sim_parameter['step_size'] = float(rospy.get_param("~step_size"))
+            # get defined simulation parameters from yaml as dictionary
+            sim_parameter = rospy.get_param("scenario/simulation_time")
 
             self._SimTime = SimTimeUpdater(**sim_parameter)
 
@@ -128,7 +119,7 @@ class SimTimePublisher(object):
                     SimTimeService(self._SimTime.realtime_factor,
                                    self._SimTime.frequency,
                                    self._SimTime.step_size,
-                                   rospy.has_param("/start_running"))
+                                   rospy.get_param("/start_running"))
             else:
                 self.ClockService = \
                     SimTimeService(self._SimTime.realtime_factor,
@@ -160,7 +151,7 @@ class SimTimePublisher(object):
         skipping the next timestep.
 
         Returns:
-            datetime: current epoch as datetime object
+            datetime.datetime: current epoch as datetime object
 
         Raises:
             RuntimeError: If used without the sleep_to_keep_frequency method
@@ -186,8 +177,8 @@ class SimTimePublisher(object):
                     self.ClockService.realtime_factor,
                     self.ClockService.frequency,
                     self.ClockService.step_size)
-                self.epoch.changeFrequency(self.ClockService.frequency)
-                self.epoch.changeStep(self.ClockService.step_size)
+                self.epoch._changeFrequency(self.ClockService.frequency)
+                self.epoch._changeStep(self.ClockService.step_size)
 
             if self.ClockService.SimRunning:
                 # Wait for other nodes which subscribed to service (if any)

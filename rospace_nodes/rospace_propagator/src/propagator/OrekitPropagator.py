@@ -39,6 +39,7 @@ class DisturbanceTorqueStorage(object):
         - external torque
         - sum of all torques
     '''
+
     def __init__(self):
         self._add = []
         self._dtorque = []
@@ -63,8 +64,8 @@ class DisturbanceTorqueStorage(object):
         torque_sum = np.array([0.0, 0.0, 0.0])
         for vector in new_dtorques:
             t_array = np.array([vector.getX(),
-                               vector.getY(),
-                               vector.getZ()])
+                                vector.getY(),
+                                vector.getZ()])
             torque_sum += t_array
             self._dtorque.append(t_array)
 
@@ -128,7 +129,7 @@ class OrekitPropagator(object):
         """
 
         pv = state.getPVCoordinates()
-        cart_teme = rospace_lib.CartesianTEME()
+        cart_teme = rospace_lib.CartesianITRF()
         cart_teme.R = np.array([pv.position.x,
                                 pv.position.y,
                                 pv.position.z]) / 1000
@@ -164,7 +165,7 @@ class OrekitPropagator(object):
         self._hasAttitudeProp = False
         self._hasThrust = False
 
-    def initialize(self, propSettings, state, epoch):
+    def initialize(self, spc_name, propSettings, state, epoch):
         """
         Method builds propagator object based on settings defined in arguments.
 
@@ -179,6 +180,7 @@ class OrekitPropagator(object):
             - hasThrust
 
         Args:
+            spc_name: name of spacecraft
             propSettings: dictionary containing info about propagator settings
             state: initial state of spacecraft
             epoch: initial epoch @ which state is defined as datetime object
@@ -189,13 +191,7 @@ class OrekitPropagator(object):
 
         OrEpoch = to_orekit_date(epoch)
 
-        try:
-            assert propSettings != 0
-        except AssertionError:
-            ass_err = "ERROR: Propagator settings file could not be found!"
-            raise AssertionError(ass_err)
-
-        _builder = PB.PropagatorBuilder(propSettings, state, OrEpoch)
+        _builder = PB.PropagatorBuilder(spc_name, propSettings, state, OrEpoch)
         _builder._build_state()
         _builder._build_integrator()
         _builder._build_propagator()
@@ -252,7 +248,7 @@ class OrekitPropagator(object):
         state = self._propagator_num.propagate(orekit_date)
 
         if self._hasAttitudeProp:
-            # get attitude of last time step at add it to new state
+            # get attitude of last time step and add it to new state
             # propagator does update of last step before new orbit propagation step
             old_state = self._propagator_num.getInitialState()
             orbit = old_state.getOrbit()
@@ -288,7 +284,7 @@ class OrekitPropagator(object):
 
         # get B-field in geodetic system (X:East, Y:North, Z:Nadir)
         B_geo = FileDataHandler.mag_field_model.calculateField(
-                            degrees(lat), degrees(lon), alt).getFieldVector()
+            degrees(lat), degrees(lon), alt).getFieldVector()
 
         # convert geodetic frame to inertial and from [nT] to [T]
         B_i = topo2inertial.transformVector(Vector3D(1e-9, B_geo))
@@ -388,7 +384,7 @@ class OrekitPropagator(object):
                                        force_torque.wrench.torque.y,
                                        force_torque.wrench.torque.z])
 
-    def magnetotorque_callback(self, torque_msg):
+    def magnetorque_callback(self, torque_msg):
         """Callback function for subscriber to the magnetotorquer node.
 
         The magnetotorquer has to set the torque back to zero if no torque present.

@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="rospace_propagator" name="propagator" type="PropagationNode.py" output="screen" />
+</launch>

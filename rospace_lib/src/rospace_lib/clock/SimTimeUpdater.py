@@ -18,7 +18,7 @@ class SimTimeUpdater(object):
     If no initial frequency has been set, the simulation will run as quickly as possible.
 
     Args:
-        oe_epoch (datetime): epoch of initial orbital elements
+        oe_epoch (datetime.datetime): epoch of initial orbital elements
         frequency (float): publish frequency of ROS nodes [1/s]
         step_size (float): simulation step size [s]
 
