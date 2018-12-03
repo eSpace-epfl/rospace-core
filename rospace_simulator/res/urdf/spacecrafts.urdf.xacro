@@ -34,7 +34,7 @@
             <visual>
                 <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
                 <geometry>
-                    <mesh filename="${meshes_location}/cso/cso-mesh.stl" scale="1 1 1">
+                    <mesh filename="${meshes_location}/cso/cso-mesh.stl" scale="0.5 0.5 0.5">
                     </mesh>
                 </geometry>
                 <material name="Red" />

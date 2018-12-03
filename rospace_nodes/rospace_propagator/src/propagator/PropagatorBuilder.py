@@ -945,7 +945,7 @@ class AttPropagation(AttitudeFactory):
                 # look for subclasses with same name and store correct class
                 if discretization['type'] == disc.__class__.__name__:
                     type_disc = 'type'
-                    break
+                    break  # disc is now the desired Discretization class
             if type_disc is None and \
                (gravitySettings['add'] or solarSettings['add'] or dragSettings['add']):
                 # discretization type not defined but discretization needed..

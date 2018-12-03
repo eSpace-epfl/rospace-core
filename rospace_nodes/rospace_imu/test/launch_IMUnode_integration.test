@@ -28,6 +28,7 @@ Following nodes are added to Testcraft for integration testing:
     <include file="$(find rospace_simulator)/launch/simulator.launch">
         <arg name="start_running" value="True"/>
         <arg name="rostest_running" value="True"/>
+        <arg name="mission" value="test_mission"/>
         <arg name="scenario" value="test_mission"/>
     </include>
     <!-- ////////////////////////////////////////////////////////////////// -->

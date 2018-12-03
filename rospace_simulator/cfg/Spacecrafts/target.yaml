@@ -1,19 +1,19 @@
+frames:
+  target_cog:
+    pose: 0 0 0 1
+    position: 0 0 0
+
 sensors:
-  imu:
+  target_s0_imu:
     module: 'ADXRS614'
     class: 'ThreeAxisADXRS614'
     position: 0 0 0
     pose: 0 0 0 1.0
-    fov_x: 6
-    fov_y: 6
-    max_range: 50000
-    mu: 0
-    sigma: 0.01
 
 propagator_settings:
   orbit_propagation:
     State:
-      type: CartesianTEME
+      type: CartesianJ2000
       settings:
         mass: 0.82 # kg
     integrator: # Steps have to be floats
@@ -81,5 +81,5 @@ propagator_settings:
         order: 5
     addRelativity: False
   attitudeProvider:
-    type:  "" #'AttNadir'
+    type:  ""
     settings: ''

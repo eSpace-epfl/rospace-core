@@ -15,7 +15,10 @@
 
         <!-- Add Sensors to Spacecraft -->
         <group ns="sensors">
-            <!-- Launch Sensors ATM -->
+            <!-- Launch IMU -->
+            <include file="$(find rospace_imu)/launch/imu.launch">
+                <arg name="spacecraft" value="$(arg ns_spacecraft)" />
+            </include>
         </group>
 
         <!-- Add Actuators to Spacecraft -->

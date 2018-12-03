@@ -2,6 +2,7 @@
 <launch>
 
     <!-- Simulation Arguments -->
+    <arg name="mission" />
     <arg name="scenario" />
     <arg name="rostest_running" default="False"/>
     <arg name="record_bag" default="False" />
@@ -18,7 +19,9 @@
     <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
 
     <!-- Initialize the Specified Scenario -->
-    <include file="$(find rospace_simulator)/launch/Scenarios/$(arg scenario).launch" />
+    <include file="$(find rospace_simulator)/launch/Missions/$(arg mission).launch">
+        <arg name="scenario" value="$(arg scenario)"/>
+    </include>
     <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
 
     <!-- Start Physics Engine Node -->
@@ -26,7 +29,7 @@
     <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
 
     <!-- Start RVIZ Visualization (skipped if a Rostest launched this file) -->
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find rospace_simulator)/res/rviz/$(arg scenario).rviz" required="true" unless="$(arg rostest_running)" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find rospace_simulator)/res/rviz/$(arg mission).rviz" required="true" unless="$(arg rostest_running)" />
     <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
 
     <!-- Launch Simulation-Time Plugin (skipped if a Rostest launched this file) -->

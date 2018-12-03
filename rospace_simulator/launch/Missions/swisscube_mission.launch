@@ -1,14 +1,15 @@
 <launch>
 
     <!-- ///////////////// Mission Arguments /////////////////////// -->
-    <arg name="scenario" value="swisscube_mission" />
+    <arg name="mission" value="swisscube_mission" />
+    <arg name="scenario" />
     <!-- ///////////////// Include Spacecrafts /////////////////////// -->
 
     <!-- Load Scenario with initial values -->
-    <rosparam param="scenario" command="load" file="$(find rospace_simulator)/cfg/Scenarios/$(arg scenario).yaml" />
+    <rosparam param="scenario" command="load" file="$(find rospace_simulator)/cfg/Scenarios/$(arg mission)/$(arg scenario).yaml" />
 
-    <!-- Load Simulation World of Scenario by Parsing Xacro-File -->
-    <param name="robot_description" command="$(find xacro)/xacro '$(find rospace_simulator)/res/worlds/world_$(arg scenario).urdf.xacro'" />
+    <!-- Load Simulation World of Mission by Parsing Xacro-File -->
+    <param name="robot_description" command="$(find xacro)/xacro '$(find rospace_simulator)/res/worlds/world_$(arg mission).urdf.xacro' scenario:=$(arg scenario)" />
     <!-- ///////////////////////////////////////////////////////////////////////////////////  -->
 
     <!-- ///////////////// Include Spacecrafts /////////////////////// -->
