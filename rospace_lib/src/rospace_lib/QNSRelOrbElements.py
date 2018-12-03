@@ -1,6 +1,6 @@
-# @copyright Copyright (c) 2017, Michael Pantic (michael.pantic@gmail.com)
+# Copyright (c) 2017, Michael Pantic (michael.pantic@gmail.com)
 #
-# @license zlib license
+# SPDX-License-Identifier: Zlib
 #
 """
 Module that contains Classes for Relative Orbital Elements (ROE)

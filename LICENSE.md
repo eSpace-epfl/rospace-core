@@ -1,9 +1,9 @@
-Files in the RDV Simulator are licensed under the following zlib license,
+Files in ROSpace are licensed under the following zlib license,
 unless otherwise noted.
 
 zlib License
 
-(C) 2017-2018 The RDV Simulator contributors
+(C) 2017-2018 The ROSpace contributors
 
 This software is provided 'as-is', without any express or implied
 warranty.  In no event will the authors be held liable for any damages

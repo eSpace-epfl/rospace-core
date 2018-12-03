@@ -1,11 +1,12 @@
-# @copyright Copyright (c) 2018, Christian Lanegger (lanegger.christian@gmail.com)
-# @copyright Copyright (c) 2017, Davide Frey (frey.davide.ae@gmail.com)
+# Copyright (c) 2018, Christian Lanegger (lanegger.christian@gmail.com)
+# Copyright (c) 2017, Davide Frey (frey.davide.ae@gmail.com)
 #
-# @license zlib license
+# SPDX-License-Identifier: Zlib
 #
 # This file is licensed under the terms of the zlib license.
 # See the LICENSE.md file in the root of this repository
-# for complete details.
+# for complete details. The contributors to this file maybe
+# found in the SCM logs or in the AUTHORS.md file.
 
 import rospy
 import numpy as np

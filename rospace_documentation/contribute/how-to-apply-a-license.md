@@ -16,11 +16,12 @@ If you create a new file please use this license header:
 ````
 # @copyright Copyright (c) <year>, <your name> (<your email address>)
 #
-# @license zlib license
+# SPDX-License-Identifier: Zlib
 #
 # This file is licensed under the terms of the zlib license.
 # See the LICENSE.md file in the root of this repository
-# for complete details.
+# for complete details. The contributors to this file maybe
+# found in the SCM logs or in the AUTHORS.md file.
 ````
 
 Additionally we require a Developer Certificate of Origin (DCO), look
