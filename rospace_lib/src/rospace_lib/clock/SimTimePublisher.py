@@ -47,7 +47,12 @@ class SimTimePublisher(object):
 
     @property
     def datetime_oe_epoch(self):
-        """Initial epoch of orbital elements [datetime]."""
+        """Return initial epoch of orbital elements.
+
+        Returns:
+            datetime: epoch of orbital elements
+
+        """
         if self._SimTime is not None:
             return self._SimTime.datetime_oe_epoch
         else:
@@ -55,7 +60,12 @@ class SimTimePublisher(object):
 
     @property
     def time_shift_passed(self):
-        """Bool if simulation time shift passed (desired initial time started)."""
+        """Return Bool if simulation time shift passed (desired initial time started).
+
+        Returns:
+            Bool: True if time_shift passed and simulation started
+
+        """
         if self._SimTime is not None:
             return self._SimTime.time_shift_passed
         else:

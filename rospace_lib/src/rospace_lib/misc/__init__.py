@@ -7,3 +7,6 @@
 # for complete details.
 
 from rospace_lib.misc.QuickPropagator import QuickPropagator
+from rospace_lib.misc.FileDataHandler import FileDataHandler
+from rospace_lib.misc.Spacecrafts import *
+from rospace_lib.misc.PropagatorParser import *

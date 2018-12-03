@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="envisat_mission">
+
+    <xacro:include filename="$(find rospace_simulator)/res/urdf/spacecrafts.urdf.xacro" />
+
+    <xacro:include filename="$(find rospace_simulator)/res/urdf/planets.urdf.xacro" />
+
+    <xacro:property name="inertial_frame" value="J2K"/>
+    <xacro:property name="config_location" value="$(find rospace_simulator)/cfg/Scenarios/envisat_mission.yaml" />
+    <xacro:property name="namespace" value="${load_yaml(config_location)}"/>
+
+    <!-- Load Planets -->
+
+    <xacro:load_planet namespace="Earth" inertial_frame="${inertial_frame}" />
+
+    <!-- Create Visualizations of Spacecrafts -->
+
+    <xacro:load_spacecraft namespace="${namespace['init_coords'].keys()[0]}" joint_parent="${inertial_frame}"/>
+
+</robot>

@@ -20,7 +20,7 @@ propagator_settings:
       minStep: 0.01
       maxStep: 1000.0
       initStep: 0.1
-      positionTolerance: 0.01
+      positionTolerance: 0.0001
     Gravity:
       type: "EigenGravity"
       settings: # Spherical Harmonics Field Coeffs

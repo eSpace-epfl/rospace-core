@@ -15,13 +15,12 @@ import math
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + "/../src")  # hack...
 
-from propagator.OrekitPropagator import *
-from propagator.DipoleModel import *
-from propagator.AttitudePropagation import *
+from propagator.OrekitPropagator import OrekitPropagator
+from rospace_lib.actuators.DipoleModel import DipoleModel
 
 
 class MagneticTorqueTest(unittest.TestCase):
-    """Unit test class testing the correct implementation of the Dipole model class
+    """Unit test class testing the correct implementation of the Dipole model class.
 
     Every test uses the same configuration for the hysteresis rods and bar magnets (see @setUpClass)
     in the same magnetic field (B_field).
@@ -45,9 +44,10 @@ class MagneticTorqueTest(unittest.TestCase):
     '''Stores the initialized dipole model to be used by the individual test methods'''
 
     def setUp(self):
-        """Method called to prepare the test fixture.
+        """Call to prepare the test fixture.
 
-        This is called immediately before calling the test method."""
+        This is called immediately before calling the test method.
+        """
         OrekitPropagator.init_jvm()
 
     @classmethod
@@ -83,7 +83,7 @@ class MagneticTorqueTest(unittest.TestCase):
         self.assertEqual(MagneticTorqueTest.dipolM._m_barMag.size, 6)
 
     def test_initialization(self):
-        """Test the correct initialization of the magnetic field """
+        """Test the correct initialization of the magnetic field."""
         B_field = np.array([1.5e-5, -2.2e-4, 0.5e-7])
 
         MagneticTorqueTest.dipolM.initializeHysteresisModel(B_field)
@@ -97,10 +97,10 @@ class MagneticTorqueTest(unittest.TestCase):
         self.assertAlmostEquals(MagneticTorqueTest.dipolM._B_hyst_last[2], -0.417010, delta=1e-6)
 
     def test_dipole_calculation(self):
-        """Test the correct implementation by comparing the computed dipole vectors
-        against the analytic solution.
+        """Test the correct implementation by comparing the computed dipole vectors against the analytic solution.
 
-        The initialization of the values took place in the test @test_initialization."""
+        The initialization of the values took place in the test @test_initialization.
+        """
         B_field = np.array([1.5e-5, -2.2e-4, 0.5e-7])
 
         dipoleVectors = MagneticTorqueTest.dipolM.getDipoleVectors(B_field)
@@ -109,8 +109,10 @@ class MagneticTorqueTest(unittest.TestCase):
         self.assertAlmostEquals(dipoleVectors[0, 1], 0., delta=1e-6)
         self.assertAlmostEquals(dipoleVectors[0, 2], -0.340086 * 7.4613e-8 / (math.pi * 4e-7), delta=1e-6)
 
-        self.assertAlmostEquals(dipoleVectors[1, 0], -0.020477 * 2.1234e-8 / (math.pi * 4e-7 * math.sqrt(2)), delta=1e-6)
-        self.assertAlmostEquals(dipoleVectors[1, 1], -0.020477 * 2.1234e-8 / (math.pi * 4e-7 * math.sqrt(2)), delta=1e-6)
+        self.assertAlmostEquals(dipoleVectors[1, 0], -0.020477 * 2.1234e-8 /
+                                (math.pi * 4e-7 * math.sqrt(2)), delta=1e-6)
+        self.assertAlmostEquals(dipoleVectors[1, 1], -0.020477 * 2.1234e-8 /
+                                (math.pi * 4e-7 * math.sqrt(2)), delta=1e-6)
         self.assertAlmostEquals(dipoleVectors[1, 2], 0., delta=1e-6)
 
         self.assertAlmostEquals(dipoleVectors[2, 0], 0., delta=1e-6)

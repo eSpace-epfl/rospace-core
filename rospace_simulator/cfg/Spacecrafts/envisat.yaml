@@ -1,50 +1,47 @@
 propagator_settings:
   name: "ENVISAT"
-  orbitProp:
+  orbit_propagation:
     State:
-      type: 'CartesianEME2000'
+      type: CartesianJ2000
       settings:
         mass: 7990.0 # kg
-        rotation: 'nadir' # quaternions or nadir
-        spin: 10 5 5 # omega in [deg/s]
-        acceleration: 0 0 0
     integrator: # Steps have to be floats
       minStep: 0.001
       maxStep: 60
       initStep: 0.1
       positionTolerance: 0.001
     Gravity:
-      type: "EigenGravityWGS84"
+      type: EigenGravity
       settings: # Spherical Harmonics Field Coeffs
         degree: 240
         order: 240
     Thrust:
-      type: "" #ThrustModelVariable
+      type: ""
       settings: ""
     SatShape: # Settings for creation of spacecraft model
         type: "FacetsAndFixedSolarArray"
         settings:
           Facets: ## area in [m2]
             front:
-              area: 26.25
+              area: 33.6
               nVector: 1 0 0
             back:
-              area: 26.25
+              area: 33.6
               nVector: -1 0 0
             left:
-              area: 6.25
+              area: 10.24
               nVector: 0 0 1
             right:
-              area: 6.25
+              area: 10.24
               nVector: 0 0 -1
             top:
-              area: 26.25
+              area: 33.6
               nVector: 0 -1 0
             bottom:
-              area: 26.25
+              area: 33.6
               nVector: 0 1 0
-          SolarArea: 37.5 # 313x960 * 2
-          SolarDir: 0 1 1
+          SolarArea: 40.0 # 313x960 * 2
+          SolarDir: 0 1 0
           absCoeff: 0.34
           refCoeff: 0.66
           dragCoeff: 2.0

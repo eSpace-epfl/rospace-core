@@ -19,7 +19,7 @@
 propagator_settings:
   orbit_propagation:
     State:
-      type: CartesianEME2000
+      type: CartesianJ2000
       settings:
         mass: 100.0 # kg
     integrator: # Steps have to be floats
@@ -28,7 +28,7 @@ propagator_settings:
       initStep: 0.1
       positionTolerance: 0.1
     Gravity:
-      type: "EigenGravityWGS84"
+      type: "EigenGravity"
       settings: # Spherical Harmonics Field Coeffs
         degree: 20
         order: 20

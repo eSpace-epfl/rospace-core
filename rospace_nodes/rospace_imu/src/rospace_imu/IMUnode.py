@@ -52,14 +52,15 @@ def publish_IMU_message():
 
         rate.sleep()
 
+
 if __name__ == '__main__':
     try:
         rospy.init_node('imu_node', anonymous=True)
 
         # retrieves module corresponding to sensor module and class in rosparam
         spacecraft_namespace = rospy.get_namespace()
-        sensor_module_name = str(rospy.get_param("/"+spacecraft_namespace+"imu/module"))
-        sensor_class_name = str(rospy.get_param("/" + spacecraft_namespace + "imu/class"))
+        sensor_module_name = str(rospy.get_param(spacecraft_namespace+"imu/module"))
+        sensor_class_name = str(rospy.get_param(spacecraft_namespace + "imu/class"))
         sensor_module = importlib.import_module('rospace_lib.sensor.'+sensor_module_name)
         sensor_class = getattr(sensor_module, sensor_class_name)
         rate_gyro = sensor_class()
