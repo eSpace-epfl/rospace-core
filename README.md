@@ -26,3 +26,14 @@ members of the [Autonomous Systems Lab](http://www.asl.ethz.ch/) at
 ETHZ. All contributors are listed in [AUTHORS.md](AUTHORS.md). Feel free
 to submit issues and patches, see [CONTRIBUTING.md](CONTRIBUTING.md) for
 details.
+
+### Cut the crap, lets get started
+Have a look at the [Wiki](https://gitlab.com/eSpace-epfl/rospace/core/wikis/home)
+which has instructions to get started. Even more in a hurry ?
+```bash
+git clone https://gitlab.com/eSpace-epfl/rospace/spaceport.git
+cd spaceport
+./build.sh rospace
+./run.sh rospace
+roslaunch rospace_simulator simulator.launch mission:=envisat_mission scenario:=envisat_mission
+```
